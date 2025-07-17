@@ -1,0 +1,461 @@
+{
+  "title": "Мониторинг растений",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Выберите тип устройства",
+        "description": "Выберите, создать растение или цикл",
+        "data": {
+          "device_type": "Тип устройства"
+        }
+      },
+      "cycle": {
+        "title": "Создать цикл",
+        "description": "Настройте новый цикл",
+        "data": {
+          "name": "Имя",
+          "plant_emoji": "Иконка"
+        },
+        "data_description": {
+          "plant_emoji": "Найдите большой выбор на [emojipedia.org](https://emojipedia.org)"
+        }
+      },
+      "plant": {
+        "title": "Создать растение",
+        "description": "Настройте новое растение",
+        "data": {
+          "name": "Имя",
+          "plant_emoji": "Иконка",
+          "strain": "Сорт",
+          "breeder": "Селекционер",
+          "growth_phase": "Фаза роста",
+          "temperature_sensor": "Датчик температуры",
+          "moisture_sensor": "Датчик влажности",
+          "conductivity_sensor": "Датчик проводимости",
+          "illuminance_sensor": "Датчик освещения",
+          "humidity_sensor": "Датчик влажности воздуха",
+          "power_consumption_sensor": "Датчик потребления энергии",
+          "ph_sensor": "Датчик pH",
+          "normalize_moisture": "Нормализовать значения влажности",
+          "normalize_window": "Окно нормализации (дни)",
+          "normalize_percentile": "Процентиль нормализации",
+          "pot_size": "Размер горшка (л)",
+          "water_capacity": "Объем воды (л)"
+        },
+        "data_description": {
+          "plant_emoji": "Найдите большой выбор на [emojipedia.org](https://emojipedia.org)"
+        }
+      },
+      "limits": {
+        "title": "Установить лимиты",
+        "description": "# {name}\n![Растение]({entity_picture}){br}\n{extra_desc}Единица температуры: {temperature_unit}",
+        "data": {
+          "right_plant": "Это растение, которое я искал",
+          "display_pid": "Сорт",
+          "breeder": "Селекционер",
+          "type": "Тип",
+          "feminized": "Феминизированный",
+          "flowering_duration": "Продолжительность цветения (дни)",
+          "effects": "Эффекты",
+          "smell": "Запах",
+          "taste": "Вкус",
+          "website": "Веб-сайт",
+          "phenotype": "Фенотип",
+          "hunger": "Голод",
+          "growth_stretch": "Растяжение роста",
+          "flower_stretch": "Растяжение цветения",
+          "mold_resistance": "Устойчивость к плесени",
+          "difficulty": "Сложность",
+          "yield": "Урожайность",
+          "notes": "Заметки",
+          "lineage": "Родословная",
+          "infotext1": "Информационный текст 1",
+          "infotext2": "Информационный текст 2",
+          "max_moisture": "Максимальная влажность почвы (%)",
+          "min_moisture": "Минимальная влажность почвы (%)",
+          "max_illuminance": "Максимальное освещение (лк)",
+          "min_illuminance": "Минимальное освещение (лк)",
+          "max_dli": "Максимальный DLI (моль/д⋅м²)",
+          "min_dli": "Минимальный DLI (моль/д⋅м²)",
+          "max_temperature": "Максимальная температура (см. выше)",
+          "min_temperature": "Минимальная температура (см. выше)",
+          "max_conductivity": "Максимальная проводимость (мкСм/см)",
+          "min_conductivity": "Минимальная проводимость (мкСм/см)",
+          "max_humidity": "Максимальная влажность воздуха (%)",
+          "min_humidity": "Минимальная влажность воздуха (%)",
+          "max_water_consumption": "Максимальное потребление воды (л/день)",
+          "min_water_consumption": "Минимальное потребление воды (л/день)",
+          "max_fertilizer_consumption": "Максимальное потребление удобрений (мл/день)",
+          "min_fertilizer_consumption": "Минимальное потребление удобрений (мл/день)",
+          "max_power_consumption": "Максимальное потребление энергии (Вт)",
+          "min_power_consumption": "Минимальное потребление энергии (Вт)",
+          "max_ph": "Максимальное значение pH",
+          "min_ph": "Минимальное значение pH",
+          "entity_picture": "URL изображения"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Опции",
+        "description": "",
+        "data": {
+          "check_days": "Дни проверки освещения",
+          "species": "Вид",
+          "force_update": "Принудительное обновление данных OpenPlantbook",
+          "display_pid": "Отображаемый вид растения",
+          "temperature_sensor": "Датчик температуры",
+          "moisture_sensor": "Датчик влажности почвы",
+          "conductivity_sensor": "Датчик проводимости",
+          "illuminance_sensor": "Датчик освещения",
+          "humidity_sensor": "Датчик влажности воздуха",
+          "entity_picture": "URL изображения. Будет автоматически обновлен, если вид найден в OpenPlantbook",
+          "illuminance_trigger": "Использовать освещение как триггер проблемы",
+          "dli_trigger": "Использовать дневной световой интеграл (dli) как триггер проблемы",
+          "humidity_trigger": "Использовать влажность воздуха как триггер проблемы",
+          "conductivity_trigger": "Использовать проводимость как триггер проблемы",
+          "moisture_trigger": "Использовать влажность почвы как триггер проблемы",
+          "temperature_trigger": "Использовать температуру как триггер проблемы"
+        }
+      }
+    }
+  },
+  "services": {
+    "replace_sensor": {
+      "name": "Заменить датчик",
+      "description": "Заменяет источник датчика растения.",
+      "fields": {
+        "meter_entity": {
+          "name": "Сущность счетчика",
+          "description": "Сущность счетчика для замены датчика."
+        },
+        "new_sensor": {
+          "name": "Сущность датчика",
+          "description": "ID сущности нового датчика. Оставьте пустым для удаления датчика."
+        }
+      }
+    },
+    "remove_plant": {
+      "name": "Удалить растение",
+      "description": "Удаляет растение и все связанные с ним сущности.",
+      "fields": {
+        "plant_entity": {
+          "name": "Сущность растения",
+          "description": "Сущность растения для удаления."
+        }
+      }
+    },
+    "create_plant": {
+      "name": "Создать растение",
+      "description": "Создает новое растение с указанной конфигурацией.",
+      "fields": {
+        "name": {
+          "name": "Имя",
+          "description": "Имя растения"
+        },
+        "strain": {
+          "name": "Сорт",
+          "description": "Название сорта для поиска в OpenPlantbook"
+        },
+        "breeder": {
+          "name": "Селекционер",
+          "description": "Имя селекционера/производителя"
+        },
+        "growth_phase": {
+          "name": "Фаза роста",
+          "description": "Текущая фаза роста растения"
+        },
+        "plant_emoji": {
+          "name": "Иконка",
+          "description": "Иконка/эмодзи для растения (см. @https://emojipedia.org/)"
+        },
+        "temperature_sensor": {
+          "name": "Датчик температуры",
+          "description": "Сущность датчика температуры"
+        },
+        "moisture_sensor": {
+          "name": "Датчик влажности",
+          "description": "Сущность датчика влажности"
+        },
+        "conductivity_sensor": {
+          "name": "Датчик проводимости",
+          "description": "Сущность датчика проводимости"
+        },
+        "illuminance_sensor": {
+          "name": "Датчик освещения",
+          "description": "Сущность датчика освещения"
+        },
+        "humidity_sensor": {
+          "name": "Датчик влажности воздуха",
+          "description": "Сущность датчика влажности воздуха"
+        }
+      }
+    },
+    "clone_plant": {
+      "name": "Клонировать растение",
+      "description": "Создает клон/черенок существующего растения.",
+      "fields": {
+        "source_entity_id": {
+          "name": "Исходное растение",
+          "description": "Устройство растения для клонирования"
+        },
+        "name": {
+          "name": "Имя",
+          "description": "Имя для нового клона растения"
+        }
+      }
+    },
+    "update_plant_attributes": {
+      "name": "Обновить атрибуты растения",
+      "description": "Обновляет атрибуты растения",
+      "fields": {
+        "entity_id": {
+          "name": "Сущность растения",
+          "description": "Сущность растения для обновления"
+        },
+        "strain": {
+          "name": "Сорт",
+          "description": "Название сорта растения"
+        },
+        "breeder": {
+          "name": "Селекционер",
+          "description": "Селекционер/производитель растения"
+        },
+        "original_flowering_duration": {
+          "name": "Оригинальная продолжительность цветения",
+          "description": "Оригинальная продолжительность фазы цветения в днях (из OpenPlantbook или начальной настройки)"
+        },
+        "pid": {
+          "name": "ID растения",
+          "description": "Уникальный идентификатор растения"
+        },
+        "type": {
+          "name": "Тип/Вид",
+          "description": "Тип или вид растения"
+        },
+        "feminized": {
+          "name": "Феминизированное",
+          "description": "Статус феминизации"
+        },
+        "timestamp": {
+          "name": "Временная метка",
+          "description": "Временная метка последнего обновления"
+        },
+        "effects": {
+          "name": "Эффекты",
+          "description": "Эффекты растения"
+        },
+        "smell": {
+          "name": "Запах",
+          "description": "Характеристики запаха"
+        },
+        "taste": {
+          "name": "Вкус",
+          "description": "Характеристики вкуса"
+        },
+        "phenotype": {
+          "name": "Фенотип",
+          "description": "Фенотип растения"
+        },
+        "hunger": {
+          "name": "Голод",
+          "description": "Потребности в питании растения"
+        },
+        "growth_stretch": {
+          "name": "Растяжение роста",
+          "description": "Характеристики растяжения роста растения"
+        },
+        "flower_stretch": {
+          "name": "Растяжение цветения",
+          "description": "Характеристики растяжения цветения растения"
+        },
+        "mold_resistance": {
+          "name": "Устойчивость к плесени",
+          "description": "Уровень устойчивости к плесени растения"
+        },
+        "difficulty": {
+          "name": "Сложность",
+          "description": "Уровень сложности выращивания"
+        },
+        "yield": {
+          "name": "Урожайность",
+          "description": "Информация об ожидаемой урожайности"
+        },
+        "notes": {
+          "name": "Заметки",
+          "description": "Дополнительные заметки о растении"
+        },
+        "website": {
+          "name": "Веб-сайт",
+          "description": "URL веб-сайта"
+        },
+        "infotext1": {
+          "name": "Информационный текст 1",
+          "description": "Первый информационный текст"
+        },
+        "infotext2": {
+          "name": "Информационный текст 2",
+          "description": "Второй информационный текст"
+        },
+        "lineage": {
+          "name": "Родословная",
+          "description": "Родословная растения"
+        },
+        "images": {
+          "name": "Изображения",
+          "description": "Список путей к изображениям или URL (разделенные запятыми)"
+        },
+        "seeds_start": {
+          "name": "Начало семян",
+          "description": "Дата начала фазы семян"
+        },
+        "seeds_duration": {
+          "name": "Продолжительность семян",
+          "description": "Продолжительность фазы семян в днях"
+        },
+        "germination_start": {
+          "name": "Начало прорастания",
+          "description": "Дата начала фазы прорастания"
+        },
+        "germination_duration": {
+          "name": "Продолжительность прорастания",
+          "description": "Продолжительность фазы прорастания в днях"
+        },
+        "rooting_start": {
+          "name": "Начало укоренения",
+          "description": "Дата начала фазы укоренения"
+        },
+        "rooting_duration": {
+          "name": "Продолжительность укоренения",
+          "description": "Продолжительность фазы укоренения в днях"
+        },
+        "growing_start": {
+          "name": "Начало роста",
+          "description": "Дата начала фазы роста"
+        },
+        "growing_duration": {
+          "name": "Продолжительность роста",
+          "description": "Продолжительность фазы роста в днях"
+        },
+        "flowering_start": {
+          "name": "Начало цветения",
+          "description": "Дата начала фазы цветения"
+        },
+        "flower_duration": {
+          "name": "Продолжительность цветения",
+          "description": "Продолжительность фазы цветения в днях"
+        },
+        "harvested_date": {
+          "name": "Дата сбора",
+          "description": "Дата сбора урожая"
+        },
+        "harvested_duration": {
+          "name": "Время с момента сбора",
+          "description": "Время с момента сбора урожая в днях"
+        },
+        "removed_date": {
+          "name": "Дата удаления",
+          "description": "Дата удаления"
+        },
+        "removed_duration": {
+          "name": "Время с момента удаления",
+          "description": "Время с момента удаления в днях"
+        },
+        "position_x": {
+          "name": "Позиция X",
+          "description": "X-координата растения"
+        },
+        "position_y": {
+          "name": "Позиция Y",
+          "description": "Y-координата растения"
+        }
+      }
+    },
+    "move_to_cycle": {
+      "name": "Переместить в цикл",
+      "description": "Перемещает растение в цикл.",
+      "fields": {
+        "plant_entity": {
+          "name": "Сущность растения",
+          "description": "Сущность растения для перемещения."
+        },
+        "cycle_entity": {
+          "name": "Сущность цикла",
+          "description": "Сущность цикла, в который нужно переместить растение."
+        }
+      }
+    },
+    "create_cycle": {
+      "name": "Создать цикл",
+      "description": "Создает новую сущность цикла.",
+      "fields": {
+        "name": {
+          "name": "Имя",
+          "description": "Имя цикла."
+        },
+        "plant_emoji": {
+          "name": "Эмодзи",
+          "description": "Эмодзи для отображения рядом с именем цикла."
+        }
+      }
+    },
+    "remove_cycle": {
+      "name": "Удалить цикл",
+      "description": "Удаляет сущность цикла и все связанные с ним сущности.",
+      "fields": {
+        "cycle_entity": {
+          "name": "Сущность цикла",
+          "description": "Цикл для удаления."
+        }
+      }
+    },
+    "move_to_area": {
+      "name": "Переместить в зону",
+      "description": "Перемещает растение или цикл в определенную зону.",
+      "fields": {
+        "entity_id": {
+          "name": "Сущность",
+          "description": "Сущность растения или цикла для перемещения."
+        },
+        "area_id": {
+          "name": "Зона",
+          "description": "Зона, в которую нужно переместить сущность."
+        }
+      }
+    },
+    "add_image": {
+      "name": "Добавить изображение",
+      "description": "Добавляет изображение к растению или циклу.",
+      "fields": {
+        "entity_id": {
+          "name": "Сущность",
+          "description": "Сущность растения или цикла для добавления изображения."
+        },
+        "image_url": {
+          "name": "URL изображения",
+          "description": "URL или путь к изображению."
+        }
+      }
+    },
+    "change_position": {
+      "name": "Изменить позицию",
+      "description": "Изменяет координаты позиции растения или цикла.",
+      "fields": {
+        "entity_id": {
+          "name": "Сущность",
+          "description": "Сущность растения или цикла для изменения позиции."
+        },
+        "position_x": {
+          "name": "Позиция X",
+          "description": "Координата позиции X."
+        },
+        "position_y": {
+          "name": "Позиция Y",
+          "description": "Координата позиции Y."
+        }
+      }
+    }
+  }
+} 

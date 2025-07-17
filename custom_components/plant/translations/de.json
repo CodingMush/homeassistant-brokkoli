@@ -25,15 +25,22 @@
         "description": "Eine neue Pflanze konfigurieren",
         "data": {
           "name": "Name",
-          "plant_emoji": "Symbol",
+          "plant_emoji": "Icon",
           "strain": "Strain",
           "breeder": "Breeder",
           "growth_phase": "Wachstumsphase",
           "temperature_sensor": "Temperatursensor",
-          "moisture_sensor": "Bodenfeuchtesensor",
+          "moisture_sensor": "Feuchtigkeitssensor",
           "conductivity_sensor": "Leitfähigkeitssensor",
-          "illuminance_sensor": "Beleuchtungsstärkesensor",
-          "humidity_sensor": "Luftfeuchtigkeitssensor"
+          "illuminance_sensor": "Beleuchtungssensor",
+          "humidity_sensor": "Luftfeuchtigkeitssensor",
+          "power_consumption_sensor": "Stromverbrauchssensor",
+          "ph_sensor": "pH-Sensor",
+          "normalize_moisture": "Feuchtigkeitswerte normalisieren",
+          "normalize_window": "Normalisierungsfenster (Tage)",
+          "normalize_percentile": "Normalisierungspercentil",
+          "pot_size": "Topfgröße (L)",
+          "water_capacity": "Wasserkapazität (L)"
         },
         "data_description": {
           "plant_emoji": "Eine große Auswahl findest du auf [emojipedia.org](https://emojipedia.org)"
@@ -46,7 +53,7 @@
           "right_plant": "Das ist die Pflanze, die ich gesucht habe",
           "display_pid": "Strain",
           "breeder": "Breeder",
-          "sorte": "Sorte",
+          "type": "Sorte",
           "feminized": "Feminisiert",
           "flowering_duration": "Blütezeit (Tage)",
           "effects": "Effekte",
@@ -76,6 +83,14 @@
           "min_conductivity": "Minimale Leitfähigkeit (uS/cm)",
           "max_humidity": "Maximale Luftfeuchtigkeit (%)",
           "min_humidity": "Minimale Luftfeuchtigkeit (%)",
+          "max_water_consumption": "Maximaler Wasserverbrauch (L/Tag)",
+          "min_water_consumption": "Minimaler Wasserverbrauch (L/Tag)",
+          "max_fertilizer_consumption": "Maximaler Düngerverbrauch (ml/Tag)",
+          "min_fertilizer_consumption": "Minimaler Düngerverbrauch (ml/Tag)",
+          "max_power_consumption": "Maximaler Stromverbrauch (W)",
+          "min_power_consumption": "Minimaler Stromverbrauch (W)",
+          "max_ph": "Maximaler pH-Wert",
+          "min_ph": "Minimaler pH-Wert",
           "entity_picture": "Bild-URL"
         }
       }
@@ -103,6 +118,342 @@
           "conductivity_trigger": "Leitfähigkeit als Problemauslöser verwenden",
           "moisture_trigger": "Bodenfeuchte als Problemauslöser verwenden",
           "temperature_trigger": "Temperatur als Problemauslöser verwenden"
+        }
+      }
+    }
+  },
+  "services": {
+    "replace_sensor": {
+      "name": "Sensor ersetzen",
+      "description": "Ersetzt die Quelle für einen Pflanzensensor.",
+      "fields": {
+        "meter_entity": {
+          "name": "Meter-Entität",
+          "description": "Die Meter-Entität für die der Sensor ersetzt werden soll."
+        },
+        "new_sensor": {
+          "name": "Sensor-Entität",
+          "description": "Entitäts-ID des neuen Sensors. Leer lassen um Sensor zu entfernen."
+        }
+      }
+    },
+    "remove_plant": {
+      "name": "Pflanze entfernen",
+      "description": "Entfernt eine Pflanze und alle zugehörigen Entitäten.",
+      "fields": {
+        "plant_entity": {
+          "name": "Pflanzen-Entität",
+          "description": "Die zu entfernende Pflanzen-Entität."
+        }
+      }
+    },
+    "create_plant": {
+      "name": "Pflanze erstellen",
+      "description": "Erstellt eine neue Pflanze mit der angegebenen Konfiguration.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name der Pflanze"
+        },
+        "strain": {
+          "name": "Strain",
+          "description": "Strain-Name für OpenPlantbook-Suche"
+        },
+        "breeder": {
+          "name": "Breeder",
+          "description": "Breeder/Hersteller-Name"
+        },
+        "growth_phase": {
+          "name": "Wachstumsphase",
+          "description": "Aktuelle Wachstumsphase der Pflanze"
+        },
+        "plant_emoji": {
+          "name": "Symbol",
+          "description": "Symbol/Emoji für die Pflanze (siehe @https://emojipedia.org/)"
+        },
+        "temperature_sensor": {
+          "name": "Temperatursensor",
+          "description": "Temperatursensor-Entität"
+        },
+        "moisture_sensor": {
+          "name": "Feuchtigkeitssensor",
+          "description": "Feuchtigkeitssensor-Entität"
+        },
+        "conductivity_sensor": {
+          "name": "Leitfähigkeitssensor",
+          "description": "Leitfähigkeitssensor-Entität"
+        },
+        "illuminance_sensor": {
+          "name": "Beleuchtungsstärkesensor",
+          "description": "Beleuchtungsstärkesensor-Entität"
+        },
+        "humidity_sensor": {
+          "name": "Luftfeuchtigkeitssensor",
+          "description": "Luftfeuchtigkeitssensor-Entität"
+        }
+      }
+    },
+    "clone_plant": {
+      "name": "Pflanze klonen",
+      "description": "Erstellt einen Klon/Ableger einer bestehenden Pflanze.",
+      "fields": {
+        "source_entity_id": {
+          "name": "Quell-Pflanze",
+          "description": "Die zu klonende Pflanzen-Entität"
+        },
+        "name": {
+          "name": "Name",
+          "description": "Name für den neuen Pflanzen-Klon"
+        }
+      }
+    },
+    "update_plant_attributes": {
+      "name": "Pflanzen-Attribute aktualisieren",
+      "description": "Aktualisiert die Attribute einer Pflanze",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanzen-Entität",
+          "description": "Die zu aktualisierende Pflanzen-Entität"
+        },
+        "strain": {
+          "name": "Strain",
+          "description": "Name des Pflanzen-Strains"
+        },
+        "breeder": {
+          "name": "Breeder",
+          "description": "Pflanzen-Breeder/Hersteller"
+        },
+        "original_flowering_duration": {
+          "name": "Original-Blütezeit",
+          "description": "Original-Dauer der Blütephase in Tagen (aus OpenPlantbook oder Ersteinrichtung)"
+        },
+        "pid": {
+          "name": "Pflanzen-ID",
+          "description": "Eindeutige Pflanzen-Kennung"
+        },
+        "type": {
+          "name": "Typ/Sorte",
+          "description": "Pflanzen-Typ oder -Sorte"
+        },
+        "feminized": {
+          "name": "Feminisiert",
+          "description": "Feminisierungsstatus"
+        },
+        "timestamp": {
+          "name": "Zeitstempel",
+          "description": "Letzter Aktualisierungszeitstempel"
+        },
+        "effects": {
+          "name": "Effekte",
+          "description": "Pflanzen-Effekte"
+        },
+        "smell": {
+          "name": "Geruch",
+          "description": "Geruchseigenschaften"
+        },
+        "taste": {
+          "name": "Geschmack",
+          "description": "Geschmackseigenschaften"
+        },
+        "phenotype": {
+          "name": "Phänotyp",
+          "description": "Pflanzen-Phänotyp"
+        },
+        "hunger": {
+          "name": "Hunger",
+          "description": "Nährstoffbedarf der Pflanze"
+        },
+        "growth_stretch": {
+          "name": "Wuchs-Stretch",
+          "description": "Wuchs-Stretch-Eigenschaften der Pflanze"
+        },
+        "flower_stretch": {
+          "name": "Blüte-Stretch",
+          "description": "Blüte-Stretch-Eigenschaften der Pflanze"
+        },
+        "mold_resistance": {
+          "name": "Schimmelresistenz",
+          "description": "Schimmelresistenz-Level der Pflanze"
+        },
+        "difficulty": {
+          "name": "Schwierigkeit",
+          "description": "Anbau-Schwierigkeitsgrad"
+        },
+        "yield": {
+          "name": "Ertrag",
+          "description": "Erwartete Ertragsinformationen"
+        },
+        "notes": {
+          "name": "Notizen",
+          "description": "Zusätzliche Notizen zur Pflanze"
+        },
+        "website": {
+          "name": "Website",
+          "description": "Website-URL"
+        },
+        "infotext1": {
+          "name": "Infotext 1",
+          "description": "Erster Informationstext"
+        },
+        "infotext2": {
+          "name": "Infotext 2",
+          "description": "Zweiter Informationstext"
+        },
+        "lineage": {
+          "name": "Abstammung",
+          "description": "Pflanzen-Abstammung"
+        },
+        "images": {
+          "name": "Bilder",
+          "description": "Liste von Bildpfaden oder URLs (durch Komma getrennt)"
+        },
+        "seeds_start": {
+          "name": "Samen-Beginn",
+          "description": "Startdatum der Samen-Phase"
+        },
+        "seeds_duration": {
+          "name": "Samen-Dauer",
+          "description": "Dauer der Samen-Phase in Tagen"
+        },
+        "germination_start": {
+          "name": "Keimung-Beginn",
+          "description": "Startdatum der Keimungs-Phase"
+        },
+        "germination_duration": {
+          "name": "Keimung-Dauer",
+          "description": "Dauer der Keimungs-Phase in Tagen"
+        },
+        "rooting_start": {
+          "name": "Wurzel-Beginn",
+          "description": "Startdatum der Wurzel-Phase"
+        },
+        "rooting_duration": {
+          "name": "Wurzel-Dauer",
+          "description": "Dauer der Wurzel-Phase in Tagen"
+        },
+        "growing_start": {
+          "name": "Wachstum-Beginn",
+          "description": "Startdatum der Wachstums-Phase"
+        },
+        "growing_duration": {
+          "name": "Wachstum-Dauer",
+          "description": "Dauer der Wachstums-Phase in Tagen"
+        },
+        "flowering_start": {
+          "name": "Blüte-Beginn",
+          "description": "Startdatum der Blüte-Phase"
+        },
+        "flower_duration": {
+          "name": "Blüte-Dauer",
+          "description": "Dauer der Blüte-Phase in Tagen"
+        },
+        "harvested_date": {
+          "name": "Ernte-Datum",
+          "description": "Datum der Ernte"
+        },
+        "harvested_duration": {
+          "name": "Ernte-Dauer",
+          "description": "Dauer seit der Ernte in Tagen"
+        },
+        "removed_date": {
+          "name": "Entfernt-Datum",
+          "description": "Datum der Entfernung"
+        },
+        "removed_duration": {
+          "name": "Entfernt-Dauer",
+          "description": "Dauer seit der Entfernung in Tagen"
+        },
+        "position_x": {
+          "name": "X-Position",
+          "description": "X-Koordinate der Pflanze"
+        },
+        "position_y": {
+          "name": "Y-Position",
+          "description": "Y-Koordinate der Pflanze"
+        }
+      }
+    },
+    "move_to_cycle": {
+      "name": "In Zyklus verschieben",
+      "description": "Verschiebt eine oder mehrere Pflanzen in einen Zyklus. Wenn kein Zyklus angegeben wird, entfernt Pflanzen aus ihrem aktuellen Zyklus.",
+      "fields": {
+        "plant_entity": {
+          "name": "Pflanzen-Entitäten",
+          "description": "Die Pflanzen, die verschoben oder aus dem Zyklus entfernt werden sollen"
+        },
+        "cycle_entity": {
+          "name": "Zyklus-Entität",
+          "description": "Der Zyklus, in den die Pflanzen verschoben werden sollen. Leer lassen um aus aktuellem Zyklus zu entfernen."
+        }
+      }
+    },
+    "create_cycle": {
+      "name": "Zyklus erstellen",
+      "description": "Erstellt eine neue Zyklus-Entität.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name des Zyklus"
+        },
+        "plant_emoji": {
+          "name": "Emoji",
+          "description": "Emoji, das neben dem Zyklus-Namen angezeigt wird"
+        }
+      }
+    },
+    "remove_cycle": {
+      "name": "Zyklus entfernen",
+      "description": "Entfernt eine Zyklus-Entität und alle zugehörigen Entitäten",
+      "fields": {
+        "cycle_entity": {
+          "name": "Zyklus-Entität",
+          "description": "Der zu entfernende Zyklus"
+        }
+      }
+    },
+    "move_to_area": {
+      "name": "In Bereich verschieben",
+      "description": "Verschiebt eine oder mehrere Pflanzen in einen Bereich. Wenn kein Bereich angegeben wird, entfernt Pflanzen aus ihrem aktuellen Bereich.",
+      "fields": {
+        "device_id": {
+          "name": "Geräte-ID",
+          "description": "Die ID der Geräte, die dem Bereich hinzugefügt werden sollen."
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Der Bereich, in den die Pflanzen verschoben werden sollen. Leer lassen um aus aktuellem Bereich zu entfernen."
+        }
+      }
+    },
+    "add_image": {
+      "name": "Bild hinzufügen",
+      "description": "Fügt ein Bild zu einer Pflanze oder einem Zyklus hinzu. Das Bild wird im konfigurierten Pfad gespeichert.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Die Pflanze oder der Zyklus, zu dem das Bild hinzugefügt werden soll"
+        },
+        "image_url": {
+          "name": "Bild-URL",
+          "description": "Die URL des Bildes, das heruntergeladen werden soll"
+        }
+      }
+    },
+    "change_position": {
+      "name": "Position ändern",
+      "description": "Ändert die Position einer Pflanze mit x- und y-Koordinaten. Die Position wird in der Wachstumsphase gespeichert und eine Historie geführt.",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanzen-Entität",
+          "description": "Die Pflanze, deren Position geändert werden soll"
+        },
+        "position_x": {
+          "name": "X-Position",
+          "description": "X-Koordinate der Pflanze"
+        },
+        "position_y": {
+          "name": "Y-Position",
+          "description": "Y-Koordinate der Pflanze"
         }
       }
     }

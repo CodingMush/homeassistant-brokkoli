@@ -54,6 +54,7 @@ from .const import (
     ATTR_STRAIN,
     ATTR_TEMPERATURE,
     ATTR_THRESHOLDS,
+    ATTR_TYPE,
     DATA_SOURCE,
     DOMAIN,
     DOMAIN_PLANTBOOK,
@@ -906,13 +907,13 @@ class PlantDevice(Entity):
             info.update({
                 "manufacturer": self._plant_info.get(ATTR_BREEDER, "Unknown"),
                 "model": self._plant_info.get(ATTR_STRAIN, ""),
-                "model_id": self._plant_info.get("sorte", ""),
+                "model_id": self._plant_info.get(ATTR_TYPE, ""),
             })
         else:  # DEVICE_TYPE_CYCLE
             info.update({
                 "manufacturer": "Home Assistant",
                 "model": "Cycle",
-                "model_id": self._plant_info.get("sorte", ""),
+                "model_id": self._plant_info.get(ATTR_TYPE, ""),
             })
         
         # Optional website hinzufügen wenn vorhanden
@@ -972,9 +973,9 @@ class PlantDevice(Entity):
         return self._plant_info.get(ATTR_BREEDER, "")
 
     @property
-    def sorte(self) -> str:
-        """Return the sorte."""
-        return self._plant_info.get("sorte", "")
+    def type(self) -> str:
+        """Return the type."""
+        return self._plant_info.get(ATTR_TYPE, "")
 
     @property
     def feminized(self) -> str:
@@ -1008,7 +1009,7 @@ class PlantDevice(Entity):
             "fertilizer_consumption_status": self.fertilizer_consumption_status,
             "power_consumption_status": self.power_consumption_status,
             "pid": self.pid,
-            "sorte": self._plant_info.get("sorte", ""),
+            "type": self._plant_info.get(ATTR_TYPE, ""),
             "feminized": self._plant_info.get("feminized", ""),
             "timestamp": self._plant_info.get("timestamp", ""),
             "effects": self._plant_info.get("effects", ""),
@@ -2011,7 +2012,7 @@ class PlantDevice(Entity):
             "member_count": [],
             "strain": [],
             "breeder": [],
-            "sorte": [],
+            "type": [],
             "feminized": [],
             "timestamp": [],
             "pid": [],

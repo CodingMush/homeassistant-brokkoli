@@ -73,24 +73,24 @@ class PlantGrowthPhaseSelect(SelectEntity, RestoreEntity):
 
     # Mapping für Phasen zu Datums-Attributen
     date_mapping = {
-        GROWTH_PHASE_SEEDS: "samen_beginn",
-        GROWTH_PHASE_GERMINATION: "keimen_beginn",
-        GROWTH_PHASE_ROOTING: "wurzeln_beginn",
-        GROWTH_PHASE_GROWING: "wachstum_beginn",
-        GROWTH_PHASE_FLOWERING: "blüte_beginn",
-        GROWTH_PHASE_REMOVED: "entfernt",
-        GROWTH_PHASE_HARVESTED: "geerntet"
+        GROWTH_PHASE_SEEDS: "seeds_start",
+        GROWTH_PHASE_GERMINATION: "germination_start",
+        GROWTH_PHASE_ROOTING: "rooting_start",
+        GROWTH_PHASE_GROWING: "growing_start",
+        GROWTH_PHASE_FLOWERING: "flowering_start",
+        GROWTH_PHASE_REMOVED: "removed_date",
+        GROWTH_PHASE_HARVESTED: "harvested_date"
     }
 
     # Mapping für Phasen zu Dauer-Attributen
     duration_mapping = {
-        GROWTH_PHASE_SEEDS: "samen_dauer",
-        GROWTH_PHASE_GERMINATION: "keimen_dauer",
-        GROWTH_PHASE_ROOTING: "wurzeln_dauer", 
-        GROWTH_PHASE_GROWING: "wachstum_dauer",
-        GROWTH_PHASE_FLOWERING: "blüte_dauer",
-        GROWTH_PHASE_REMOVED: "entfernt_dauer",
-        GROWTH_PHASE_HARVESTED: "geerntet_dauer"
+        GROWTH_PHASE_SEEDS: "seeds_duration",
+        GROWTH_PHASE_GERMINATION: "germination_duration",
+        GROWTH_PHASE_ROOTING: "rooting_duration", 
+        GROWTH_PHASE_GROWING: "growing_duration",
+        GROWTH_PHASE_FLOWERING: "flower_duration",
+        GROWTH_PHASE_REMOVED: "removed_duration",
+        GROWTH_PHASE_HARVESTED: "harvested_duration"
     }
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plant_device) -> None:
@@ -118,22 +118,22 @@ class PlantGrowthPhaseSelect(SelectEntity, RestoreEntity):
         current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._attr_extra_state_attributes = {
             "friendly_name": self._attr_name,
-            # Datum Attribute
-            "samen_beginn": None,
-            "keimen_beginn": None,
-            "wurzeln_beginn": None,
-            "wachstum_beginn": None,
-            "blüte_beginn": None,
-            "entfernt": None,
-            "geerntet": None,
-            # Dauer Attribute
-            "samen_dauer": None,
-            "keimen_dauer": None,
-            "wurzeln_dauer": None,
-            "wachstum_dauer": None,
-            "blüte_dauer": None,
-            "entfernt_dauer": None,
-            "geerntet_dauer": None,
+            # Date Attributes
+            "seeds_start": None,
+            "germination_start": None,
+            "rooting_start": None,
+            "growing_start": None,
+            "flowering_start": None,
+            "removed_date": None,
+            "harvested_date": None,
+            # Duration Attributes
+            "seeds_duration": None,
+            "germination_duration": None,
+            "rooting_duration": None,
+            "growing_duration": None,
+            "flower_duration": None,
+            "removed_duration": None,
+            "harvested_duration": None,
             "aggregation_method": config.data[FLOW_PLANT_INFO].get("growth_phase_aggregation", "min"),
         }
         

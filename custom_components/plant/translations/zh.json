@@ -1,0 +1,461 @@
+{
+  "title": "植物监控",
+  "config": {
+    "step": {
+      "user": {
+        "title": "选择设备类型",
+        "description": "选择创建植物或周期",
+        "data": {
+          "device_type": "设备类型"
+        }
+      },
+      "cycle": {
+        "title": "创建周期",
+        "description": "配置新周期",
+        "data": {
+          "name": "名称",
+          "plant_emoji": "图标"
+        },
+        "data_description": {
+          "plant_emoji": "在 [emojipedia.org](https://emojipedia.org) 找到大量选择"
+        }
+      },
+      "plant": {
+        "title": "创建植物",
+        "description": "配置新植物",
+        "data": {
+          "name": "名称",
+          "plant_emoji": "图标",
+          "strain": "品种",
+          "breeder": "培育者",
+          "growth_phase": "生长阶段",
+          "temperature_sensor": "温度传感器",
+          "moisture_sensor": "湿度传感器",
+          "conductivity_sensor": "电导率传感器",
+          "illuminance_sensor": "照度传感器",
+          "humidity_sensor": "空气湿度传感器",
+          "power_consumption_sensor": "功耗传感器",
+          "ph_sensor": "pH传感器",
+          "normalize_moisture": "标准化湿度值",
+          "normalize_window": "标准化窗口（天）",
+          "normalize_percentile": "标准化百分位数",
+          "pot_size": "花盆大小（升）",
+          "water_capacity": "水容量（升）"
+        },
+        "data_description": {
+          "plant_emoji": "在 [emojipedia.org](https://emojipedia.org) 找到大量选择"
+        }
+      },
+      "limits": {
+        "title": "设置限制",
+        "description": "# {name}\n![植物]({entity_picture}){br}\n{extra_desc}温度单位是 {temperature_unit}",
+        "data": {
+          "right_plant": "这是我要找的植物",
+          "display_pid": "品种",
+          "breeder": "培育者",
+          "type": "类型",
+          "feminized": "雌性化",
+          "flowering_duration": "开花持续时间（天）",
+          "effects": "效果",
+          "smell": "气味",
+          "taste": "味道",
+          "website": "网站",
+          "phenotype": "表型",
+          "hunger": "饥饿",
+          "growth_stretch": "生长拉伸",
+          "flower_stretch": "开花拉伸",
+          "mold_resistance": "抗霉性",
+          "difficulty": "难度",
+          "yield": "产量",
+          "notes": "备注",
+          "lineage": "血统",
+          "infotext1": "信息文本1",
+          "infotext2": "信息文本2",
+          "max_moisture": "最大土壤湿度（%）",
+          "min_moisture": "最小土壤湿度（%）",
+          "max_illuminance": "最大照度（lx）",
+          "min_illuminance": "最小照度（lx）",
+          "max_dli": "最大DLI（mol/d⋅m²）",
+          "min_dli": "最小DLI（mol/d⋅m²）",
+          "max_temperature": "最高温度（见上）",
+          "min_temperature": "最低温度（见上）",
+          "max_conductivity": "最大电导率（uS/cm）",
+          "min_conductivity": "最小电导率（uS/cm）",
+          "max_humidity": "最大空气湿度（%）",
+          "min_humidity": "最小空气湿度（%）",
+          "max_water_consumption": "最大用水量（升/天）",
+          "min_water_consumption": "最小用水量（升/天）",
+          "max_fertilizer_consumption": "最大肥料消耗（毫升/天）",
+          "min_fertilizer_consumption": "最小肥料消耗（毫升/天）",
+          "max_power_consumption": "最大功耗（瓦）",
+          "min_power_consumption": "最小功耗（瓦）",
+          "max_ph": "最大pH值",
+          "min_ph": "最小pH值",
+          "entity_picture": "图片URL"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "选项",
+        "description": "",
+        "data": {
+          "check_days": "照明检查天数",
+          "species": "物种",
+          "force_update": "强制更新OpenPlantbook数据",
+          "display_pid": "显示植物物种",
+          "temperature_sensor": "温度传感器",
+          "moisture_sensor": "土壤湿度传感器",
+          "conductivity_sensor": "电导率传感器",
+          "illuminance_sensor": "照度传感器",
+          "humidity_sensor": "空气湿度传感器",
+          "entity_picture": "图片URL。如果在OpenPlantbook中找到物种，将自动更新",
+          "illuminance_trigger": "使用照度作为问题触发器",
+          "dli_trigger": "使用日光积分（dli）作为问题触发器",
+          "humidity_trigger": "使用空气湿度作为问题触发器",
+          "conductivity_trigger": "使用电导率作为问题触发器",
+          "moisture_trigger": "使用土壤湿度作为问题触发器",
+          "temperature_trigger": "使用温度作为问题触发器"
+        }
+      }
+    }
+  },
+  "services": {
+    "replace_sensor": {
+      "name": "替换传感器",
+      "description": "替换植物传感器的源。",
+      "fields": {
+        "meter_entity": {
+          "name": "测量实体",
+          "description": "用于替换传感器的测量实体。"
+        },
+        "new_sensor": {
+          "name": "传感器实体",
+          "description": "新传感器的实体ID。留空以移除传感器。"
+        }
+      }
+    },
+    "remove_plant": {
+      "name": "移除植物",
+      "description": "移除植物及其所有相关实体。",
+      "fields": {
+        "plant_entity": {
+          "name": "植物实体",
+          "description": "要移除的植物实体。"
+        }
+      }
+    },
+    "create_plant": {
+      "name": "创建植物",
+      "description": "使用指定配置创建新植物。",
+      "fields": {
+        "name": {
+          "name": "名称",
+          "description": "植物名称"
+        },
+        "strain": {
+          "name": "品种",
+          "description": "用于OpenPlantbook搜索的品种名称"
+        },
+        "breeder": {
+          "name": "培育者",
+          "description": "培育者/生产商名称"
+        },
+        "growth_phase": {
+          "name": "生长阶段",
+          "description": "植物当前生长阶段"
+        },
+        "plant_emoji": {
+          "name": "图标",
+          "description": "植物图标/表情符号（参见 @https://emojipedia.org/）"
+        },
+        "temperature_sensor": {
+          "name": "温度传感器",
+          "description": "温度传感器实体"
+        },
+        "moisture_sensor": {
+          "name": "湿度传感器",
+          "description": "湿度传感器实体"
+        },
+        "conductivity_sensor": {
+          "name": "电导率传感器",
+          "description": "电导率传感器实体"
+        },
+        "illuminance_sensor": {
+          "name": "照度传感器",
+          "description": "照度传感器实体"
+        },
+        "humidity_sensor": {
+          "name": "空气湿度传感器",
+          "description": "空气湿度传感器实体"
+        }
+      }
+    },
+    "clone_plant": {
+      "name": "克隆植物",
+      "description": "创建现有植物设备的克隆/扦插。",
+      "fields": {
+        "source_entity_id": {
+          "name": "源植物",
+          "description": "要克隆的植物设备"
+        },
+        "name": {
+          "name": "名称",
+          "description": "新植物克隆的名称"
+        }
+      }
+    },
+    "update_plant_attributes": {
+      "name": "更新植物属性",
+      "description": "更新植物属性",
+      "fields": {
+        "entity_id": {
+          "name": "植物实体",
+          "description": "要更新的植物实体"
+        },
+        "strain": {
+          "name": "品种",
+          "description": "植物品种名称"
+        },
+        "breeder": {
+          "name": "育种者",
+          "description": "植物育种者/制造商"
+        },
+        "original_flowering_duration": {
+          "name": "原始开花持续时间",
+          "description": "原始开花阶段持续时间（天）（来自OpenPlantbook或初始设置）"
+        },
+        "pid": {
+          "name": "植物ID",
+          "description": "唯一植物标识符"
+        },
+        "type": {
+          "name": "类型/种类",
+          "description": "植物类型或种类"
+        },
+        "feminized": {
+          "name": "雌性化",
+          "description": "雌性化状态"
+        },
+        "timestamp": {
+          "name": "时间戳",
+          "description": "最后更新时间戳"
+        },
+        "effects": {
+          "name": "效果",
+          "description": "植物效果"
+        },
+        "smell": {
+          "name": "气味",
+          "description": "气味特征"
+        },
+        "taste": {
+          "name": "味道",
+          "description": "味道特征"
+        },
+        "phenotype": {
+          "name": "表型",
+          "description": "植物表型"
+        },
+        "hunger": {
+          "name": "饥饿",
+          "description": "植物营养需求"
+        },
+        "growth_stretch": {
+          "name": "生长拉伸",
+          "description": "植物生长拉伸特征"
+        },
+        "flower_stretch": {
+          "name": "开花拉伸",
+          "description": "植物开花拉伸特征"
+        },
+        "mold_resistance": {
+          "name": "抗霉性",
+          "description": "植物抗霉性水平"
+        },
+        "difficulty": {
+          "name": "难度",
+          "description": "种植难度等级"
+        },
+        "yield": {
+          "name": "产量",
+          "description": "预期产量信息"
+        },
+        "notes": {
+          "name": "备注",
+          "description": "植物附加备注"
+        },
+        "website": {
+          "name": "网站",
+          "description": "网站URL"
+        },
+        "infotext1": {
+          "name": "信息文本1",
+          "description": "第一个信息文本"
+        },
+        "infotext2": {
+          "name": "信息文本2",
+          "description": "第二个信息文本"
+        },
+        "lineage": {
+          "name": "血统",
+          "description": "植物血统"
+        },
+        "images": {
+          "name": "图像",
+          "description": "图像路径或URL列表（逗号分隔）"
+        },
+        "seeds_start": {
+          "name": "种子开始",
+          "description": "种子阶段开始日期"
+        },
+        "seeds_duration": {
+          "name": "种子持续时间",
+          "description": "种子阶段持续时间（天）"
+        },
+        "germination_start": {
+          "name": "发芽开始",
+          "description": "发芽阶段开始日期"
+        },
+        "germination_duration": {
+          "name": "发芽持续时间",
+          "description": "发芽阶段持续时间（天）"
+        },
+        "rooting_start": {
+          "name": "生根开始",
+          "description": "生根阶段开始日期"
+        },
+        "rooting_duration": {
+          "name": "生根持续时间",
+          "description": "生根阶段持续时间（天）"
+        },
+        "growing_start": {
+          "name": "生长开始",
+          "description": "生长阶段开始日期"
+        },
+        "growing_duration": {
+          "name": "生长持续时间",
+          "description": "生长阶段持续时间（天）"
+        },
+        "flowering_start": {
+          "name": "开花开始",
+          "description": "开花阶段开始日期"
+        },
+        "flower_duration": {
+          "name": "开花持续时间",
+          "description": "开花阶段持续时间（天）"
+        },
+        "harvested_date": {
+          "name": "收获日期",
+          "description": "收获日期"
+        },
+        "harvested_duration": {
+          "name": "收获后持续时间",
+          "description": "收获后持续时间（天）"
+        },
+        "removed_date": {
+          "name": "移除日期",
+          "description": "移除日期"
+        },
+        "removed_duration": {
+          "name": "移除后持续时间",
+          "description": "移除后持续时间（天）"
+        },
+        "position_x": {
+          "name": "X位置",
+          "description": "植物的X坐标"
+        },
+        "position_y": {
+          "name": "Y位置",
+          "description": "植物的Y坐标"
+        }
+      }
+    },
+    "move_to_cycle": {
+      "name": "移动到周期",
+      "description": "将植物移动到周期。",
+      "fields": {
+        "plant_entity": {
+          "name": "植物实体",
+          "description": "要移动的植物实体。"
+        },
+        "cycle_entity": {
+          "name": "周期实体",
+          "description": "要将植物移动到的周期实体。"
+        }
+      }
+    },
+    "create_cycle": {
+      "name": "创建周期",
+      "description": "创建新的周期实体。",
+      "fields": {
+        "name": {
+          "name": "名称",
+          "description": "周期名称。"
+        },
+        "plant_emoji": {
+          "name": "表情符号",
+          "description": "在周期名称旁边显示的表情符号。"
+        }
+      }
+    },
+    "remove_cycle": {
+      "name": "移除周期",
+      "description": "移除周期实体及其所有相关实体。",
+      "fields": {
+        "cycle_entity": {
+          "name": "周期实体",
+          "description": "要移除的周期。"
+        }
+      }
+    },
+    "move_to_area": {
+      "name": "移动到区域",
+      "description": "将植物或周期移动到指定区域。",
+      "fields": {
+        "entity_id": {
+          "name": "实体",
+          "description": "要移动的植物或周期实体。"
+        },
+        "area_id": {
+          "name": "区域",
+          "description": "要将实体移动到的区域。"
+        }
+      }
+    },
+    "add_image": {
+      "name": "添加图片",
+      "description": "为植物或周期添加图片。",
+      "fields": {
+        "entity_id": {
+          "name": "实体",
+          "description": "要添加图片的植物或周期实体。"
+        },
+        "image_url": {
+          "name": "图片URL",
+          "description": "图片的URL或路径。"
+        }
+      }
+    },
+    "change_position": {
+      "name": "更改位置",
+      "description": "更改植物或周期的位置坐标。",
+      "fields": {
+        "entity_id": {
+          "name": "实体",
+          "description": "要更改位置的植物或周期实体。"
+        },
+        "position_x": {
+          "name": "X位置",
+          "description": "X位置坐标。"
+        },
+        "position_y": {
+          "name": "Y位置",
+          "description": "Y位置坐标。"
+        }
+      }
+    }
+  }
+} 

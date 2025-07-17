@@ -68,19 +68,19 @@ create_plant:
         text:
     growth_phase:
       name: Growth Phase
-      description: Aktuelle Wachstumsphase
+      description: Current growth phase
       required: true
-      default: "Wurzeln"
+      default: "rooting"
       selector:
         select:
           options:
-            - "Samen"
-            - "Keimen"
-            - "Wurzeln" 
-            - "Wachstum"
-            - "Blüte"
-            - "Entfernt"
-            - "Geerntet"
+            - "seeds"
+            - "germination"
+            - "rooting" 
+            - "growing"
+            - "flowering"
+            - "removed"
+            - "harvested"
     temperature_sensor:
       name: Temperature Sensor
       description: Temperatursensor
@@ -305,7 +305,7 @@ update_plant_attributes:
       selector:
         text:
           type: text
-    sorte:
+    type:
       name: Type/Sort
       description: Plant type or sort
       example: "Hybrid"
@@ -433,117 +433,117 @@ update_plant_attributes:
           type: text
     images:
       name: Images
-      description: Liste von Bildpfaden oder URLs (durch Komma getrennt)
+      description: List of image paths or URLs (comma separated)
       example: "/local/images/plant1.jpg, /local/images/plant2.jpg"
       selector:
         text:
           multiline: true
-    samen_beginn:
-      name: Samen Beginn
-      description: Startdatum der Samen-Phase
+    seeds_start:
+      name: Seeds Start
+      description: Start date of seeds phase
       example: "2024-01-01"
       selector:
         text:
           type: text
-    samen_dauer:
-      name: Samen Dauer
-      description: Dauer der Samen-Phase in Tagen
+    seeds_duration:
+      name: Seeds Duration
+      description: Duration of seeds phase in days
       example: "7"
       selector:
         number:
           min: 0
           max: 365
           mode: box
-    keimen_beginn:
-      name: Keimen Beginn
-      description: Startdatum der Keimungs-Phase
+    germination_start:
+      name: Germination Start
+      description: Start date of germination phase
       example: "2024-01-08"
       selector:
         text:
           type: text
-    keimen_dauer:
-      name: Keimen Dauer
-      description: Dauer der Keimungs-Phase in Tagen
+    germination_duration:
+      name: Germination Duration
+      description: Duration of germination phase in days
       example: "7"
       selector:
         number:
           min: 0
           max: 365
           mode: box
-    wurzeln_beginn:
-      name: Wurzeln Beginn
-      description: Startdatum der Wurzel-Phase
+    rooting_start:
+      name: Rooting Start
+      description: Start date of rooting phase
       example: "2024-01-15"
       selector:
         text:
           type: text
-    wurzeln_dauer:
-      name: Wurzeln Dauer
-      description: Dauer der Wurzel-Phase in Tagen
+    rooting_duration:
+      name: Rooting Duration
+      description: Duration of rooting phase in days
       example: "14"
       selector:
         number:
           min: 0
           max: 365
           mode: box
-    wachstum_beginn:
-      name: Wachstum Beginn
-      description: Startdatum der Wachstums-Phase
+    growing_start:
+      name: Growing Start
+      description: Start date of growing phase
       example: "2024-01-29"
       selector:
         text:
           type: text
-    wachstum_dauer:
-      name: Wachstum Dauer
-      description: Dauer der Wachstums-Phase in Tagen
+    growing_duration:
+      name: Growing Duration
+      description: Duration of growing phase in days
       example: "30"
       selector:
         number:
           min: 0
           max: 365
           mode: box
-    blüte_beginn:
-      name: Blüte Beginn
-      description: Startdatum der Blüte-Phase
+    flowering_start:
+      name: Flowering Start
+      description: Start date of flowering phase
       example: "2024-02-28"
       selector:
         text:
           type: text
-    blüte_dauer:
-      name: Blüte Dauer
-      description: Dauer der Blüte-Phase in Tagen
+    flower_duration:
+      name: Flower Duration
+      description: Duration of flowering phase in days
       example: "63"
       selector:
         number:
           min: 0
           max: 365
           mode: box
-    geerntet:
-      name: Geerntet
-      description: Datum der Ernte
+    harvested_date:
+      name: Harvested Date
+      description: Date of harvest
       example: "2024-05-01"
       selector:
         text:
           type: text
-    geerntet_dauer:
-      name: Geerntet Dauer
-      description: Dauer seit der Ernte in Tagen
+    harvested_duration:
+      name: Harvested Duration
+      description: Duration since harvest in days
       example: "0"
       selector:
         number:
           min: 0
           max: 365
           mode: box
-    entfernt:
-      name: Entfernt
-      description: Datum der Entfernung
+    removed_date:
+      name: Removed Date
+      description: Date of removal
       example: "2024-05-01"
       selector:
         text:
           type: text
-    entfernt_dauer:
-      name: Entfernt Dauer
-      description: Dauer seit der Entfernung in Tagen
+    removed_duration:
+      name: Removed Duration
+      description: Duration since removal in days
       example: "0"
       selector:
         number:
@@ -552,7 +552,7 @@ update_plant_attributes:
           mode: box
     position_x:
       name: X-Position
-      description: X-Koordinate der Pflanze (wird in der Growth Phase gespeichert)
+      description: X-coordinate of the plant (stored in growth phase)
       example: 10.5
       selector:
         number:
@@ -562,7 +562,7 @@ update_plant_attributes:
           mode: box
     position_y:
       name: Y-Position
-      description: Y-Koordinate der Pflanze (wird in der Growth Phase gespeichert)
+      description: Y-coordinate of the plant (stored in growth phase)
       example: 20.5
       selector:
         number:
@@ -618,7 +618,7 @@ change_position:
   fields:
     entity_id:
       name: Plant entity
-      description: Die Pflanze, deren Position geändert werden soll
+      description: The plant whose position should be changed
       required: true
       selector:
         entity:
@@ -626,7 +626,7 @@ change_position:
           integration: plant
     position_x:
       name: X-Position
-      description: X-Koordinate der Pflanze
+      description: X-coordinate of the plant
       example: 10.5
       selector:
         number:
@@ -636,7 +636,7 @@ change_position:
           mode: box
     position_y:
       name: Y-Position
-      description: Y-Koordinate der Pflanze
+      description: Y-coordinate of the plant
       example: 20.5
       selector:
         number:
@@ -644,3 +644,80 @@ change_position:
           max: 1000
           step: 0.1
           mode: box
+
+export_plants:
+  name: Export Plants
+  description: Exports selected plant configurations to a JSON file or ZIP archive with images
+  fields:
+    plant_entities:
+      name: Plant Entities
+      description: Select plants to export
+      required: true
+      selector:
+        entity:
+          domain: plant
+          integration: plant
+          multiple: true
+    file_path:
+      name: File Path
+      description: Path to export file (optional, default is /config/plants_export.json)
+      example: "/config/my_plants.json"
+      required: false
+      selector:
+        text:
+          type: text
+    include_images:
+      name: Include Images
+      description: Export images in a ZIP archive
+      required: false
+      selector:
+        boolean:
+    include_sensor_data:
+      name: Include Sensor Data
+      description: Sensor- und Helper-Daten mit exportieren
+      required: false
+      selector:
+        boolean:
+    sensor_data_days:
+      name: Sensor Data Days
+      description: Anzahl der Tage für Sensor-Verlaufsdaten (1-365, leer = alle verfügbaren)
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 365
+          mode: box
+
+import_plants:
+  name: Import Plants
+  description: Importiert Pflanzen-Konfigurationen aus einer ZIP-Datei
+  fields:
+    file_path:
+      name: File Path
+      description: Pfad zur Import-Datei (ZIP)
+      example: "/config/my_plants.zip"
+      required: true
+      selector:
+        text:
+          type: text
+    new_plant_name:
+      name: New Plant Name
+      description: Neuer Name für die importierte Pflanze (optional, sonst Original-Name)
+      example: "Imported Plant"
+      required: false
+      selector:
+        text:
+          type: text
+    overwrite_existing:
+      name: Overwrite Existing
+      description: Overwrite existing plant if name already exists
+      required: false
+      selector:
+        boolean:
+    include_images:
+      name: Include Images
+      description: Import images from ZIP archive
+      required: false
+      selector:
+        boolean:
+

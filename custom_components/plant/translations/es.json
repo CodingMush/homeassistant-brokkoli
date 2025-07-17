@@ -1,0 +1,461 @@
+{
+  "title": "Monitor de plantas",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Seleccionar tipo de dispositivo",
+        "description": "Elige si crear una planta o un ciclo",
+        "data": {
+          "device_type": "Tipo de dispositivo"
+        }
+      },
+      "cycle": {
+        "title": "Crear ciclo",
+        "description": "Configurar un nuevo ciclo",
+        "data": {
+          "name": "Nombre",
+          "plant_emoji": "Icono"
+        },
+        "data_description": {
+          "plant_emoji": "Encuentra una gran selección en [emojipedia.org](https://emojipedia.org)"
+        }
+      },
+      "plant": {
+        "title": "Crear planta",
+        "description": "Configurar una nueva planta",
+        "data": {
+          "name": "Nombre",
+          "plant_emoji": "Icono",
+          "strain": "Variedad",
+          "breeder": "Criador",
+          "growth_phase": "Fase de crecimiento",
+          "temperature_sensor": "Sensor de temperatura",
+          "moisture_sensor": "Sensor de humedad",
+          "conductivity_sensor": "Sensor de conductividad",
+          "illuminance_sensor": "Sensor de iluminación",
+          "humidity_sensor": "Sensor de humedad del aire",
+          "power_consumption_sensor": "Sensor de consumo de energía",
+          "ph_sensor": "Sensor de pH",
+          "normalize_moisture": "Normalizar valores de humedad",
+          "normalize_window": "Ventana de normalización (días)",
+          "normalize_percentile": "Percentil de normalización",
+          "pot_size": "Tamaño de maceta (L)",
+          "water_capacity": "Capacidad de agua (L)"
+        },
+        "data_description": {
+          "plant_emoji": "Encuentra una gran selección en [emojipedia.org](https://emojipedia.org)"
+        }
+      },
+      "limits": {
+        "title": "Establecer límites",
+        "description": "# {name}\n![Planta]({entity_picture}){br}\n{extra_desc}La unidad de temperatura es {temperature_unit}",
+        "data": {
+          "right_plant": "Esta es la planta que estaba buscando",
+          "display_pid": "Variedad",
+          "breeder": "Criador",
+          "sorte": "Tipo",
+          "feminized": "Feminizada",
+          "flowering_duration": "Duración de floración (días)",
+          "effects": "Efectos",
+          "smell": "Aroma",
+          "taste": "Sabor",
+          "website": "Sitio web",
+          "phenotype": "Fenotipo",
+          "hunger": "Hambre",
+          "growth_stretch": "Estiramiento de crecimiento",
+          "flower_stretch": "Estiramiento de floración",
+          "mold_resistance": "Resistencia al moho",
+          "difficulty": "Dificultad",
+          "yield": "Rendimiento",
+          "notes": "Notas",
+          "lineage": "Linaje",
+          "infotext1": "Texto de información 1",
+          "infotext2": "Texto de información 2",
+          "max_moisture": "Humedad máxima del suelo (%)",
+          "min_moisture": "Humedad mínima del suelo (%)",
+          "max_illuminance": "Iluminación máxima (lx)",
+          "min_illuminance": "Iluminación mínima (lx)",
+          "max_dli": "DLI máximo (mol/d⋅m²)",
+          "min_dli": "DLI mínimo (mol/d⋅m²)",
+          "max_temperature": "Temperatura máxima (véase más arriba)",
+          "min_temperature": "Temperatura mínima (véase más arriba)",
+          "max_conductivity": "Conductividad máxima (uS/cm)",
+          "min_conductivity": "Conductividad mínima (uS/cm)",
+          "max_humidity": "Humedad del aire máxima (%)",
+          "min_humidity": "Humedad del aire mínima (%)",
+          "max_water_consumption": "Consumo máximo de agua (L/día)",
+          "min_water_consumption": "Consumo mínimo de agua (L/día)",
+          "max_fertilizer_consumption": "Consumo máximo de fertilizante (ml/día)",
+          "min_fertilizer_consumption": "Consumo mínimo de fertilizante (ml/día)",
+          "max_power_consumption": "Consumo máximo de energía (W)",
+          "min_power_consumption": "Consumo mínimo de energía (W)",
+          "max_ph": "Valor máximo de pH",
+          "min_ph": "Valor mínimo de pH",
+          "entity_picture": "URL de imagen"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones",
+        "description": "",
+        "data": {
+          "check_days": "Días de control de la iluminación",
+          "species": "Especie",
+          "force_update": "Forzar actualización de datos de OpenPlantbook",
+          "display_pid": "Especie de planta a mostrar",
+          "temperature_sensor": "Sensor de temperatura",
+          "moisture_sensor": "Sensor de humedad del suelo",
+          "conductivity_sensor": "Sensor de conductividad",
+          "illuminance_sensor": "Sensor de iluminación",
+          "humidity_sensor": "Sensor de humedad del aire",
+          "entity_picture": "URL de imagen. Se actualizará automáticamente si la especie se encuentra en OpenPlantbook",
+          "illuminance_trigger": "Usar iluminación como activador de problema",
+          "dli_trigger": "Usar integral de luz diaria (dli) como activador de problema",
+          "humidity_trigger": "Usar humedad del aire como activador de problema",
+          "conductivity_trigger": "Usar conductividad como activador de problema",
+          "moisture_trigger": "Usar humedad del suelo como activador de problema",
+          "temperature_trigger": "Usar temperatura como activador de problema"
+        }
+      }
+    }
+  },
+  "services": {
+    "replace_sensor": {
+      "name": "Reemplazar sensor",
+      "description": "Reemplaza la fuente de un sensor de planta.",
+      "fields": {
+        "meter_entity": {
+          "name": "Entidad de medición",
+          "description": "La entidad de medición para reemplazar el sensor."
+        },
+        "new_sensor": {
+          "name": "Entidad de sensor",
+          "description": "ID de entidad del nuevo sensor. Dejar en blanco para eliminar sensor."
+        }
+      }
+    },
+    "remove_plant": {
+      "name": "Eliminar planta",
+      "description": "Elimina una planta y todas sus entidades asociadas.",
+      "fields": {
+        "plant_entity": {
+          "name": "Entidad de planta",
+          "description": "La entidad de planta a eliminar."
+        }
+      }
+    },
+    "create_plant": {
+      "name": "Crear planta",
+      "description": "Crea una nueva planta con la configuración especificada.",
+      "fields": {
+        "name": {
+          "name": "Nombre",
+          "description": "Nombre de la planta"
+        },
+        "strain": {
+          "name": "Variedad",
+          "description": "Nombre de variedad para búsqueda en OpenPlantbook"
+        },
+        "breeder": {
+          "name": "Criador",
+          "description": "Nombre del criador/fabricante"
+        },
+        "growth_phase": {
+          "name": "Fase de crecimiento",
+          "description": "Fase de crecimiento actual de la planta"
+        },
+        "plant_emoji": {
+          "name": "Icono",
+          "description": "Icono/emoji para la planta (ver @https://emojipedia.org/)"
+        },
+        "temperature_sensor": {
+          "name": "Sensor de temperatura",
+          "description": "Entidad de sensor de temperatura"
+        },
+        "moisture_sensor": {
+          "name": "Sensor de humedad",
+          "description": "Entidad de sensor de humedad"
+        },
+        "conductivity_sensor": {
+          "name": "Sensor de conductividad",
+          "description": "Entidad de sensor de conductividad"
+        },
+        "illuminance_sensor": {
+          "name": "Sensor de iluminación",
+          "description": "Entidad de sensor de iluminación"
+        },
+        "humidity_sensor": {
+          "name": "Sensor de humedad del aire",
+          "description": "Entidad de sensor de humedad del aire"
+        }
+      }
+    },
+    "clone_plant": {
+      "name": "Clonar planta",
+      "description": "Crear un clon/esqueje de un dispositivo de planta existente.",
+      "fields": {
+        "source_entity_id": {
+          "name": "Planta fuente",
+          "description": "El dispositivo de planta a clonar"
+        },
+        "name": {
+          "name": "Nombre",
+          "description": "Nombre para el nuevo clon de planta"
+        }
+      }
+    },
+    "update_plant_attributes": {
+      "name": "Actualizar atributos de planta",
+      "description": "Actualiza los atributos de una planta",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad de planta",
+          "description": "La entidad de planta a actualizar"
+        },
+        "strain": {
+          "name": "Variedad",
+          "description": "Nombre de la variedad de planta"
+        },
+        "breeder": {
+          "name": "Criador",
+          "description": "Criador/fabricante de planta"
+        },
+        "original_flowering_duration": {
+          "name": "Duración de floración original",
+          "description": "Duración original de la fase de floración en días (desde OpenPlantbook o configuración inicial)"
+        },
+        "pid": {
+          "name": "ID de planta",
+          "description": "Identificador único de planta"
+        },
+        "type": {
+          "name": "Tipo/Clase",
+          "description": "Tipo o clase de planta"
+        },
+        "feminized": {
+          "name": "Feminizada",
+          "description": "Estado de feminización"
+        },
+        "timestamp": {
+          "name": "Marca de tiempo",
+          "description": "Marca de tiempo de última actualización"
+        },
+        "effects": {
+          "name": "Efectos",
+          "description": "Efectos de la planta"
+        },
+        "smell": {
+          "name": "Olor",
+          "description": "Características de olor"
+        },
+        "taste": {
+          "name": "Sabor",
+          "description": "Características de sabor"
+        },
+        "phenotype": {
+          "name": "Fenotipo",
+          "description": "Fenotipo de la planta"
+        },
+        "hunger": {
+          "name": "Hambre",
+          "description": "Requerimientos nutricionales de la planta"
+        },
+        "growth_stretch": {
+          "name": "Estiramiento de crecimiento",
+          "description": "Características de estiramiento de crecimiento de la planta"
+        },
+        "flower_stretch": {
+          "name": "Estiramiento de floración",
+          "description": "Características de estiramiento de floración de la planta"
+        },
+        "mold_resistance": {
+          "name": "Resistencia al moho",
+          "description": "Nivel de resistencia al moho de la planta"
+        },
+        "difficulty": {
+          "name": "Dificultad",
+          "description": "Nivel de dificultad de cultivo"
+        },
+        "yield": {
+          "name": "Rendimiento",
+          "description": "Información de rendimiento esperado"
+        },
+        "notes": {
+          "name": "Notas",
+          "description": "Notas adicionales sobre la planta"
+        },
+        "website": {
+          "name": "Sitio web",
+          "description": "URL del sitio web"
+        },
+        "infotext1": {
+          "name": "Texto de info 1",
+          "description": "Primer texto de información"
+        },
+        "infotext2": {
+          "name": "Texto de info 2",
+          "description": "Segundo texto de información"
+        },
+        "lineage": {
+          "name": "Linaje",
+          "description": "Linaje de la planta"
+        },
+        "images": {
+          "name": "Imágenes",
+          "description": "Lista de rutas de imágenes o URLs (separadas por comas)"
+        },
+        "seeds_start": {
+          "name": "Inicio de semillas",
+          "description": "Fecha de inicio de la fase de semillas"
+        },
+        "seeds_duration": {
+          "name": "Duración de semillas",
+          "description": "Duración de la fase de semillas en días"
+        },
+        "germination_start": {
+          "name": "Inicio de germinación",
+          "description": "Fecha de inicio de la fase de germinación"
+        },
+        "germination_duration": {
+          "name": "Duración de germinación",
+          "description": "Duración de la fase de germinación en días"
+        },
+        "rooting_start": {
+          "name": "Inicio de enraizamiento",
+          "description": "Fecha de inicio de la fase de enraizamiento"
+        },
+        "rooting_duration": {
+          "name": "Duración de enraizamiento",
+          "description": "Duración de la fase de enraizamiento en días"
+        },
+        "growing_start": {
+          "name": "Inicio de crecimiento",
+          "description": "Fecha de inicio de la fase de crecimiento"
+        },
+        "growing_duration": {
+          "name": "Duración de crecimiento",
+          "description": "Duración de la fase de crecimiento en días"
+        },
+        "flowering_start": {
+          "name": "Inicio de floración",
+          "description": "Fecha de inicio de la fase de floración"
+        },
+        "flower_duration": {
+          "name": "Duración de floración",
+          "description": "Duración de la fase de floración en días"
+        },
+        "harvested_date": {
+          "name": "Fecha de cosecha",
+          "description": "Fecha de cosecha"
+        },
+        "harvested_duration": {
+          "name": "Duración desde cosecha",
+          "description": "Duración desde la cosecha en días"
+        },
+        "removed_date": {
+          "name": "Fecha de eliminación",
+          "description": "Fecha de eliminación"
+        },
+        "removed_duration": {
+          "name": "Duración desde eliminación",
+          "description": "Duración desde la eliminación en días"
+        },
+        "position_x": {
+          "name": "Posición X",
+          "description": "Coordenada X de la planta"
+        },
+        "position_y": {
+          "name": "Posición Y",
+          "description": "Coordenada Y de la planta"
+        }
+      }
+    },
+    "move_to_cycle": {
+      "name": "Mover a ciclo",
+      "description": "Mueve una planta a un ciclo.",
+      "fields": {
+        "plant_entity": {
+          "name": "Entidad de planta",
+          "description": "La entidad de planta a mover."
+        },
+        "cycle_entity": {
+          "name": "Entidad de ciclo",
+          "description": "La entidad de ciclo a la que mover la planta."
+        }
+      }
+    },
+    "create_cycle": {
+      "name": "Crear ciclo",
+      "description": "Crea una nueva entidad de ciclo.",
+      "fields": {
+        "name": {
+          "name": "Nombre",
+          "description": "Nombre del ciclo."
+        },
+        "plant_emoji": {
+          "name": "Emoji",
+          "description": "Emoji a mostrar junto al nombre del ciclo."
+        }
+      }
+    },
+    "remove_cycle": {
+      "name": "Eliminar ciclo",
+      "description": "Elimina una entidad de ciclo y todas sus entidades asociadas.",
+      "fields": {
+        "cycle_entity": {
+          "name": "Entidad de ciclo",
+          "description": "El ciclo a eliminar."
+        }
+      }
+    },
+    "move_to_area": {
+      "name": "Mover a área",
+      "description": "Mueve una planta o ciclo a un área específica.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "La entidad de planta o ciclo a mover."
+        },
+        "area_id": {
+          "name": "Área",
+          "description": "El área a la que mover la entidad."
+        }
+      }
+    },
+    "add_image": {
+      "name": "Agregar imagen",
+      "description": "Agrega una imagen a una planta o ciclo.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "La entidad de planta o ciclo a la que agregar la imagen."
+        },
+        "image_url": {
+          "name": "URL de imagen",
+          "description": "URL o ruta a la imagen."
+        }
+      }
+    },
+    "change_position": {
+      "name": "Cambiar posición",
+      "description": "Cambia las coordenadas de posición de una planta o ciclo.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "La entidad de planta o ciclo para cambiar posición."
+        },
+        "position_x": {
+          "name": "Posición X",
+          "description": "Coordenada de posición X."
+        },
+        "position_y": {
+          "name": "Posición Y",
+          "description": "Coordenada de posición Y."
+        }
+      }
+    }
+  }
+}

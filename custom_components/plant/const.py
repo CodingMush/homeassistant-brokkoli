@@ -172,6 +172,8 @@ SERVICE_REPLACE_SENSOR = "replace_sensor"
 SERVICE_REMOVE_PLANT = "remove_plant"
 SERVICE_REMOVE_CYCLE = "remove_cycle"
 SERVICE_MOVE_TO_AREA = "move_to_area"
+SERVICE_EXPORT_PLANTS = "export_plants"
+SERVICE_IMPORT_PLANTS = "import_plants"
 
 STATE_LOW = "Low"
 STATE_HIGH = "High"
@@ -236,13 +238,13 @@ CONF_PLANTBOOK_MAPPING = {
 }
 
 # Growth phases
-GROWTH_PHASE_SEEDS = "Samen"
-GROWTH_PHASE_GERMINATION = "Keimen"
-GROWTH_PHASE_ROOTING = "Wurzeln"
-GROWTH_PHASE_GROWING = "Wachstum"
-GROWTH_PHASE_FLOWERING = "Blüte"
-GROWTH_PHASE_HARVESTED = "Geerntet"
-GROWTH_PHASE_REMOVED = "Entfernt"  # Ans Ende verschoben
+GROWTH_PHASE_SEEDS = "seeds"
+GROWTH_PHASE_GERMINATION = "germination"
+GROWTH_PHASE_ROOTING = "rooting"
+GROWTH_PHASE_GROWING = "growing"
+GROWTH_PHASE_FLOWERING = "flowering"
+GROWTH_PHASE_HARVESTED = "harvested"
+GROWTH_PHASE_REMOVED = "removed"
 DEFAULT_GROWTH_PHASE = GROWTH_PHASE_ROOTING
 
 GROWTH_PHASES = [
@@ -266,6 +268,7 @@ ATTR_EFFECTS = "effects"
 ATTR_SMELL = "smell"
 ATTR_TASTE = "taste"
 ATTR_LINEAGE = "lineage"
+ATTR_TYPE = "type"  # Replaces "sorte" for consistency
 
 # Benutzerdefinierte Pflanzenattribute
 ATTR_PHENOTYPE = "phenotype"

@@ -11,7 +11,7 @@ TODO: Add new images to the dingausmwald/homeassistant-brokkoli repository.
 Image placeholders are marked with TODO comments throughout the document.
 -->
 
-This integration can automatically fetch data from [Seedfinder](https://github.com/dingausmwald/homeassistant-seedfinder).
+This integration can automatically fetch data from [Seedfinder](https://github.com/dingausmwald/homeassistant-seedfinder) if you are a registered user. Registration is free.
 
 # BREAKING CHANGES
 
@@ -97,11 +97,27 @@ See https://en.wikipedia.org/wiki/Daily_light_integral for what DLI means
 
 ## Dependencies
 
-* [Updated Lovelace Flower Card](https://github.com/dingausmwald/lovelace-brokkoli-card)
+* [Updated Lovelace Flower Card](https://github.com/dingausmwald/lovelace-flower-card/tree/new_plant)
 
 * [Seedfinder integration](https://github.com/dingausmwald/homeassistant-seedfinder)
 
 Seedfinder is not a strict requirement, but a strong recommendation. Without the Seedfinder integration, you need to set images and information like flowering duration manually. With the Seedfinder integration added, all data is fetched automatically, and it makes setting up and maintaining plants much, much easier.   
+
+# Installation
+
+### Install and set up Seedfinder
+
+_Not required, but strongly recommended_
+
+* Install the Seedfinder integration: https://github.com/dingausmwald/homeassistant-seedfinder 
+* Set it up, and add your client_id and secret, and test it by using e.g. the `seedfinder.search` service call to search for something.   
+
+### Install new flower-card for Lovelace
+
+_Currently this is the only card in lovelace that support this integration.  Feel free to fork and update - or create PRs - for other lovelace cards._ 
+
+* Install verson 2 of the Flower Card from https://github.com/dingausmwald/lovelace-flower-card/
+
 
 ### Install this integration
 
@@ -114,7 +130,7 @@ Seedfinder is not a strict requirement, but a strong recommendation. Without the
 * Restart Home Assistant
 
 #### Manual Installation
-* Copy the entire `custom_components/brokkoli/` directory to your server's `<config>/custom_components` directory
+* Copy the entire `custom_components/plant/` directory to your server's `<config>/custom_components` directory
 * Restart Home Assistant
 
 > **Note**

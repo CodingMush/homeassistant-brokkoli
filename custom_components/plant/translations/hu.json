@@ -1,0 +1,461 @@
+{
+  "title": "Növény monitor",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Eszköz típus kiválasztása",
+        "description": "Válassza ki, hogy növényt vagy ciklust hoz létre",
+        "data": {
+          "device_type": "Eszköz típus"
+        }
+      },
+      "cycle": {
+        "title": "Ciklus létrehozása",
+        "description": "Új ciklus konfigurálása",
+        "data": {
+          "name": "Név",
+          "plant_emoji": "Ikon"
+        },
+        "data_description": {
+          "plant_emoji": "Nagy választék található az [emojipedia.org](https://emojipedia.org) oldalon"
+        }
+      },
+      "plant": {
+        "title": "Növény létrehozása",
+        "description": "Új növény konfigurálása",
+        "data": {
+          "name": "Név",
+          "plant_emoji": "Ikon",
+          "strain": "Fajta",
+          "breeder": "Tenyésztő",
+          "growth_phase": "Növekedési fázis",
+          "temperature_sensor": "Hőmérséklet szenzor",
+          "moisture_sensor": "Nedvesség szenzor",
+          "conductivity_sensor": "Vezetőképesség szenzor",
+          "illuminance_sensor": "Megvilágítás szenzor",
+          "humidity_sensor": "Légnedvesség szenzor",
+          "power_consumption_sensor": "Energiafogyasztás szenzor",
+          "ph_sensor": "pH szenzor",
+          "normalize_moisture": "Nedvesség értékek normalizálása",
+          "normalize_window": "Normalizálási ablak (nap)",
+          "normalize_percentile": "Normalizálási percentilis",
+          "pot_size": "Cserép méret (L)",
+          "water_capacity": "Víz kapacitás (L)"
+        },
+        "data_description": {
+          "plant_emoji": "Nagy választék található az [emojipedia.org](https://emojipedia.org) oldalon"
+        }
+      },
+      "limits": {
+        "title": "Határértékek beállítása",
+        "description": "# {name}\n![Növény]({entity_picture}){br}\n{extra_desc}A hőmérséklet mértékegysége {temperature_unit}",
+        "data": {
+          "right_plant": "Ez a növény, amit kerestem",
+          "display_pid": "Fajta",
+          "breeder": "Tenyésztő",
+          "type": "Típus",
+          "feminized": "Feminizált",
+          "flowering_duration": "Virágzási időtartam (nap)",
+          "effects": "Hatások",
+          "smell": "Illat",
+          "taste": "Íz",
+          "website": "Weboldal",
+          "phenotype": "Fenotípus",
+          "hunger": "Éhség",
+          "growth_stretch": "Növekedési nyúlás",
+          "flower_stretch": "Virágzási nyúlás",
+          "mold_resistance": "Penész ellenállás",
+          "difficulty": "Nehézség",
+          "yield": "Hozam",
+          "notes": "Megjegyzések",
+          "lineage": "Származás",
+          "infotext1": "Info szöveg 1",
+          "infotext2": "Info szöveg 2",
+          "max_moisture": "Maximális talaj nedvesség (%)",
+          "min_moisture": "Minimális talaj nedvesség (%)",
+          "max_illuminance": "Maximális megvilágítás (lx)",
+          "min_illuminance": "Minimális megvilágítás (lx)",
+          "max_dli": "Maximális DLI (mol/d⋅m²)",
+          "min_dli": "Minimális DLI (mol/d⋅m²)",
+          "max_temperature": "Maximális hőmérséklet (lásd fent)",
+          "min_temperature": "Minimális hőmérséklet (lásd fent)",
+          "max_conductivity": "Maximális vezetőképesség (uS/cm)",
+          "min_conductivity": "Minimális vezetőképesség (uS/cm)",
+          "max_humidity": "Maximális légnedvesség (%)",
+          "min_humidity": "Minimális légnedvesség (%)",
+          "max_water_consumption": "Maximális vízfogyasztás (L/nap)",
+          "min_water_consumption": "Minimális vízfogyasztás (L/nap)",
+          "max_fertilizer_consumption": "Maximális műtrágya fogyasztás (ml/nap)",
+          "min_fertilizer_consumption": "Minimális műtrágya fogyasztás (ml/nap)",
+          "max_power_consumption": "Maximális energiafogyasztás (W)",
+          "min_power_consumption": "Minimális energiafogyasztás (W)",
+          "max_ph": "Maximális pH érték",
+          "min_ph": "Minimális pH érték",
+          "entity_picture": "Kép URL"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Beállítások",
+        "description": "",
+        "data": {
+          "check_days": "Megvilágítás ellenőrzési napok",
+          "species": "Faj",
+          "force_update": "OpenPlantbook adatok frissítésének kényszerítése",
+          "display_pid": "Megjelenítendő növényfaj",
+          "temperature_sensor": "Hőmérséklet szenzor",
+          "moisture_sensor": "Talaj nedvesség szenzor",
+          "conductivity_sensor": "Vezetőképesség szenzor",
+          "illuminance_sensor": "Megvilágítás szenzor",
+          "humidity_sensor": "Légnedvesség szenzor",
+          "entity_picture": "Kép URL. Automatikusan frissül, ha a faj megtalálható az OpenPlantbook-ban",
+          "illuminance_trigger": "Megvilágítás használata probléma kiváltóként",
+          "dli_trigger": "Napi fény integrál (dli) használata probléma kiváltóként",
+          "humidity_trigger": "Légnedvesség használata probléma kiváltóként",
+          "conductivity_trigger": "Vezetőképesség használata probléma kiváltóként",
+          "moisture_trigger": "Talaj nedvesség használata probléma kiváltóként",
+          "temperature_trigger": "Hőmérséklet használata probléma kiváltóként"
+        }
+      }
+    }
+  },
+  "services": {
+    "replace_sensor": {
+      "name": "Szenzor cseréje",
+      "description": "Növény szenzor forrásának cseréje.",
+      "fields": {
+        "meter_entity": {
+          "name": "Mérő entitás",
+          "description": "A mérő entitás a szenzor cseréjéhez."
+        },
+        "new_sensor": {
+          "name": "Szenzor entitás",
+          "description": "Az új szenzor entitás ID-ja. Hagyd üresen a szenzor eltávolításához."
+        }
+      }
+    },
+    "remove_plant": {
+      "name": "Növény eltávolítása",
+      "description": "Növény és minden kapcsolódó entitás eltávolítása.",
+      "fields": {
+        "plant_entity": {
+          "name": "Növény entitás",
+          "description": "Az eltávolítandó növény entitás."
+        }
+      }
+    },
+    "create_plant": {
+      "name": "Növény létrehozása",
+      "description": "Új növény létrehozása a megadott konfigurációval.",
+      "fields": {
+        "name": {
+          "name": "Név",
+          "description": "A növény neve"
+        },
+        "strain": {
+          "name": "Fajta",
+          "description": "Fajta neve az OpenPlantbook kereséshez"
+        },
+        "breeder": {
+          "name": "Tenyésztő",
+          "description": "Tenyésztő/gyártó neve"
+        },
+        "growth_phase": {
+          "name": "Növekedési fázis",
+          "description": "A növény jelenlegi növekedési fázisa"
+        },
+        "plant_emoji": {
+          "name": "Ikon",
+          "description": "Ikon/emoji a növényhez (lásd @https://emojipedia.org/)"
+        },
+        "temperature_sensor": {
+          "name": "Hőmérséklet szenzor",
+          "description": "Hőmérséklet szenzor entitás"
+        },
+        "moisture_sensor": {
+          "name": "Nedvesség szenzor",
+          "description": "Nedvesség szenzor entitás"
+        },
+        "conductivity_sensor": {
+          "name": "Vezetőképesség szenzor",
+          "description": "Vezetőképesség szenzor entitás"
+        },
+        "illuminance_sensor": {
+          "name": "Megvilágítás szenzor",
+          "description": "Megvilágítás szenzor entitás"
+        },
+        "humidity_sensor": {
+          "name": "Légnedvesség szenzor",
+          "description": "Légnedvesség szenzor entitás"
+        }
+      }
+    },
+    "clone_plant": {
+      "name": "Növény klónozása",
+      "description": "Meglévő növény eszköz klón/dugvány létrehozása.",
+      "fields": {
+        "source_entity_id": {
+          "name": "Forrás növény",
+          "description": "A klónozandó növény eszköz"
+        },
+        "name": {
+          "name": "Név",
+          "description": "Az új növény klón neve"
+        }
+      }
+    },
+    "update_plant_attributes": {
+      "name": "Növény attribútumok frissítése",
+      "description": "Növény attribútumainak frissítése",
+      "fields": {
+        "entity_id": {
+          "name": "Növény entitás",
+          "description": "A frissítendő növény entitás"
+        },
+        "strain": {
+          "name": "Fajta",
+          "description": "Növény fajta neve"
+        },
+        "breeder": {
+          "name": "Tenyésztő",
+          "description": "Növény tenyésztő/gyártó"
+        },
+        "original_flowering_duration": {
+          "name": "Eredeti virágzási időtartam",
+          "description": "Eredeti virágzási fázis időtartama napokban (OpenPlantbook-ból vagy kezdeti beállításból)"
+        },
+        "pid": {
+          "name": "Növény ID",
+          "description": "Egyedi növény azonosító"
+        },
+        "type": {
+          "name": "Típus/Fajta",
+          "description": "Növény típusa vagy fajtája"
+        },
+        "feminized": {
+          "name": "Feminizált",
+          "description": "Feminizálási állapot"
+        },
+        "timestamp": {
+          "name": "Időbélyeg",
+          "description": "Utolsó frissítés időbélyege"
+        },
+        "effects": {
+          "name": "Hatások",
+          "description": "Növény hatásai"
+        },
+        "smell": {
+          "name": "Szag",
+          "description": "Szag jellemzők"
+        },
+        "taste": {
+          "name": "Íz",
+          "description": "Íz jellemzők"
+        },
+        "phenotype": {
+          "name": "Fenotípus",
+          "description": "Növény fenotípusa"
+        },
+        "hunger": {
+          "name": "Éhség",
+          "description": "Növény tápanyag igénye"
+        },
+        "growth_stretch": {
+          "name": "Növekedési nyúlás",
+          "description": "Növény növekedési nyúlási jellemzői"
+        },
+        "flower_stretch": {
+          "name": "Virágzási nyúlás",
+          "description": "Növény virágzási nyúlási jellemzői"
+        },
+        "mold_resistance": {
+          "name": "Penész ellenállás",
+          "description": "Növény penész ellenállási szintje"
+        },
+        "difficulty": {
+          "name": "Nehézség",
+          "description": "Termesztési nehézségi szint"
+        },
+        "yield": {
+          "name": "Hozam",
+          "description": "Várható hozam információ"
+        },
+        "notes": {
+          "name": "Megjegyzések",
+          "description": "További megjegyzések a növényről"
+        },
+        "website": {
+          "name": "Weboldal",
+          "description": "Weboldal URL"
+        },
+        "infotext1": {
+          "name": "Info szöveg 1",
+          "description": "Első információs szöveg"
+        },
+        "infotext2": {
+          "name": "Info szöveg 2",
+          "description": "Második információs szöveg"
+        },
+        "lineage": {
+          "name": "Származás",
+          "description": "Növény származása"
+        },
+        "images": {
+          "name": "Képek",
+          "description": "Kép útvonalak vagy URL-ek listája (vesszővel elválasztva)"
+        },
+        "seeds_start": {
+          "name": "Mag kezdete",
+          "description": "Mag fázis kezdő dátuma"
+        },
+        "seeds_duration": {
+          "name": "Mag időtartama",
+          "description": "Mag fázis időtartama napokban"
+        },
+        "germination_start": {
+          "name": "Csírázás kezdete",
+          "description": "Csírázási fázis kezdő dátuma"
+        },
+        "germination_duration": {
+          "name": "Csírázás időtartama",
+          "description": "Csírázási fázis időtartama napokban"
+        },
+        "rooting_start": {
+          "name": "Gyökeresedés kezdete",
+          "description": "Gyökeresedési fázis kezdő dátuma"
+        },
+        "rooting_duration": {
+          "name": "Gyökeresedés időtartama",
+          "description": "Gyökeresedési fázis időtartama napokban"
+        },
+        "growing_start": {
+          "name": "Növekedés kezdete",
+          "description": "Növekedési fázis kezdő dátuma"
+        },
+        "growing_duration": {
+          "name": "Növekedés időtartama",
+          "description": "Növekedési fázis időtartama napokban"
+        },
+        "flowering_start": {
+          "name": "Virágzás kezdete",
+          "description": "Virágzási fázis kezdő dátuma"
+        },
+        "flower_duration": {
+          "name": "Virágzás időtartama",
+          "description": "Virágzási fázis időtartama napokban"
+        },
+        "harvested_date": {
+          "name": "Betakarítás dátuma",
+          "description": "Betakarítás dátuma"
+        },
+        "harvested_duration": {
+          "name": "Betakarítás óta eltelt idő",
+          "description": "Betakarítás óta eltelt idő napokban"
+        },
+        "removed_date": {
+          "name": "Eltávolítás dátuma",
+          "description": "Eltávolítás dátuma"
+        },
+        "removed_duration": {
+          "name": "Eltávolítás óta eltelt idő",
+          "description": "Eltávolítás óta eltelt idő napokban"
+        },
+        "position_x": {
+          "name": "X pozíció",
+          "description": "Növény X koordinátája"
+        },
+        "position_y": {
+          "name": "Y pozíció",
+          "description": "Növény Y koordinátája"
+        }
+      }
+    },
+    "move_to_cycle": {
+      "name": "Áthelyezés ciklusba",
+      "description": "Növény áthelyezése ciklusba.",
+      "fields": {
+        "plant_entity": {
+          "name": "Növény entitás",
+          "description": "Az áthelyezendő növény entitás."
+        },
+        "cycle_entity": {
+          "name": "Ciklus entitás",
+          "description": "A ciklus entitás, ahová a növényt áthelyezzük."
+        }
+      }
+    },
+    "create_cycle": {
+      "name": "Ciklus létrehozása",
+      "description": "Új ciklus entitás létrehozása.",
+      "fields": {
+        "name": {
+          "name": "Név",
+          "description": "A ciklus neve."
+        },
+        "plant_emoji": {
+          "name": "Emoji",
+          "description": "A ciklus neve melletti emoji."
+        }
+      }
+    },
+    "remove_cycle": {
+      "name": "Ciklus eltávolítása",
+      "description": "Ciklus entitás és minden kapcsolódó entitás eltávolítása.",
+      "fields": {
+        "cycle_entity": {
+          "name": "Ciklus entitás",
+          "description": "Az eltávolítandó ciklus."
+        }
+      }
+    },
+    "move_to_area": {
+      "name": "Áthelyezés területre",
+      "description": "Növény vagy ciklus áthelyezése meghatározott területre.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitás",
+          "description": "Az áthelyezendő növény vagy ciklus entitás."
+        },
+        "area_id": {
+          "name": "Terület",
+          "description": "A terület, ahová az entitást áthelyezzük."
+        }
+      }
+    },
+    "add_image": {
+      "name": "Kép hozzáadása",
+      "description": "Kép hozzáadása növényhez vagy ciklushoz.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitás",
+          "description": "A növény vagy ciklus entitás, amihez a képet hozzáadjuk."
+        },
+        "image_url": {
+          "name": "Kép URL",
+          "description": "URL vagy útvonal a képhez."
+        }
+      }
+    },
+    "change_position": {
+      "name": "Pozíció megváltoztatása",
+      "description": "Növény vagy ciklus pozíció koordinátáinak megváltoztatása.",
+      "fields": {
+        "entity_id": {
+          "name": "Entitás",
+          "description": "A növény vagy ciklus entitás a pozíció megváltoztatásához."
+        },
+        "position_x": {
+          "name": "X pozíció",
+          "description": "X koordináta pozíció."
+        },
+        "position_y": {
+          "name": "Y pozíció",
+          "description": "Y koordináta pozíció."
+        }
+      }
+    }
+  }
+}

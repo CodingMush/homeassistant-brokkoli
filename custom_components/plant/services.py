@@ -5,12 +5,19 @@ import aiohttp
 import os
 from datetime import datetime
 import asyncio
+import json
+import zipfile
+import shutil
+import csv
+import io
+import re
+from statistics import mean, median
 
 from homeassistant.core import HomeAssistant, ServiceCall, callback, ServiceResponse
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.const import ATTR_NAME
+from homeassistant.const import ATTR_NAME, ATTR_ENTITY_PICTURE
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import selector
@@ -18,6 +25,7 @@ from homeassistant.helpers.template import Template
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.core import SupportsResponse
+from homeassistant.components.recorder import history, get_instance
 
 from .const import (
     DOMAIN,
@@ -57,6 +65,9 @@ from .const import (
     DATA_SOURCE,
     DATA_SOURCE_PLANTBOOK,
     FLOW_SENSOR_PH,
+    SERVICE_EXPORT_PLANTS,
+    SERVICE_IMPORT_PLANTS,
+
 )
 from .plant_helpers import PlantHelper
 
@@ -101,7 +112,7 @@ UPDATE_PLANT_ATTRIBUTES_SCHEMA = vol.Schema({
     vol.Optional("breeder"): cv.string,
     vol.Optional("flowering_duration"): cv.positive_int,
     vol.Optional("pid"): cv.string,
-    vol.Optional("sorte"): cv.string,
+            vol.Optional("type"): cv.string,
     vol.Optional("feminized"): cv.string,
     vol.Optional("timestamp"): cv.string,
     vol.Optional("effects"): cv.string,
@@ -113,6 +124,25 @@ ADD_IMAGE_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_id,
     vol.Required("image_url"): cv.url,
 })
+
+# Schema für export_plants Service
+EXPORT_PLANTS_SCHEMA = vol.Schema({
+    vol.Required("plant_entities"): vol.All(cv.ensure_list, [cv.entity_id]),
+    vol.Optional("file_path", default="/config/plants_export.zip"): cv.string,
+    vol.Optional("include_images"): cv.boolean,
+    vol.Optional("include_sensor_data"): cv.boolean,
+    vol.Optional("sensor_data_days"): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
+})
+
+# Schema für import_plants Service
+IMPORT_PLANTS_SCHEMA = vol.Schema({
+    vol.Required("file_path"): cv.string,  # ZIP file (contains plants_config.json + images)
+    vol.Optional("new_plant_name"): cv.string,
+    vol.Optional("overwrite_existing"): cv.boolean,
+    vol.Optional("include_images"): cv.boolean,
+})
+
+
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for plant integration."""
@@ -869,7 +899,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         # Update attributes in der Config
         for attr in ["strain", "breeder", "original_flowering_duration", "pid", 
-                    "sorte", "feminized", "timestamp", "effects", "smell",
+                    "type", "feminized", "timestamp", "effects", "smell",
                     "taste", "phenotype", "hunger", "growth_stretch",
                     "flower_stretch", "mold_resistance", "difficulty",
                     "yield", "notes", "website", "infotext1", "infotext2",
@@ -893,6 +923,25 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         target_plant._plant_info = plant_info
         if "images" in call.data:
             target_plant._images = plant_info["images"]
+        
+        # Update Growth Phase Attribute
+        growth_phase_attrs = [
+            "seeds_start", "seeds_duration", "germination_start", "germination_duration",
+            "rooting_start", "rooting_duration", "growing_start", "growing_duration", 
+            "flowering_start", "flower_duration", "harvested_date", "harvested_duration",
+            "removed_date", "removed_duration"
+        ]
+        
+        growth_phase_updates = {}
+        for attr in growth_phase_attrs:
+            if attr in call.data:
+                growth_phase_updates[attr] = call.data[attr]
+        
+        # Update Growth Phase Select Entity wenn Updates vorhanden sind
+        if growth_phase_updates and target_plant.growth_phase_select:
+            for attr, value in growth_phase_updates.items():
+                target_plant.growth_phase_select._attr_extra_state_attributes[attr] = value
+            target_plant.growth_phase_select.async_write_ha_state()
         
         # Update Positions-Attribute
         if ATTR_POSITION_X in call.data or ATTR_POSITION_Y in call.data:
@@ -1071,6 +1120,435 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 f"Location Sensor für Pflanze {entity_id} nicht gefunden"
             )
 
+    async def export_plants(call: ServiceCall) -> ServiceResponse:
+        """Export selected plant configurations to a ZIP archive."""
+        plant_entities = call.data.get("plant_entities", [])
+        file_path = call.data.get("file_path", "/config/plants_export.zip")
+        include_images = call.data.get("include_images")
+        include_sensor_data = call.data.get("include_sensor_data")
+        sensor_data_days = call.data.get("sensor_data_days")
+        
+        # Generate filename based on plant names if default path
+        if file_path == "/config/plants_export.zip" and plant_entities:
+            plant_names = []
+            for entity_id in plant_entities:
+                state = hass.states.get(entity_id)
+                if state:
+                    plant_names.append(state.attributes.get("friendly_name", entity_id.split(".")[-1]))
+            
+            if plant_names:
+                safe_name = "_".join(plant_names).replace(" ", "_").lower()
+                file_path = f"/config/{safe_name}.zip"
+        
+        try:
+            # Collect selected plant configurations
+            plants_data = []
+            all_image_files = []
+            
+            # Get the config entry to find the image download path
+            config_entry = next(
+                (entry for entry in hass.config_entries.async_entries(DOMAIN) 
+                 if entry.data.get("is_config", False)), 
+                None
+            )
+            download_path = config_entry.data[FLOW_PLANT_INFO].get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH) if config_entry else DEFAULT_IMAGE_PATH
+            
+            # Find config entries for selected plant entities
+            for plant_entity_id in plant_entities:
+                # Find the corresponding config entry
+                found_entry = None
+                for entry_id in hass.data[DOMAIN]:
+                    if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                        plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                        if plant.entity_id == plant_entity_id:
+                            found_entry = next(
+                                (entry for entry in hass.config_entries.async_entries(DOMAIN) 
+                                 if entry.entry_id == entry_id), None
+                            )
+                            break
+                
+                if found_entry and found_entry.data.get(FLOW_PLANT_INFO):
+                    plant_info = found_entry.data[FLOW_PLANT_INFO]
+                    device_type = plant_info.get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
+                    
+                    if device_type == DEVICE_TYPE_PLANT:
+                        # Create a clean export data structure
+                        export_data = {
+                            "entry_id": found_entry.entry_id,
+                            "title": found_entry.title,
+                            "plant_info": dict(plant_info),
+                            "options": dict(found_entry.options),
+                            "export_timestamp": datetime.now().isoformat()
+                        }
+                        
+                        # Add sensor data if requested
+                        if include_sensor_data:
+                            sensors = hass.data[DOMAIN][found_entry.entry_id].get(ATTR_SENSORS, [])
+                            sensor_entities = []
+                            
+                            for sensor in sensors:
+                                if sensor and hasattr(sensor, 'entity_id'):
+                                    sensor_entities.append(sensor.entity_id)
+                            
+                            # Add the plant entity itself
+                            sensor_entities.append(plant_entity_id)
+                            
+                            # Store sensor entity IDs for history export
+                            export_data["sensor_entities"] = sensor_entities
+                        
+                        # Collect image files if include_images is True
+                        if include_images:
+                            image_files = []
+                            main_image_missing = False
+                            
+                            # 1. Main image from config entry
+                            main_image = plant_info.get(ATTR_ENTITY_PICTURE, "")
+                            if main_image:
+                                if main_image.startswith("/local/images/plants/"):
+                                    # Local file - extract filename
+                                    filename = main_image.split("/")[-1]
+                                    if filename:
+                                        image_files.append(filename)
+                                else:
+                                    # Web URL - can't export
+                                    main_image_missing = True
+                            
+                            # 2. Additional images from config entry
+                            additional_images = plant_info.get("images", [])
+                            if isinstance(additional_images, list):
+                                image_files.extend(additional_images)
+                            
+                            # Always set main_image_missing flag in export_data
+                            export_data["main_image_missing"] = main_image_missing
+                            
+                            # Check which files actually exist on disk
+                            if image_files:
+                                export_data["image_files"] = image_files
+                                
+                                for image_file in image_files:
+                                    image_path = os.path.join(download_path, image_file)
+                                    if os.path.exists(image_path):
+                                        all_image_files.append((image_path, image_file))
+                                        pass
+                                    else:
+                                        _LOGGER.warning(f"Image not found: {image_file} at {image_path}")
+                            
+                            # Add warning if main image is missing
+                            if main_image_missing:
+                                _LOGGER.warning(f"Plant {plant_entity_id}: Main image is web URL, cannot export to ZIP")
+                        
+                        plants_data.append(export_data)
+            
+            # Create export structure
+            export_structure = {
+                "version": "1.0",
+                "export_timestamp": datetime.now().isoformat(),
+                "total_plants": len(plants_data),
+                "include_images": bool(include_images),
+                "include_sensor_data": bool(include_sensor_data),
+                "plants": plants_data
+            }
+            
+            # Get sensor history data first if requested
+            sensor_csv_data = {}
+            if include_sensor_data:
+                from datetime import timedelta
+                end_time = datetime.now()
+                # Use all available data if no specific days requested
+                if sensor_data_days:
+                    start_time = end_time - timedelta(days=sensor_data_days)
+                else:
+                    # Get all available history (last 365 days max)
+                    start_time = end_time - timedelta(days=365)
+                
+                for plant_data in plants_data:
+                    if "sensor_entities" in plant_data:
+                        plant_name = plant_data["title"].replace(" ", "_").lower()
+                        
+                        for entity_id in plant_data["sensor_entities"]:
+                            try:
+                                # Get history for this sensor
+                                recorder = get_instance(hass)
+                                history_data = await recorder.async_add_executor_job(
+                                    history.state_changes_during_period,
+                                    hass,
+                                    start_time,
+                                    end_time,
+                                    entity_id
+                                )
+                                
+                                if entity_id in history_data and history_data[entity_id]:
+                                    # Create CSV content
+                                    csv_content = "timestamp,state,unit\n"
+                                    data_count = 0
+                                    
+                                    for state in history_data[entity_id]:
+                                        if state.state not in ("unknown", "unavailable"):
+                                            timestamp = state.last_changed.isoformat()
+                                            unit = state.attributes.get("unit_of_measurement", "")
+                                            # Fix encoding issues with degree symbol
+                                            unit = unit.replace("°", "deg") if unit else ""
+                                            csv_content += f"{timestamp},{state.state},{unit}\n"
+                                            data_count += 1
+                                    
+                                    # Only create file if we have actual data
+                                    if data_count > 0:
+                                        sensor_name = entity_id.replace(".", "_")
+                                        csv_filename = f"sensor_data/{plant_name}_{sensor_name}.csv"
+                                        sensor_csv_data[csv_filename] = csv_content
+                                        _LOGGER.info(f"Exported {data_count} history entries for {entity_id}")
+                                    else:
+                                        _LOGGER.warning(f"No valid history data found for {entity_id}")
+                                else:
+                                    _LOGGER.warning(f"No history data returned for {entity_id}")
+                                    
+                            except Exception as e:
+                                _LOGGER.warning(f"Could not export history for {entity_id}: {e}")
+            
+            # Create ZIP file with everything
+            def create_zip():
+                with zipfile.ZipFile(file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    # Always include the JSON configuration
+                    zipf.writestr("plants_config.json", json.dumps(export_structure, indent=2, ensure_ascii=False))
+                    
+                    # Add images if requested and found
+                    if include_images:
+                        for image_path, image_filename in all_image_files:
+                            zipf.write(image_path, f"images/{image_filename}")
+                    
+                    # Add sensor history CSV files
+                    for csv_filename, csv_content in sensor_csv_data.items():
+                        zipf.writestr(csv_filename, csv_content)
+            
+            await hass.async_add_executor_job(create_zip)
+            
+            
+            # Collect response data
+            response_data = {
+                "exported_plants": len(plants_data),
+                "file_path": file_path
+            }
+            
+            # Add image info if requested
+            if include_images:
+                response_data["exported_images"] = len(all_image_files)
+                
+                # Only add missing main images warning if there actually are missing ones
+                missing_main_images = []
+                for plant_data in plants_data:
+                    if plant_data.get("main_image_missing", False):
+                        missing_main_images.append(plant_data.get("title", "Unknown"))
+                
+                if missing_main_images:
+                    response_data["missing_main_images"] = missing_main_images
+            
+            # Add sensor data info if requested
+            if include_sensor_data:
+                response_data["exported_sensor_files"] = len(sensor_csv_data)
+                if sensor_data_days:
+                    response_data["sensor_data_days"] = sensor_data_days
+                else:
+                    response_data["sensor_data_days"] = "all_available"
+            
+            return response_data
+            
+        except Exception as e:
+            _LOGGER.error(f"Error exporting plants: {e}")
+            raise HomeAssistantError(f"Error exporting plants: {e}")
+
+    async def import_plants(call: ServiceCall) -> ServiceResponse:
+        """Import plant configurations from a ZIP archive."""
+        file_path = call.data.get("file_path")
+        new_plant_name = call.data.get("new_plant_name")
+        overwrite_existing = call.data.get("overwrite_existing")
+        include_images = call.data.get("include_images")
+        
+        try:
+            # Handle ZIP file import
+            def read_zip_import():
+                with zipfile.ZipFile(file_path, 'r') as zipf:
+                    # Check if plants_config.json exists
+                    if "plants_config.json" not in zipf.namelist():
+                        raise HomeAssistantError("Invalid ZIP file: plants_config.json not found")
+                    
+                    # Read JSON configuration
+                    json_content = zipf.read("plants_config.json").decode('utf-8')
+                    data = json.loads(json_content)
+                    
+                    # Extract images if requested and they exist in the ZIP
+                    image_files = [f for f in zipf.namelist() if f.startswith("images/")]
+                    extracted_images = {}  # filename -> new_filename mapping
+                    
+                    if include_images and image_files:
+                        # Get the config entry to find the image download path
+                        config_entry = next(
+                            (entry for entry in hass.config_entries.async_entries(DOMAIN) 
+                             if entry.data.get("is_config", False)), 
+                            None
+                        )
+                        download_path = config_entry.data[FLOW_PLANT_INFO].get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH) if config_entry else DEFAULT_IMAGE_PATH
+                        
+                        # Ensure download directory exists
+                        os.makedirs(download_path, exist_ok=True)
+                        
+                        # Extract all image files
+                        for image_file in image_files:
+                            # Get just the filename without the 'images/' prefix
+                            original_filename = os.path.basename(image_file)
+                            target_path = os.path.join(download_path, original_filename)
+                            
+                            # Extract the image
+                            with zipf.open(image_file) as source, open(target_path, "wb") as target:
+                                shutil.copyfileobj(source, target)
+                            
+                            extracted_images[original_filename] = original_filename
+                    
+                    return data, extracted_images
+            
+            import_data, extracted_images = await hass.async_add_executor_job(read_zip_import)
+            
+            if not import_data.get("plants"):
+                raise HomeAssistantError("No plants found in import file")
+            
+            imported_count = 0
+            skipped_count = 0
+            errors = []
+            
+            for plant_data in import_data["plants"]:
+                try:
+                    plant_info = plant_data.get("plant_info", {})
+                    original_name = plant_info.get(ATTR_NAME, "Unknown")
+                    plant_name = new_plant_name if new_plant_name else original_name
+                    
+                    # Update plant name in plant_info if new name provided
+                    if new_plant_name:
+                        plant_info = dict(plant_info)  # Create copy
+                        plant_info[ATTR_NAME] = new_plant_name
+                        
+                        # Rename images if plant is renamed and images were imported
+                        if include_images and extracted_images:
+                            # Get the config entry to find the image download path
+                            config_entry = next(
+                                (entry for entry in hass.config_entries.async_entries(DOMAIN) 
+                                 if entry.data.get("is_config", False)), 
+                                None
+                            )
+                            download_path = config_entry.data[FLOW_PLANT_INFO].get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH) if config_entry else DEFAULT_IMAGE_PATH
+                            
+                            # Rename additional images (not main image)
+                            if "images" in plant_info and isinstance(plant_info["images"], list):
+                                new_images = []
+                                for old_image in plant_info["images"]:
+                                    if old_image in extracted_images:
+                                        # Extract plant name from filename (format: plant.plant_name_timestamp.ext)
+                                        if old_image.startswith("plant."):
+                                            # Remove "plant." prefix
+                                            without_prefix = old_image[6:]  # Remove "plant."
+                                            # Find first underscore followed by digits (start of timestamp)
+                                            match = re.search(r'_(\d{8}_\d{6})', without_prefix)
+                                            if match:
+                                                # Extract timestamp and extension
+                                                timestamp_with_ext = without_prefix[match.start()+1:]  # +1 to skip the underscore
+                                                new_plant_safe = new_plant_name.lower().replace(' ', '_')
+                                                new_filename = f"plant.{new_plant_safe}_{timestamp_with_ext}"
+                                                
+                                                # Rename physical file
+                                                old_path = os.path.join(download_path, old_image)
+                                                new_path = os.path.join(download_path, new_filename)
+                                                
+                                                if os.path.exists(old_path):
+                                                    try:
+                                                        os.rename(old_path, new_path)
+                                                        new_images.append(new_filename)
+                                                        extracted_images[old_image] = new_filename
+                                                        _LOGGER.info(f"Renamed image: {old_image} -> {new_filename}")
+                                                    except Exception as e:
+                                                        _LOGGER.warning(f"Could not rename image {old_image}: {e}")
+                                                        new_images.append(old_image)
+                                                else:
+                                                    new_images.append(old_image)
+                                            else:
+                                                new_images.append(old_image)
+                                        else:
+                                            # Image doesn't start with "plant." - keep as is
+                                            new_images.append(old_image)
+                                    else:
+                                        new_images.append(old_image)
+                                
+                                plant_info["images"] = new_images
+                    
+                    # Check if plant already exists
+                    existing_entry = None
+                    for entry in hass.config_entries.async_entries(DOMAIN):
+                        if (entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_NAME) == plant_name and 
+                            entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT) == DEVICE_TYPE_PLANT):
+                            existing_entry = entry
+                            break
+                    
+                    if existing_entry and not overwrite_existing:
+                        _LOGGER.info(f"Skipping existing plant: {plant_name}")
+                        skipped_count += 1
+                        continue
+                    
+                    # Prepare the import data
+                    import_config = {
+                        FLOW_PLANT_INFO: plant_info
+                    }
+                    
+                    if existing_entry and overwrite_existing:
+                        # Update existing entry
+                        hass.config_entries.async_update_entry(
+                            existing_entry,
+                            data=import_config,
+                            options=plant_data.get("options", {})
+                        )
+                        await hass.config_entries.async_reload(existing_entry.entry_id)
+                        _LOGGER.info(f"Updated existing plant: {plant_name}")
+                    else:
+                        # Create new entry
+                        await hass.config_entries.flow.async_init(
+                            DOMAIN,
+                            context={"source": "import"},
+                            data=import_config
+                        )
+                        _LOGGER.info(f"Imported new plant: {plant_name}")
+                    
+                    imported_count += 1
+                    
+                except Exception as e:
+                    error_msg = f"Error importing plant {plant_name}: {e}"
+                    _LOGGER.error(error_msg)
+                    errors.append(error_msg)
+            
+            # Build response data
+            response_data = {
+                "imported_plants": imported_count,
+                "file_path": file_path
+            }
+            
+            if skipped_count > 0:
+                response_data["skipped_plants"] = skipped_count
+            
+            if include_images and extracted_images:
+                response_data["imported_images"] = len(extracted_images)
+            
+            if errors:
+                response_data["errors"] = errors
+            
+            return response_data
+            
+        except FileNotFoundError:
+            raise HomeAssistantError(f"Import file not found: {file_path}")
+        except zipfile.BadZipFile:
+            raise HomeAssistantError(f"Invalid ZIP file: {file_path}")
+        except json.JSONDecodeError as e:
+            raise HomeAssistantError(f"Invalid JSON in import file: {e}")
+        except Exception as e:
+            _LOGGER.error(f"Error importing plants: {e}")
+            raise HomeAssistantError(f"Error importing plants: {e}")
+
+
+
     # Register services
     hass.services.async_register(
         DOMAIN, 
@@ -1101,7 +1579,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         vol.Optional("breeder"): cv.string,
         vol.Optional("original_flowering_duration"): cv.positive_int,
         vol.Optional("pid"): cv.string,
-        vol.Optional("sorte"): cv.string,
+        vol.Optional("type"): cv.string,
         vol.Optional("feminized"): cv.boolean,
         vol.Optional("timestamp"): cv.string,
         vol.Optional("effects"): cv.string,
@@ -1123,20 +1601,20 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         vol.Optional(ATTR_POSITION_X): vol.Coerce(float),
         vol.Optional(ATTR_POSITION_Y): vol.Coerce(float),
         # Growth Phase Attribute
-        vol.Optional("samen_beginn"): cv.string,
-        vol.Optional("samen_dauer"): cv.positive_int,
-        vol.Optional("keimen_beginn"): cv.string,
-        vol.Optional("keimen_dauer"): cv.positive_int,
-        vol.Optional("wurzeln_beginn"): cv.string,
-        vol.Optional("wurzeln_dauer"): cv.positive_int,
-        vol.Optional("wachstum_beginn"): cv.string,
-        vol.Optional("wachstum_dauer"): cv.positive_int,
-        vol.Optional("blüte_beginn"): cv.string,
-        vol.Optional("blüte_dauer"): cv.positive_int,
-        vol.Optional("geerntet"): cv.string,
-        vol.Optional("geerntet_dauer"): cv.positive_int,
-        vol.Optional("entfernt"): cv.string,
-        vol.Optional("entfernt_dauer"): cv.positive_int,
+        vol.Optional("seeds_start"): cv.string,
+        vol.Optional("seeds_duration"): cv.positive_int,
+        vol.Optional("germination_start"): cv.string,
+        vol.Optional("germination_duration"): cv.positive_int,
+        vol.Optional("rooting_start"): cv.string,
+        vol.Optional("rooting_duration"): cv.positive_int,
+        vol.Optional("growing_start"): cv.string,
+        vol.Optional("growing_duration"): cv.positive_int,
+        vol.Optional("flowering_start"): cv.string,
+        vol.Optional("flower_duration"): cv.positive_int,
+        vol.Optional("harvested_date"): cv.string,
+        vol.Optional("harvested_duration"): cv.positive_int,
+        vol.Optional("removed_date"): cv.string,
+        vol.Optional("removed_duration"): cv.positive_int,
     })
 
     hass.services.async_register(
@@ -1186,6 +1664,25 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         add_image,
         schema=ADD_IMAGE_SCHEMA
     )
+    
+    # Register export/import services
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_EXPORT_PLANTS,
+        export_plants,
+        schema=EXPORT_PLANTS_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_IMPORT_PLANTS,
+        import_plants,
+        schema=IMPORT_PLANTS_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL
+    )
+    
+
 
 async def async_unload_services(hass: HomeAssistant) -> None:
     """Unload Plant services."""
@@ -1198,3 +1695,6 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_MOVE_TO_AREA)
     hass.services.async_remove(DOMAIN, SERVICE_ADD_IMAGE)
     hass.services.async_remove(DOMAIN, SERVICE_CHANGE_POSITION) 
+    hass.services.async_remove(DOMAIN, SERVICE_EXPORT_PLANTS)
+    hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PLANTS)
+ 

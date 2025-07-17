@@ -33,7 +33,14 @@
           "moisture_sensor": "Moisture Sensor",
           "conductivity_sensor": "Conductivity Sensor", 
           "illuminance_sensor": "Illuminance Sensor",
-          "humidity_sensor": "Humidity Sensor"
+          "humidity_sensor": "Humidity Sensor",
+          "power_consumption_sensor": "Power Consumption Sensor",
+          "ph_sensor": "pH Sensor",
+          "normalize_moisture": "Normalize moisture values",
+          "normalize_window": "Normalization window (days)",
+          "normalize_percentile": "Normalization percentile",
+          "pot_size": "Pot size (L)",
+          "water_capacity": "Water capacity (L)"
         },
         "data_description": {
           "plant_emoji": "Find a large selection at [emojipedia.org](https://emojipedia.org)"
@@ -46,7 +53,7 @@
           "right_plant": "This is the plant I was looking for",
           "display_pid": "Strain",
           "breeder": "Breeder",
-          "sorte": "Type",
+          "type": "Type",
           "feminized": "Feminized",
           "flowering_duration": "Flowering duration (days)",
           "effects": "Effects",
@@ -76,6 +83,14 @@
           "min_conductivity": "Minimum conductivity (uS/cm)",
           "max_humidity": "Maximum air humidity (%)",
           "min_humidity": "Minimum air humidity (%)",
+          "max_water_consumption": "Maximum water consumption (L/day)",
+          "min_water_consumption": "Minimum water consumption (L/day)",
+          "max_fertilizer_consumption": "Maximum fertilizer consumption (ml/day)",
+          "min_fertilizer_consumption": "Minimum fertilizer consumption (ml/day)",
+          "max_power_consumption": "Maximum power consumption (W)",
+          "min_power_consumption": "Minimum power consumption (W)",
+          "max_ph": "Maximum pH value",
+          "min_ph": "Minimum pH value",
           "entity_picture": "Image URL"
         }
       }
@@ -196,6 +211,50 @@
       "name": "Update plant attributes",
       "description": "Update the attributes of a plant",
       "fields": {
+        "entity_id": {
+          "name": "Plant entity",
+          "description": "The plant entity to update"
+        },
+        "strain": {
+          "name": "Strain",
+          "description": "Plant strain name"
+        },
+        "breeder": {
+          "name": "Breeder",
+          "description": "Plant breeder/manufacturer"
+        },
+        "original_flowering_duration": {
+          "name": "Original Flowering Duration",
+          "description": "Original duration of flowering phase in days (from OpenPlantbook or initial setup)"
+        },
+        "pid": {
+          "name": "Plant ID",
+          "description": "Unique plant identifier"
+        },
+        "type": {
+          "name": "Type/Sort",
+          "description": "Plant type or sort"
+        },
+        "feminized": {
+          "name": "Feminized",
+          "description": "Feminization status"
+        },
+        "timestamp": {
+          "name": "Timestamp",
+          "description": "Last update timestamp"
+        },
+        "effects": {
+          "name": "Effects",
+          "description": "Plant effects"
+        },
+        "smell": {
+          "name": "Smell",
+          "description": "Smell characteristics"
+        },
+        "taste": {
+          "name": "Taste",
+          "description": "Taste characteristics"
+        },
         "phenotype": {
           "name": "Phenotype",
           "description": "Plant phenotype"
@@ -227,6 +286,174 @@
         "notes": {
           "name": "Notes",
           "description": "Additional notes about the plant"
+        },
+        "website": {
+          "name": "Website",
+          "description": "Website URL"
+        },
+        "infotext1": {
+          "name": "Info text 1",
+          "description": "First information text"
+        },
+        "infotext2": {
+          "name": "Info text 2",
+          "description": "Second information text"
+        },
+        "lineage": {
+          "name": "Lineage",
+          "description": "Plant lineage"
+        },
+        "images": {
+          "name": "Images",
+          "description": "List of image paths or URLs (comma separated)"
+        },
+        "seeds_start": {
+          "name": "Seeds Start",
+          "description": "Start date of seeds phase"
+        },
+        "seeds_duration": {
+          "name": "Seeds Duration",
+          "description": "Duration of seeds phase in days"
+        },
+        "germination_start": {
+          "name": "Germination Start",
+          "description": "Start date of germination phase"
+        },
+        "germination_duration": {
+          "name": "Germination Duration",
+          "description": "Duration of germination phase in days"
+        },
+        "rooting_start": {
+          "name": "Rooting Start",
+          "description": "Start date of rooting phase"
+        },
+        "rooting_duration": {
+          "name": "Rooting Duration",
+          "description": "Duration of rooting phase in days"
+        },
+        "growing_start": {
+          "name": "Growing Start",
+          "description": "Start date of growing phase"
+        },
+        "growing_duration": {
+          "name": "Growing Duration",
+          "description": "Duration of growing phase in days"
+        },
+        "flowering_start": {
+          "name": "Flowering Start",
+          "description": "Start date of flowering phase"
+        },
+        "flower_duration": {
+          "name": "Flower Duration",
+          "description": "Duration of flowering phase in days"
+        },
+        "harvested_date": {
+          "name": "Harvested Date",
+          "description": "Date of harvest"
+        },
+        "harvested_duration": {
+          "name": "Harvested Duration",
+          "description": "Duration since harvest in days"
+        },
+        "removed_date": {
+          "name": "Removed Date",
+          "description": "Date of removal"
+        },
+        "removed_duration": {
+          "name": "Removed Duration",
+          "description": "Duration since removal in days"
+        },
+        "position_x": {
+          "name": "X-Position",
+          "description": "X-coordinate of the plant"
+        },
+        "position_y": {
+          "name": "Y-Position",
+          "description": "Y-coordinate of the plant"
+        }
+      }
+    },
+    "move_to_cycle": {
+      "name": "Move to cycle",
+      "description": "Moves a plant to a cycle.",
+      "fields": {
+        "plant_entity": {
+          "name": "Plant entity",
+          "description": "The plant entity to move."
+        },
+        "cycle_entity": {
+          "name": "Cycle entity",
+          "description": "The cycle entity to move the plant to."
+        }
+      }
+    },
+    "create_cycle": {
+      "name": "Create cycle",
+      "description": "Creates a new cycle entity.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name of the cycle."
+        },
+        "plant_emoji": {
+          "name": "Emoji",
+          "description": "Emoji to display next to the cycle name."
+        }
+      }
+    },
+    "remove_cycle": {
+      "name": "Remove cycle",
+      "description": "Removes a cycle entity and all its associated entities.",
+      "fields": {
+        "cycle_entity": {
+          "name": "Cycle entity",
+          "description": "The cycle to remove."
+        }
+      }
+    },
+    "move_to_area": {
+      "name": "Move to area",
+      "description": "Moves a plant or cycle to a specific area.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The plant or cycle entity to move."
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "The area to move the entity to."
+        }
+      }
+    },
+    "add_image": {
+      "name": "Add image",
+      "description": "Adds an image to a plant or cycle.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The plant or cycle entity to add the image to."
+        },
+        "image_url": {
+          "name": "Image URL",
+          "description": "URL or path to the image."
+        }
+      }
+    },
+    "change_position": {
+      "name": "Change position",
+      "description": "Changes the position coordinates of a plant or cycle.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The plant or cycle entity to change position for."
+        },
+        "position_x": {
+          "name": "X Position",
+          "description": "X coordinate position."
+        },
+        "position_y": {
+          "name": "Y Position",
+          "description": "Y coordinate position."
         }
       }
     }

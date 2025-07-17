@@ -1,0 +1,461 @@
+{
+  "title": "Plant monitor",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Apparaattype selecteren",
+        "description": "Kies of je een plant of cyclus wilt maken",
+        "data": {
+          "device_type": "Apparaattype"
+        }
+      },
+      "cycle": {
+        "title": "Cyclus maken",
+        "description": "Nieuwe cyclus configureren",
+        "data": {
+          "name": "Naam",
+          "plant_emoji": "Pictogram"
+        },
+        "data_description": {
+          "plant_emoji": "Vind een grote selectie op [emojipedia.org](https://emojipedia.org)"
+        }
+      },
+      "plant": {
+        "title": "Plant maken",
+        "description": "Nieuwe plant configureren",
+        "data": {
+          "name": "Naam",
+          "plant_emoji": "Pictogram",
+          "strain": "Soort",
+          "breeder": "Kweker",
+          "growth_phase": "Groeifase",
+          "temperature_sensor": "Temperatuursensor",
+          "moisture_sensor": "Vochtigheidssensor",
+          "conductivity_sensor": "Geleidbaarheidsensor",
+          "illuminance_sensor": "Verlichtingssensor",
+          "humidity_sensor": "Luchtvochtigheidsensor",
+          "power_consumption_sensor": "Energieverbruiksensor",
+          "ph_sensor": "pH-sensor",
+          "normalize_moisture": "Vochtigheidswaardes normaliseren",
+          "normalize_window": "Normalisatievenster (dagen)",
+          "normalize_percentile": "Normalisatiepercentiel",
+          "pot_size": "Potgrootte (L)",
+          "water_capacity": "Watercapaciteit (L)"
+        },
+        "data_description": {
+          "plant_emoji": "Vind een grote selectie op [emojipedia.org](https://emojipedia.org)"
+        }
+      },
+      "limits": {
+        "title": "Limieten instellen",
+        "description": "# {name}\n![Plant]({entity_picture}){br}\n{extra_desc}Temperatuureenheid is {temperature_unit}",
+        "data": {
+          "right_plant": "Dit is de plant die ik zocht",
+          "display_pid": "Soort",
+          "breeder": "Kweker",
+          "type": "Type",
+          "feminized": "Gefeminiseerd",
+          "flowering_duration": "Bloeiduur (dagen)",
+          "effects": "Effecten",
+          "smell": "Geur",
+          "taste": "Smaak",
+          "website": "Website",
+          "phenotype": "Fenotype",
+          "hunger": "Honger",
+          "growth_stretch": "Groeirek",
+          "flower_stretch": "Bloeirek",
+          "mold_resistance": "Schimmelresistentie",
+          "difficulty": "Moeilijkheid",
+          "yield": "Opbrengst",
+          "notes": "Notities",
+          "lineage": "Afkomst",
+          "infotext1": "Info tekst 1",
+          "infotext2": "Info tekst 2",
+          "max_moisture": "Maximale bodemvochtigheid (%)",
+          "min_moisture": "Minimale bodemvochtigheid (%)",
+          "max_illuminance": "Maximale verlichting (lx)",
+          "min_illuminance": "Minimale verlichting (lx)",
+          "max_dli": "Maximale DLI (mol/d⋅m²)",
+          "min_dli": "Minimale DLI (mol/d⋅m²)",
+          "max_temperature": "Maximale temperatuur (zie boven)",
+          "min_temperature": "Minimale temperatuur (zie boven)",
+          "max_conductivity": "Maximale geleidbaarheid (uS/cm)",
+          "min_conductivity": "Minimale geleidbaarheid (uS/cm)",
+          "max_humidity": "Maximale luchtvochtigheid (%)",
+          "min_humidity": "Minimale luchtvochtigheid (%)",
+          "max_water_consumption": "Maximaal waterverbruik (L/dag)",
+          "min_water_consumption": "Minimaal waterverbruik (L/dag)",
+          "max_fertilizer_consumption": "Maximaal kunstmestverbruik (ml/dag)",
+          "min_fertilizer_consumption": "Minimaal kunstmestverbruik (ml/dag)",
+          "max_power_consumption": "Maximaal energieverbruik (W)",
+          "min_power_consumption": "Minimaal energieverbruik (W)",
+          "max_ph": "Maximale pH-waarde",
+          "min_ph": "Minimale pH-waarde",
+          "entity_picture": "Afbeelding URL"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opties",
+        "description": "",
+        "data": {
+          "check_days": "Verlichtingscontrole dagen",
+          "species": "Soort",
+          "force_update": "Forceer update van OpenPlantbook gegevens",
+          "display_pid": "Weer te geven plantsoort",
+          "temperature_sensor": "Temperatuursensor",
+          "moisture_sensor": "Bodemvochtigheidsensor",
+          "conductivity_sensor": "Geleidbaarheidsensor",
+          "illuminance_sensor": "Verlichtingssensor",
+          "humidity_sensor": "Luchtvochtigheidsensor",
+          "entity_picture": "Afbeelding URL. Wordt automatisch bijgewerkt als de soort wordt gevonden in OpenPlantbook",
+          "illuminance_trigger": "Gebruik verlichting als probleemtrigger",
+          "dli_trigger": "Gebruik dagelijkse lichtintegraal (dli) als probleemtrigger",
+          "humidity_trigger": "Gebruik luchtvochtigheid als probleemtrigger",
+          "conductivity_trigger": "Gebruik geleidbaarheid als probleemtrigger",
+          "moisture_trigger": "Gebruik bodemvochtigheid als probleemtrigger",
+          "temperature_trigger": "Gebruik temperatuur als probleemtrigger"
+        }
+      }
+    }
+  },
+  "services": {
+    "replace_sensor": {
+      "name": "Sensor vervangen",
+      "description": "Vervangt de bron voor een plantsensor.",
+      "fields": {
+        "meter_entity": {
+          "name": "Meter entiteit",
+          "description": "De meter entiteit om de sensor voor te vervangen."
+        },
+        "new_sensor": {
+          "name": "Sensor entiteit",
+          "description": "Entiteit ID van de nieuwe sensor. Laat leeg om sensor te verwijderen."
+        }
+      }
+    },
+    "remove_plant": {
+      "name": "Plant verwijderen",
+      "description": "Verwijdert een plant en alle bijbehorende entiteiten.",
+      "fields": {
+        "plant_entity": {
+          "name": "Plant entiteit",
+          "description": "De plant entiteit om te verwijderen."
+        }
+      }
+    },
+    "create_plant": {
+      "name": "Plant maken",
+      "description": "Maakt een nieuwe plant met de opgegeven configuratie.",
+      "fields": {
+        "name": {
+          "name": "Naam",
+          "description": "Naam van de plant"
+        },
+        "strain": {
+          "name": "Soort",
+          "description": "Soortnaam voor OpenPlantbook zoeken"
+        },
+        "breeder": {
+          "name": "Kweker",
+          "description": "Kweker/fabrikant naam"
+        },
+        "growth_phase": {
+          "name": "Groeifase",
+          "description": "Huidige groeifase van de plant"
+        },
+        "plant_emoji": {
+          "name": "Pictogram",
+          "description": "Pictogram/emoji voor de plant (zie @https://emojipedia.org/)"
+        },
+        "temperature_sensor": {
+          "name": "Temperatuursensor",
+          "description": "Temperatuursensor entiteit"
+        },
+        "moisture_sensor": {
+          "name": "Vochtigheidssensor",
+          "description": "Vochtigheidssensor entiteit"
+        },
+        "conductivity_sensor": {
+          "name": "Geleidbaarheidsensor",
+          "description": "Geleidbaarheidsensor entiteit"
+        },
+        "illuminance_sensor": {
+          "name": "Verlichtingssensor",
+          "description": "Verlichtingssensor entiteit"
+        },
+        "humidity_sensor": {
+          "name": "Luchtvochtigheidsensor",
+          "description": "Luchtvochtigheidsensor entiteit"
+        }
+      }
+    },
+    "clone_plant": {
+      "name": "Plant klonen",
+      "description": "Maak een kloon/stek van een bestaand plantapparaat.",
+      "fields": {
+        "source_entity_id": {
+          "name": "Bronplant",
+          "description": "Het plantapparaat om te klonen"
+        },
+        "name": {
+          "name": "Naam",
+          "description": "Naam voor de nieuwe plantkloon"
+        }
+      }
+    },
+    "update_plant_attributes": {
+      "name": "Plant attributen bijwerken",
+      "description": "Werkt de attributen van een plant bij",
+      "fields": {
+        "entity_id": {
+          "name": "Plant entiteit",
+          "description": "De plant entiteit om bij te werken"
+        },
+        "strain": {
+          "name": "Ras",
+          "description": "Plant ras naam"
+        },
+        "breeder": {
+          "name": "Kweker",
+          "description": "Plant kweker/fabrikant"
+        },
+        "original_flowering_duration": {
+          "name": "Originele bloeiduur",
+          "description": "Originele duur van de bloeifase in dagen (van OpenPlantbook of initiële setup)"
+        },
+        "pid": {
+          "name": "Plant ID",
+          "description": "Unieke plant identificatie"
+        },
+        "type": {
+          "name": "Type/Soort",
+          "description": "Plant type of soort"
+        },
+        "feminized": {
+          "name": "Gefeminiseerd",
+          "description": "Feminisatie status"
+        },
+        "timestamp": {
+          "name": "Tijdstempel",
+          "description": "Laatste update tijdstempel"
+        },
+        "effects": {
+          "name": "Effecten",
+          "description": "Plant effecten"
+        },
+        "smell": {
+          "name": "Geur",
+          "description": "Geur kenmerken"
+        },
+        "taste": {
+          "name": "Smaak",
+          "description": "Smaak kenmerken"
+        },
+        "phenotype": {
+          "name": "Fenotype",
+          "description": "Plant fenotype"
+        },
+        "hunger": {
+          "name": "Honger",
+          "description": "Plant voedingsbehoeften"
+        },
+        "growth_stretch": {
+          "name": "Groeirek",
+          "description": "Plant groeirek kenmerken"
+        },
+        "flower_stretch": {
+          "name": "Bloeirek",
+          "description": "Plant bloeirek kenmerken"
+        },
+        "mold_resistance": {
+          "name": "Schimmelresistentie",
+          "description": "Plant schimmelresistentieniveau"
+        },
+        "difficulty": {
+          "name": "Moeilijkheid",
+          "description": "Kweekmoeilijkheidsniveau"
+        },
+        "yield": {
+          "name": "Opbrengst",
+          "description": "Verwachte opbrengstinformatie"
+        },
+        "notes": {
+          "name": "Notities",
+          "description": "Aanvullende notities over de plant"
+        },
+        "website": {
+          "name": "Website",
+          "description": "Website URL"
+        },
+        "infotext1": {
+          "name": "Info tekst 1",
+          "description": "Eerste informatieve tekst"
+        },
+        "infotext2": {
+          "name": "Info tekst 2",
+          "description": "Tweede informatieve tekst"
+        },
+        "lineage": {
+          "name": "Afstamming",
+          "description": "Plant afstamming"
+        },
+        "images": {
+          "name": "Afbeeldingen",
+          "description": "Lijst van afbeeldingspaden of URLs (gescheiden door komma's)"
+        },
+        "seeds_start": {
+          "name": "Zaad start",
+          "description": "Startdatum van zaad fase"
+        },
+        "seeds_duration": {
+          "name": "Zaad duur",
+          "description": "Duur van zaad fase in dagen"
+        },
+        "germination_start": {
+          "name": "Kieming start",
+          "description": "Startdatum van kieming fase"
+        },
+        "germination_duration": {
+          "name": "Kieming duur",
+          "description": "Duur van kieming fase in dagen"
+        },
+        "rooting_start": {
+          "name": "Beworteling start",
+          "description": "Startdatum van beworteling fase"
+        },
+        "rooting_duration": {
+          "name": "Beworteling duur",
+          "description": "Duur van beworteling fase in dagen"
+        },
+        "growing_start": {
+          "name": "Groei start",
+          "description": "Startdatum van groei fase"
+        },
+        "growing_duration": {
+          "name": "Groei duur",
+          "description": "Duur van groei fase in dagen"
+        },
+        "flowering_start": {
+          "name": "Bloei start",
+          "description": "Startdatum van bloei fase"
+        },
+        "flower_duration": {
+          "name": "Bloei duur",
+          "description": "Duur van bloei fase in dagen"
+        },
+        "harvested_date": {
+          "name": "Oogst datum",
+          "description": "Datum van oogst"
+        },
+        "harvested_duration": {
+          "name": "Duur sinds oogst",
+          "description": "Duur sinds oogst in dagen"
+        },
+        "removed_date": {
+          "name": "Verwijder datum",
+          "description": "Datum van verwijdering"
+        },
+        "removed_duration": {
+          "name": "Duur sinds verwijdering",
+          "description": "Duur sinds verwijdering in dagen"
+        },
+        "position_x": {
+          "name": "X-Positie",
+          "description": "X-coördinaat van de plant"
+        },
+        "position_y": {
+          "name": "Y-Positie",
+          "description": "Y-coördinaat van de plant"
+        }
+      }
+    },
+    "move_to_cycle": {
+      "name": "Naar cyclus verplaatsen",
+      "description": "Verplaatst een plant naar een cyclus.",
+      "fields": {
+        "plant_entity": {
+          "name": "Plant entiteit",
+          "description": "De plant entiteit om te verplaatsen."
+        },
+        "cycle_entity": {
+          "name": "Cyclus entiteit",
+          "description": "De cyclus entiteit om de plant naar toe te verplaatsen."
+        }
+      }
+    },
+    "create_cycle": {
+      "name": "Cyclus maken",
+      "description": "Maakt een nieuwe cyclus entiteit.",
+      "fields": {
+        "name": {
+          "name": "Naam",
+          "description": "Naam van de cyclus."
+        },
+        "plant_emoji": {
+          "name": "Emoji",
+          "description": "Emoji om naast de cyclusnaam weer te geven."
+        }
+      }
+    },
+    "remove_cycle": {
+      "name": "Cyclus verwijderen",
+      "description": "Verwijdert een cyclus entiteit en alle bijbehorende entiteiten.",
+      "fields": {
+        "cycle_entity": {
+          "name": "Cyclus entiteit",
+          "description": "De cyclus om te verwijderen."
+        }
+      }
+    },
+    "move_to_area": {
+      "name": "Naar gebied verplaatsen",
+      "description": "Verplaatst een plant of cyclus naar een specifiek gebied.",
+      "fields": {
+        "entity_id": {
+          "name": "Entiteit",
+          "description": "De plant of cyclus entiteit om te verplaatsen."
+        },
+        "area_id": {
+          "name": "Gebied",
+          "description": "Het gebied om de entiteit naar toe te verplaatsen."
+        }
+      }
+    },
+    "add_image": {
+      "name": "Afbeelding toevoegen",
+      "description": "Voegt een afbeelding toe aan een plant of cyclus.",
+      "fields": {
+        "entity_id": {
+          "name": "Entiteit",
+          "description": "De plant of cyclus entiteit om de afbeelding aan toe te voegen."
+        },
+        "image_url": {
+          "name": "Afbeelding URL",
+          "description": "URL of pad naar de afbeelding."
+        }
+      }
+    },
+    "change_position": {
+      "name": "Positie wijzigen",
+      "description": "Wijzigt de positiecoördinaten van een plant of cyclus.",
+      "fields": {
+        "entity_id": {
+          "name": "Entiteit",
+          "description": "De plant of cyclus entiteit om de positie voor te wijzigen."
+        },
+        "position_x": {
+          "name": "X Positie",
+          "description": "X coördinaat positie."
+        },
+        "position_y": {
+          "name": "Y Positie",
+          "description": "Y coördinaat positie."
+        }
+      }
+    }
+  }
+}

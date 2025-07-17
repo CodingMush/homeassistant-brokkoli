@@ -714,8 +714,8 @@ class PlantHealthNumber(RestoreNumber):
             last_state = await self.async_get_last_number_data()
             if last_state:
                 self._attr_native_value = last_state.native_value
-                if last_state.attributes:
-                    self._attr_extra_state_attributes.update(last_state.attributes)
+                if hasattr(last_state, 'extra_data') and last_state.extra_data:
+                    self._attr_extra_state_attributes.update(last_state.extra_data)
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""

@@ -1,0 +1,461 @@
+{
+  "title": "Monitorowanie roślin",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Wybierz typ urządzenia",
+        "description": "Wybierz, czy utworzyć roślinę czy cykl",
+        "data": {
+          "device_type": "Typ urządzenia"
+        }
+      },
+      "cycle": {
+        "title": "Utwórz cykl",
+        "description": "Skonfiguruj nowy cykl",
+        "data": {
+          "name": "Nazwa",
+          "plant_emoji": "Ikona"
+        },
+        "data_description": {
+          "plant_emoji": "Znajdź duży wybór na [emojipedia.org](https://emojipedia.org)"
+        }
+      },
+      "plant": {
+        "title": "Utwórz roślinę",
+        "description": "Skonfiguruj nową roślinę",
+        "data": {
+          "name": "Nazwa",
+          "plant_emoji": "Ikona",
+          "strain": "Odmiana",
+          "breeder": "Hodowca",
+          "growth_phase": "Faza wzrostu",
+          "temperature_sensor": "Czujnik temperatury",
+          "moisture_sensor": "Czujnik wilgotności",
+          "conductivity_sensor": "Czujnik przewodności",
+          "illuminance_sensor": "Czujnik oświetlenia",
+          "humidity_sensor": "Czujnik wilgotności powietrza",
+          "power_consumption_sensor": "Czujnik zużycia energii",
+          "ph_sensor": "Czujnik pH",
+          "normalize_moisture": "Normalizuj wartości wilgotności",
+          "normalize_window": "Okno normalizacji (dni)",
+          "normalize_percentile": "Percentyl normalizacji",
+          "pot_size": "Rozmiar doniczki (l)",
+          "water_capacity": "Pojemność wody (l)"
+        },
+        "data_description": {
+          "plant_emoji": "Znajdź duży wybór na [emojipedia.org](https://emojipedia.org)"
+        }
+      },
+      "limits": {
+        "title": "Ustaw limity",
+        "description": "# {name}\n![Roślina]({entity_picture}){br}\n{extra_desc}Jednostka temperatury to {temperature_unit}",
+        "data": {
+          "right_plant": "To jest roślina, której szukałem",
+          "display_pid": "Odmiana",
+          "breeder": "Hodowca",
+          "type": "Typ",
+          "feminized": "Sfeminizowana",
+          "flowering_duration": "Czas kwitnienia (dni)",
+          "effects": "Efekty",
+          "smell": "Zapach",
+          "taste": "Smak",
+          "website": "Strona internetowa",
+          "phenotype": "Fenotyp",
+          "hunger": "Głód",
+          "growth_stretch": "Rozciągnięcie wzrostu",
+          "flower_stretch": "Rozciągnięcie kwitnienia",
+          "mold_resistance": "Odporność na pleśń",
+          "difficulty": "Trudność",
+          "yield": "Plon",
+          "notes": "Notatki",
+          "lineage": "Rodowód",
+          "infotext1": "Tekst informacyjny 1",
+          "infotext2": "Tekst informacyjny 2",
+          "max_moisture": "Maksymalna wilgotność gleby (%)",
+          "min_moisture": "Minimalna wilgotność gleby (%)",
+          "max_illuminance": "Maksymalne oświetlenie (lx)",
+          "min_illuminance": "Minimalne oświetlenie (lx)",
+          "max_dli": "Maksymalne DLI (mol/d⋅m²)",
+          "min_dli": "Minimalne DLI (mol/d⋅m²)",
+          "max_temperature": "Maksymalna temperatura (patrz wyżej)",
+          "min_temperature": "Minimalna temperatura (patrz wyżej)",
+          "max_conductivity": "Maksymalna przewodność (uS/cm)",
+          "min_conductivity": "Minimalna przewodność (uS/cm)",
+          "max_humidity": "Maksymalna wilgotność powietrza (%)",
+          "min_humidity": "Minimalna wilgotność powietrza (%)",
+          "max_water_consumption": "Maksymalne zużycie wody (l/dzień)",
+          "min_water_consumption": "Minimalne zużycie wody (l/dzień)",
+          "max_fertilizer_consumption": "Maksymalne zużycie nawozu (ml/dzień)",
+          "min_fertilizer_consumption": "Minimalne zużycie nawozu (ml/dzień)",
+          "max_power_consumption": "Maksymalne zużycie energii (W)",
+          "min_power_consumption": "Minimalne zużycie energii (W)",
+          "max_ph": "Maksymalna wartość pH",
+          "min_ph": "Minimalna wartość pH",
+          "entity_picture": "URL obrazu"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje",
+        "description": "",
+        "data": {
+          "check_days": "Dni sprawdzania oświetlenia",
+          "species": "Gatunek",
+          "force_update": "Wymuś aktualizację danych OpenPlantbook",
+          "display_pid": "Wyświetlany gatunek rośliny",
+          "temperature_sensor": "Czujnik temperatury",
+          "moisture_sensor": "Czujnik wilgotności gleby",
+          "conductivity_sensor": "Czujnik przewodności",
+          "illuminance_sensor": "Czujnik oświetlenia",
+          "humidity_sensor": "Czujnik wilgotności powietrza",
+          "entity_picture": "URL obrazu. Zostanie automatycznie zaktualizowany, jeśli gatunek zostanie znaleziony w OpenPlantbook",
+          "illuminance_trigger": "Użyj oświetlenia jako wyzwalacza problemu",
+          "dli_trigger": "Użyj dziennego integratora światła (dli) jako wyzwalacza problemu",
+          "humidity_trigger": "Użyj wilgotności powietrza jako wyzwalacza problemu",
+          "conductivity_trigger": "Użyj przewodności jako wyzwalacza problemu",
+          "moisture_trigger": "Użyj wilgotności gleby jako wyzwalacza problemu",
+          "temperature_trigger": "Użyj temperatury jako wyzwalacza problemu"
+        }
+      }
+    }
+  },
+  "services": {
+    "replace_sensor": {
+      "name": "Zamień czujnik",
+      "description": "Zamienia źródło czujnika rośliny.",
+      "fields": {
+        "meter_entity": {
+          "name": "Jednostka licznika",
+          "description": "Jednostka licznika do zamiany czujnika."
+        },
+        "new_sensor": {
+          "name": "Jednostka czujnika",
+          "description": "ID jednostki nowego czujnika. Pozostaw puste, aby usunąć czujnik."
+        }
+      }
+    },
+    "remove_plant": {
+      "name": "Usuń roślinę",
+      "description": "Usuwa roślinę i wszystkie powiązane z nią jednostki.",
+      "fields": {
+        "plant_entity": {
+          "name": "Jednostka rośliny",
+          "description": "Jednostka rośliny do usunięcia."
+        }
+      }
+    },
+    "create_plant": {
+      "name": "Utwórz roślinę",
+      "description": "Tworzy nową roślinę z określoną konfiguracją.",
+      "fields": {
+        "name": {
+          "name": "Nazwa",
+          "description": "Nazwa rośliny"
+        },
+        "strain": {
+          "name": "Odmiana",
+          "description": "Nazwa odmiany do wyszukania w OpenPlantbook"
+        },
+        "breeder": {
+          "name": "Hodowca",
+          "description": "Nazwa hodowcy/producenta"
+        },
+        "growth_phase": {
+          "name": "Faza wzrostu",
+          "description": "Aktualna faza wzrostu rośliny"
+        },
+        "plant_emoji": {
+          "name": "Ikona",
+          "description": "Ikona/emoji dla rośliny (zobacz @https://emojipedia.org/)"
+        },
+        "temperature_sensor": {
+          "name": "Czujnik temperatury",
+          "description": "Jednostka czujnika temperatury"
+        },
+        "moisture_sensor": {
+          "name": "Czujnik wilgotności",
+          "description": "Jednostka czujnika wilgotności"
+        },
+        "conductivity_sensor": {
+          "name": "Czujnik przewodności",
+          "description": "Jednostka czujnika przewodności"
+        },
+        "illuminance_sensor": {
+          "name": "Czujnik oświetlenia",
+          "description": "Jednostka czujnika oświetlenia"
+        },
+        "humidity_sensor": {
+          "name": "Czujnik wilgotności powietrza",
+          "description": "Jednostka czujnika wilgotności powietrza"
+        }
+      }
+    },
+    "clone_plant": {
+      "name": "Sklonuj roślinę",
+      "description": "Tworzy klon/sadzonkę istniejącej rośliny.",
+      "fields": {
+        "source_entity_id": {
+          "name": "Roślina źródłowa",
+          "description": "Urządzenie rośliny do sklonowania"
+        },
+        "name": {
+          "name": "Nazwa",
+          "description": "Nazwa dla nowego klonu rośliny"
+        }
+      }
+    },
+    "update_plant_attributes": {
+      "name": "Aktualizuj atrybuty rośliny",
+      "description": "Aktualizuje atrybuty rośliny",
+      "fields": {
+        "entity_id": {
+          "name": "Jednostka rośliny",
+          "description": "Jednostka rośliny do aktualizacji"
+        },
+        "strain": {
+          "name": "Odmiana",
+          "description": "Nazwa odmiany rośliny"
+        },
+        "breeder": {
+          "name": "Hodowca",
+          "description": "Hodowca/producent rośliny"
+        },
+        "original_flowering_duration": {
+          "name": "Oryginalna długość kwitnienia",
+          "description": "Oryginalna długość fazy kwitnienia w dniach (z OpenPlantbook lub początkowej konfiguracji)"
+        },
+        "pid": {
+          "name": "ID rośliny",
+          "description": "Unikalny identyfikator rośliny"
+        },
+        "type": {
+          "name": "Typ/Rodzaj",
+          "description": "Typ lub rodzaj rośliny"
+        },
+        "feminized": {
+          "name": "Sfeminizowana",
+          "description": "Status feminizacji"
+        },
+        "timestamp": {
+          "name": "Znacznik czasu",
+          "description": "Znacznik czasu ostatniej aktualizacji"
+        },
+        "effects": {
+          "name": "Efekty",
+          "description": "Efekty rośliny"
+        },
+        "smell": {
+          "name": "Zapach",
+          "description": "Charakterystyki zapachu"
+        },
+        "taste": {
+          "name": "Smak",
+          "description": "Charakterystyki smaku"
+        },
+        "phenotype": {
+          "name": "Fenotyp",
+          "description": "Fenotyp rośliny"
+        },
+        "hunger": {
+          "name": "Głód",
+          "description": "Potrzeby żywieniowe rośliny"
+        },
+        "growth_stretch": {
+          "name": "Rozciągnięcie wzrostu",
+          "description": "Charakterystyka rozciągnięcia wzrostu rośliny"
+        },
+        "flower_stretch": {
+          "name": "Rozciągnięcie kwitnienia",
+          "description": "Charakterystyka rozciągnięcia kwitnienia rośliny"
+        },
+        "mold_resistance": {
+          "name": "Odporność na pleśń",
+          "description": "Poziom odporności na pleśń rośliny"
+        },
+        "difficulty": {
+          "name": "Trudność",
+          "description": "Poziom trudności uprawy"
+        },
+        "yield": {
+          "name": "Plon",
+          "description": "Informacje o oczekiwanym plonie"
+        },
+        "notes": {
+          "name": "Notatki",
+          "description": "Dodatkowe notatki o roślinie"
+        },
+        "website": {
+          "name": "Strona internetowa",
+          "description": "URL strony internetowej"
+        },
+        "infotext1": {
+          "name": "Tekst informacyjny 1",
+          "description": "Pierwszy tekst informacyjny"
+        },
+        "infotext2": {
+          "name": "Tekst informacyjny 2",
+          "description": "Drugi tekst informacyjny"
+        },
+        "lineage": {
+          "name": "Rodowód",
+          "description": "Rodowód rośliny"
+        },
+        "images": {
+          "name": "Obrazy",
+          "description": "Lista ścieżek obrazów lub URL (oddzielone przecinkami)"
+        },
+        "seeds_start": {
+          "name": "Początek nasion",
+          "description": "Data rozpoczęcia fazy nasion"
+        },
+        "seeds_duration": {
+          "name": "Czas trwania nasion",
+          "description": "Czas trwania fazy nasion w dniach"
+        },
+        "germination_start": {
+          "name": "Początek kiełkowania",
+          "description": "Data rozpoczęcia fazy kiełkowania"
+        },
+        "germination_duration": {
+          "name": "Czas trwania kiełkowania",
+          "description": "Czas trwania fazy kiełkowania w dniach"
+        },
+        "rooting_start": {
+          "name": "Początek ukorzeniania",
+          "description": "Data rozpoczęcia fazy ukorzeniania"
+        },
+        "rooting_duration": {
+          "name": "Czas trwania ukorzeniania",
+          "description": "Czas trwania fazy ukorzeniania w dniach"
+        },
+        "growing_start": {
+          "name": "Początek wzrostu",
+          "description": "Data rozpoczęcia fazy wzrostu"
+        },
+        "growing_duration": {
+          "name": "Czas trwania wzrostu",
+          "description": "Czas trwania fazy wzrostu w dniach"
+        },
+        "flowering_start": {
+          "name": "Początek kwitnienia",
+          "description": "Data rozpoczęcia fazy kwitnienia"
+        },
+        "flower_duration": {
+          "name": "Czas trwania kwitnienia",
+          "description": "Czas trwania fazy kwitnienia w dniach"
+        },
+        "harvested_date": {
+          "name": "Data zbioru",
+          "description": "Data zbioru"
+        },
+        "harvested_duration": {
+          "name": "Czas od zbioru",
+          "description": "Czas od zbioru w dniach"
+        },
+        "removed_date": {
+          "name": "Data usunięcia",
+          "description": "Data usunięcia"
+        },
+        "removed_duration": {
+          "name": "Czas od usunięcia",
+          "description": "Czas od usunięcia w dniach"
+        },
+        "position_x": {
+          "name": "Pozycja X",
+          "description": "Współrzędna X rośliny"
+        },
+        "position_y": {
+          "name": "Pozycja Y",
+          "description": "Współrzędna Y rośliny"
+        }
+      }
+    },
+    "move_to_cycle": {
+      "name": "Przenieś do cyklu",
+      "description": "Przenosi roślinę do cyklu.",
+      "fields": {
+        "plant_entity": {
+          "name": "Jednostka rośliny",
+          "description": "Jednostka rośliny do przeniesienia."
+        },
+        "cycle_entity": {
+          "name": "Jednostka cyklu",
+          "description": "Jednostka cyklu, do której przenieść roślinę."
+        }
+      }
+    },
+    "create_cycle": {
+      "name": "Utwórz cykl",
+      "description": "Tworzy nową jednostkę cyklu.",
+      "fields": {
+        "name": {
+          "name": "Nazwa",
+          "description": "Nazwa cyklu."
+        },
+        "plant_emoji": {
+          "name": "Emoji",
+          "description": "Emoji do wyświetlenia obok nazwy cyklu."
+        }
+      }
+    },
+    "remove_cycle": {
+      "name": "Usuń cykl",
+      "description": "Usuwa jednostkę cyklu i wszystkie powiązane z nią jednostki.",
+      "fields": {
+        "cycle_entity": {
+          "name": "Jednostka cyklu",
+          "description": "Cykl do usunięcia."
+        }
+      }
+    },
+    "move_to_area": {
+      "name": "Przenieś do strefy",
+      "description": "Przenosi roślinę lub cykl do określonej strefy.",
+      "fields": {
+        "entity_id": {
+          "name": "Jednostka",
+          "description": "Jednostka rośliny lub cyklu do przeniesienia."
+        },
+        "area_id": {
+          "name": "Strefa",
+          "description": "Strefa, do której przenieść jednostkę."
+        }
+      }
+    },
+    "add_image": {
+      "name": "Dodaj obraz",
+      "description": "Dodaje obraz do rośliny lub cyklu.",
+      "fields": {
+        "entity_id": {
+          "name": "Jednostka",
+          "description": "Jednostka rośliny lub cyklu do dodania obrazu."
+        },
+        "image_url": {
+          "name": "URL obrazu",
+          "description": "URL lub ścieżka do obrazu."
+        }
+      }
+    },
+    "change_position": {
+      "name": "Zmień pozycję",
+      "description": "Zmienia współrzędne pozycji rośliny lub cyklu.",
+      "fields": {
+        "entity_id": {
+          "name": "Jednostka",
+          "description": "Jednostka rośliny lub cyklu do zmiany pozycji."
+        },
+        "position_x": {
+          "name": "Pozycja X",
+          "description": "Współrzędna pozycji X."
+        },
+        "position_y": {
+          "name": "Pozycja Y",
+          "description": "Współrzędna pozycji Y."
+        }
+      }
+    }
+  }
+} 

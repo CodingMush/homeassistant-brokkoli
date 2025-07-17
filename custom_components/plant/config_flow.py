@@ -704,7 +704,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self.plant_info[ATTR_ORIGINAL_FLOWERING_DURATION] = 0
 
                 # Speichere alle zusätzlichen Attribute
-                for attr in ["pid", "sorte", "feminized", "timestamp", 
+                for attr in ["pid", "type", "feminized", "timestamp", 
                             "website", "infotext1", "infotext2", 
                             "effects", "smell", "taste", "lineage",
                             ATTR_PHENOTYPE, ATTR_HUNGER, ATTR_GROWTH_STRETCH,
@@ -758,8 +758,8 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema[
             vol.Optional(
-                "sorte",
-                default=plant_config[FLOW_PLANT_INFO].get("sorte", "")
+                "type",
+                default=plant_config[FLOW_PLANT_INFO].get("type", "")
             )
         ] = str
 

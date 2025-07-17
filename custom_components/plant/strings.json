@@ -42,7 +42,7 @@
           "right_plant": "This is the plant I was looking for",
           "display_pid": "Strain",
           "breeder": "Breeder",
-          "sorte": "Type",
+          "type": "Type",
           "feminized": "Feminized",
           "flowering_duration": "Flowering duration (days)",
           "effects": "Effects",
