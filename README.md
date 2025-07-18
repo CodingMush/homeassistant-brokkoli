@@ -155,7 +155,7 @@ This project is licensed under the MIT License.
 If you find this project helpful, consider supporting its development:
 
 <a href="https://buymeacoffee.com/dingausmwald" target="_blank">
-<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;">
+<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px !important;">
 </a>
 
 ---
