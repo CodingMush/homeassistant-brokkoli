@@ -1,194 +1,164 @@
-# Brokkoli Plant Management for Home Assistant
+# Brokkoli Cannabis Management for Home Assistant
 
-> **Note**
-> 
-> This project is based on the work of [@Olen](https://github.com/Olen) and his "Alternative plants component" integration.
-> 
-> All credit for the original development goes to the original author.
+**The foundation of the Brokkoli Suite - Cannabis monitoring integration for Home Assistant**
 
-<!-- 
-TODO: Add new images to the dingausmwald/homeassistant-brokkoli repository.
-Image placeholders are marked with TODO comments throughout the document.
--->
+A Home Assistant integration for monitoring cannabis plants with sensors and configurable thresholds. Part of the Brokkoli Suite for cannabis cultivation tracking.
 
-This integration can automatically fetch data from [Seedfinder](https://github.com/dingausmwald/homeassistant-seedfinder) if you are a registered user. Registration is free.
+## 🌱 Features
 
-# BREAKING CHANGES
+### Device-based Plant Management
+- Cannabis plants as Home Assistant devices with grouped sensor entities
+- Configurable thresholds for each sensor type
+- Problem state when sensor values exceed limits
+- Individual plant helpers: health status, growing phase, flowering duration
+- Cycle system for grouping plants together
 
->**Warning**
->
-> **This integration is *not* compatible with the original plant integration in HA.**
+### Supported Sensors
+- **Moisture**: Soil moisture percentage
+- **Temperature**: Ambient temperature (°C/°F)
+- **Light/Brightness**: Light intensity (lux)
+- **Conductivity**: Soil conductivity (µS/cm)
+- **pH**: Soil pH level
+- **Humidity**: Air humidity percentage
+- **Power**: Power consumption monitoring
+- **Daily Light Integral (DLI)**: Calculated from light sensors
 
-Plants are set up in the UI and all configuration of your plants can be managed there or by automations and scripts.
+### Seedfinder Integration
+- Strain data fetching during setup
+- Strain images and basic information
+- Growth phase definitions
 
-## Plants are now treated as _devices_
+### Services & Configuration
+- UI-based setup through config flow
+- Various services to interact with plants
+- Sensor changes directly in plant configuration
+- Automation triggers for dynamic sensor switching (e.g., room changes)
 
-This means that the main plant entity references other entities, and they are grouped togheter in the GUI as a single device.
+## 🔧 Installation
 
-<!-- TODO: Add screenshot showing plant device overview -->
+### Prerequisites
+For the complete Brokkoli Suite, install these complementary components:
 
-This also means that this version is _not_ compatible with earlier releases from this repository, or with the "plant" integration that is part of your default Home Assistant installation 
+- **[Brokkoli Card](https://github.com/dingausmwald/lovelace-brokkoli-card)** - Lovelace cards for cannabis visualization
+- **[Seedfinder Integration](https://github.com/dingausmwald/homeassistant-seedfinder)** - Cannabis strain data and information
 
-## Highlights 
-
-### Use the UI to set up plant devices
-* Config Flow is used to set up the plants
-
-<!-- TODO: Add GIF showing Config Flow setup process -->
-
-* This works both with and without Seedfinder
-
-### Better handling of thresholds
-
-* Plant images and information like flowering duration are fetched automatically from Seedfinder if available
-* All thresholds now are their own entities and their values can be changed from the UI or by scripts and automations.
-* These changes are instantly reflected in HA. No need to restart to change the thresholds.
-
-<!-- TODO: Add screenshots showing threshold configuration -->
-
-* Max and min temperature is now dependent on the unit of measurement - currently °C and °F is supported.
-  * The values will be updated if you change your units in the Home Assistant settings
-
-### Easier to replace sensors
-
-* You can use a service call to replace the different sensors used to monitor the plant
-
-<!-- TODO: Add screenshot of service call interface -->
-
-What I personally do, to make a clearer separation between the physical sensor and the sensor that is part of the plant, is that all my _physical_ sensors (e.g BLE-devices) have generic entity_ids like `sensor.ble_sensor_1_moisture`, `sensor.ble_sensor_1_illumination`, `sensor.ble_sensor_2_conductivity` etc.
-And all my plants sensors have entity_ids like `sensor.rose_moisture`, `sensor.chili_conductivity` etc.
-
-That way, if I need to replace a (physical) sensor for e.g. my "Rose" plant, it is very easy to grasp the concept and use
-```
-service: plant.replace_sensor
-data:
-  meter_entity: sensor.rose_illumination
-  new_sensor: sensor.ble_sensor_12_illumination
-```
-
-* The new sensor values are immediately picked up by the plant integration without any need to restart
-
-### Better handling of species, image and plant information
-
-* If you change the species of a plant in the UI, new data are fetched from Seedfinder
-* You can optionally select to force a refresh of plant data from Seedfinder, even if you do not change the species.  
-* Images and information like flowering duration can be updated from the UI
-* You can chose to disable problem triggers on all sensors.
-
-<!-- TODO: Add screenshot of species configuration -->
-
-These updates are immediately reflected in HA without restarting anything.
-
-### Daily Light Integral
-
-* A new Daily Light Integral - DLI - sensor is created for all plants. 
-
-<!-- TODO: Add screenshot of DLI sensor -->
-
-See https://en.wikipedia.org/wiki/Daily_light_integral for what DLI means
-
-### More flexible lovelace card
-
-* The Lovelace flower card makes use of the integration, and is very flexible.
-
-<!-- TODO: Add screenshots of flower card -->
-
-* The flower card also handles both °C and °F
-
-## Dependencies
-
-* [Updated Lovelace Flower Card](https://github.com/dingausmwald/lovelace-flower-card/tree/new_plant)
-
-* [Seedfinder integration](https://github.com/dingausmwald/homeassistant-seedfinder)
-
-Seedfinder is not a strict requirement, but a strong recommendation. Without the Seedfinder integration, you need to set images and information like flowering duration manually. With the Seedfinder integration added, all data is fetched automatically, and it makes setting up and maintaining plants much, much easier.   
-
-# Installation
-
-### Install and set up Seedfinder
-
-_Not required, but strongly recommended_
-
-* Install the Seedfinder integration: https://github.com/dingausmwald/homeassistant-seedfinder 
-* Set it up, and add your client_id and secret, and test it by using e.g. the `seedfinder.search` service call to search for something.   
-
-### Install new flower-card for Lovelace
-
-_Currently this is the only card in lovelace that support this integration.  Feel free to fork and update - or create PRs - for other lovelace cards._ 
-
-* Install verson 2 of the Flower Card from https://github.com/dingausmwald/lovelace-flower-card/
-
-
-### Install this integration
+### HACS Installation (Recommended)
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-#### Via HACS
-* Add this repo as a ["Custom repository"](https://hacs.xyz/docs/faq/custom_repositories/) with type "Integration"
-* Click "Install" in the new "Brokkoli Plant Management" card in HACS.
-* Install
-* Restart Home Assistant
+1. Add this repository as a [Custom Repository](https://hacs.xyz/docs/faq/custom_repositories/) in HACS
+2. Set the category to "Integration"
+3. Click "Install" on the "Brokkoli Cannabis Management" card
+4. Restart Home Assistant
 
-#### Manual Installation
-* Copy the entire `custom_components/plant/` directory to your server's `<config>/custom_components` directory
-* Restart Home Assistant
+### Manual Installation
 
-> **Note**
-> This integration uses the same component name as the built-in plant integration to override it. This ensures proper functionality while providing enhanced features.
+1. Copy the `custom_components/plant/` directory to your `<config>/custom_components/` directory
+2. Restart Home Assistant
 
-After Home Assistant is restarted, you will find all your plants under "Settings" - "Devices and Services" - "Devices".  It will take a minute or two before the current values start to update.
+## 🚀 Quick Start
 
-> **Warning**
-> The `entity_id` of your plants will probably have changed from the old integration to the new one.  This means that any automations, scripts etc. that use the entity_id or reacts to changes in your plants status will need to be updated.  You probably also need to change the way you read data from the plant device in any such components.
+### 1. Set up your first cannabis plant
+1. Go to **Settings** → **Devices & Services** → **Add Integration**
+2. Search for "Plant" and select it
+3. Follow the configuration flow to set up your cannabis plant
+4. Assign your sensors (moisture, temperature, light, etc.)
 
-> **Warning**
-> This integration is NOT compatible with the built in original plant component.  This means that e.g. the plant cards etc. in the UI, and any blueprints etc. that are built for the original plant intergation wil NOT work with this version.
+### 2. Configure thresholds
+- Each threshold (min/max values) becomes its own entity
+- Adjust thresholds directly from the UI or via automations
+- Changes take effect immediately without restart
 
-## Problem reports
-By default, all problems (e.g. every time a sensor reports a value that is above or below the threshold set in "limits"), the plant state will be set to "problem".
+### 3. Monitor and maintain
+- View all cannabis plants under **Settings** → **Devices & Services** → **Devices**
+- Check plant status and sensor readings
+- Monitor problem states when sensor values exceed thresholds
 
-This can be adjusted under "Settings" -> "Devices and Services" -> "Plant Monitor" -> "Your Plant Name" and "Configure".
+## 📊 Sensor Management
 
-<!-- TODO: Add screenshot of problem reports configuration -->
+Sensors can be changed directly in the plant's configuration interface or dynamically via automations when plants are moved between rooms.
 
-Here you can select what kind of threshold violations should trigger a "problem" state of the plant entity.
+## 🎨 Brokkoli Suite Integration
 
-## Fetching data from Seedfinder
+Brokkoli Cannabis Management is the foundation of the Brokkoli Suite:
 
-_This requires the [Seedfinder integration](https://github.com/dingausmwald/homeassistant-seedfinder) to be installed._
+### [Brokkoli Card](https://github.com/dingausmwald/lovelace-brokkoli-card)
+- Individual cannabis plant cards
+- Area cards for spatial plant arrangement
+- List cards for tabular overview
+- Interactive plant positioning
 
-When you set up a new plant, the configuration flow will search Seedfinder for the species you enter. If any matches are found, you are presented with a list of exact species to choose from. Be aware that the Seedfinder API does currently not include any of your private user defined species, so you will not find them in the list. See below for how to refresh data from Seedfinder.
-If no matches are found, the configuration flow will continue directly to the next step.
+### [Seedfinder Integration](https://github.com/dingausmwald/homeassistant-seedfinder)
+- Cannabis strain database access
+- Strain data fetching during setup
+- Strain imagery and basic information
+- Growth phase definitions
 
-In the following step, plant information and images from Seedfinder are pre-filled and displayed. If you chose the incorrect species, you can uncheck the _"This is the plant I was looking for"_ checkbox, and you will be directed back to the dropdown of species to select another one.
-If no match is found in Seedfinder, you'll need to provide your own information and images.
+## 🔧 Configuration
 
-If the species is found in Seedfinder, the image link is pre-filled with the URL there. You may override this with your own links. Both links starting with `http` and local images in your "www"-folder, e.g. `/local/...` are supported.
+### Problem Detection
+Customize which sensor violations trigger problem states:
 
-### Changing the species / refreshing data
+1. Navigate to **Settings** → **Devices & Services** → **Plant Monitor**
+2. Select your plant device
+3. Click **Configure**
+4. Choose which threshold violations should trigger alerts
 
-If you later want to change the species of a plant, you do that under "Configuration" of the selected device.
+### Strain Management
+Update cannabis strain and refresh data from Seedfinder:
 
-"Settings" -> "Devices and Services" -> "Plant Monitor" -> "Your Plant Name" and "Configure".
+1. Go to cannabis plant device configuration
+2. Enter the exact strain name (Seedfinder PID format)
+3. Enable "Force refresh" to update all data including images
+4. Strain changes take effect immediately
 
-<!-- TODO: Add screenshot of species configuration -->
+## 📱 Available Services
 
-From there, you have the option to set a new species. If you change the species, data for the new species will be automatically fetched from Seedfinder. The species will have to be entered **exactly** as the "pid" in Seedfinder (including any punctations etc.). If the species is found in Seedfinder, the information is updated with the new values. Also, if the current image links to Seedfinder or the image link is empty, the URL to the image in Seedfinder is added. If the current image points to a local file, or a different URL, the image is **not** replaced unless "Force refresh" is checked. The "Species to display" is not changed if you change the species unless "Force refresh" is checked.
-If no species are found in Seedfinder, the information and image will be retained with their current values. 
+The integration provides various services to interact with your cannabis plants:
 
-If you just want to refresh the data from Seedfinder, without changing the species - for instance if you have private species defined in Seedfinder that are not found during setup, you check the "Force refresh" checkbox, and data will be fetched from Seedfinder without needing to change the species. If this checkbox is checked, both the image and the "Species to display" is updated if the species is found in Seedfinder.
-If no species is found in Seedfinder, nothing is changed. 
+- `plant.replace_sensor` - Replace sensors for a plant
+- `plant.create_plant` - Create a new plant
+- `plant.remove_plant` - Remove a plant and all its entities
+- `plant.clone_plant` - Create a clone/cutting of an existing plant
+- `plant.create_cycle` - Create a new cycle for grouping plants
+- `plant.remove_cycle` - Remove a cycle and all its entities
+- `plant.move_to_cycle` - Move plants to a cycle or remove from cycle
+- `plant.update_plant_attributes` - Update plant attributes and information
+- `plant.move_to_area` - Move plants to different areas
+- `plant.add_image` - Add images to plants
+- `plant.change_position` - Change plant position coordinates
+- `plant.export_plants` - Export plant configurations
+- `plant.import_plants` - Import plant configurations
 
-## FAQ
+These services are integrated into the [Brokkoli Card](https://github.com/dingausmwald/lovelace-brokkoli-card) interface for convenient operation, or can be used directly in automations and scripts.
 
-### I added the wrong sensors, and after removing and adding the plant again with the correct sensor, I can still see the wrong values from the old sensor.
+## 🆘 Troubleshooting
 
-Home Assistant is _very_ good at remembering old configuration of entities if new entities with the same name as the old ones are added again.  This means that if you first create e.g. a moisture-sensor for your plant that reads the data from `sensor.bluetooth_temperature_xxxx`, and the remove the plant and add it back again with the same name, but with moisture-sensor set to `sensor.xiaomi_moisture_yyyy` you might experience that the plant will still show data from the old sensor.  Instead of removing and re-adding a plant, you should just use the `replace_sensor` service call to add the new sensor.
+### Sensor Values Not Updating
+If old sensor values persist after cannabis plant reconfiguration:
+- Use the `replace_sensor` service instead of removing/re-adding plants
 
-<!-- 
-Original credits:
-<a href="https://www.buymeacoffee.com/olatho" target="_blank">
-<img src="https://user-images.githubusercontent.com/203184/184674974-db7b9e53-8c5a-40a0-bf71-c01311b36b0a.png" style="height: 50px !important;"> 
+### Strain Not Found
+- Ensure exact strain name matching Seedfinder PID format
+- Check that Seedfinder integration is properly configured
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit pull requests, report issues, or suggest improvements.
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## ☕ Support
+
+If you find this project helpful, consider supporting its development:
+
+<a href="https://buymeacoffee.com/dingausmwald" target="_blank">
+<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;">
 </a>
--->
+
+---
+
+**Part of the Brokkoli Suite** - Cannabis cultivation tracking for Home Assistant
 
