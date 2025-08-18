@@ -421,6 +421,11 @@ ICON_ENERGY_COST = "mdi:currency-eur"  # Icon für Energiekosten
 SERVICE_ADD_IMAGE = "add_image"
 FLOW_DOWNLOAD_PATH = "download_path"
 
+# Manual logging services
+SERVICE_LOG_WATERING = "log_watering"
+SERVICE_LOG_EC = "log_ec"
+SERVICE_LOG_PH = "log_ph"
+
 # Treatment Options
 TREATMENT_NONE = ""
 TREATMENT_CUT = "cut"
