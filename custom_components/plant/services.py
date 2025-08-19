@@ -68,6 +68,7 @@ from .const import (
     FLOW_SENSOR_PH,
     SERVICE_EXPORT_PLANTS,
     SERVICE_IMPORT_PLANTS,
+    SERVICE_ADD_WATERING,
 
 )
 from .plant_helpers import PlantHelper
@@ -142,6 +143,14 @@ IMPORT_PLANTS_SCHEMA = vol.Schema({
     vol.Optional("new_plant_name"): cv.string,
     vol.Optional("overwrite_existing"): cv.boolean,
     vol.Optional("include_images"): cv.boolean,
+})
+
+
+# Schema for add_watering Service
+ADD_WATERING_SCHEMA = vol.Schema({
+    vol.Required("entity_id"): cv.entity_id,
+    vol.Required("amount_liters"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=1000.0)),
+    vol.Optional("note"): cv.string,
 })
 
 
@@ -1128,6 +1137,62 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 f"Location Sensor für Pflanze {entity_id} nicht gefunden"
             )
 
+    async def add_watering(call: ServiceCall) -> None:
+        """Add a manual watering entry and update totals."""
+        entity_id = call.data.get("entity_id")
+        amount_liters = call.data.get("amount_liters")
+        note = call.data.get("note")
+
+        if amount_liters is None:
+            return
+
+        # Find target plant/cycle
+        target_plant = None
+        for entry_id in hass.data.get(DOMAIN, {}):
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if plant.entity_id == entity_id:
+                    target_plant = plant
+                    break
+
+        if not target_plant:
+            _LOGGER.warning("Plant entity %s not found for add_watering", entity_id)
+            return
+
+        # Update journal entry (prepend concise log)
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+            journal_line = f"{timestamp}: Gegossen {amount_liters} L" + (f" - {note}" if note else "")
+            if hasattr(target_plant, "journal") and target_plant.journal:
+                current = target_plant.journal.state or ""
+                new_text = f"{journal_line}\n{current}" if current else journal_line
+                await target_plant.journal.async_set_value(new_text)
+        except Exception as e:
+            _LOGGER.debug("Could not update journal on add_watering: %s", e)
+
+        # Update total water consumption sensor value via helper method if available
+        try:
+            twc = getattr(target_plant, "total_water_consumption", None)
+            if twc and hasattr(twc, "add_manual_watering"):
+                await twc.add_manual_watering(float(amount_liters), note)
+            elif twc is not None:
+                # Fallback: direct increment
+                current_state = twc.state
+                try:
+                    current_value = float(current_state) if current_state not in (None, "unknown", "unavailable") else 0.0
+                except (TypeError, ValueError):
+                    current_value = 0.0
+                twc._attr_native_value = round(current_value + float(amount_liters), 2)
+                try:
+                    twc._last_update = datetime.utcnow().isoformat()
+                except Exception:
+                    pass
+                twc.async_write_ha_state()
+            else:
+                _LOGGER.warning("total_water_consumption sensor not available for %s", entity_id)
+        except Exception as e:
+            _LOGGER.error("Error updating total water consumption on add_watering: %s", e)
+
     async def export_plants(call: ServiceCall) -> ServiceResponse:
         """Export selected plant configurations to a ZIP archive."""
         plant_entities = call.data.get("plant_entities", [])
@@ -1674,6 +1739,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         schema=ADD_IMAGE_SCHEMA
     )
     
+    # Register add_watering service
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ADD_WATERING,
+        add_watering,
+        schema=ADD_WATERING_SCHEMA,
+    )
+    
     # Register export/import services
     hass.services.async_register(
         DOMAIN,
@@ -1703,6 +1776,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_REMOVE_CYCLE)
     hass.services.async_remove(DOMAIN, SERVICE_MOVE_TO_AREA)
     hass.services.async_remove(DOMAIN, SERVICE_ADD_IMAGE)
+    hass.services.async_remove(DOMAIN, SERVICE_ADD_WATERING)
     hass.services.async_remove(DOMAIN, SERVICE_CHANGE_POSITION) 
     hass.services.async_remove(DOMAIN, SERVICE_EXPORT_PLANTS)
     hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PLANTS)

@@ -1588,6 +1588,8 @@ class PlantTotalWaterConsumption(RestoreSensor):
         self._history = []
         self._last_update = None
         self._attr_native_value = 0  # Starte immer bei 0
+        self._manual_additions = 0.0
+        self._manual_entries = []  # list of dicts {ts, amount, note}
         
         # Bei Neuerstellung explizit auf 0 setzen
         if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
@@ -1613,6 +1615,8 @@ class PlantTotalWaterConsumption(RestoreSensor):
             "pot_size": self._plant.pot_size.native_value if self._plant.pot_size else None,
             "water_capacity": self._plant.water_capacity.native_value if self._plant.water_capacity else None,
             "last_update": self._last_update,
+            "manual_additions": round(self._manual_additions, 2),
+            "manual_entries": self._manual_entries,
         }
 
     async def async_added_to_hass(self) -> None:
@@ -1627,6 +1631,16 @@ class PlantTotalWaterConsumption(RestoreSensor):
                     self._attr_native_value = float(last_state.state)
                     if last_state.attributes.get("last_update"):
                         self._last_update = last_state.attributes["last_update"]
+                    if last_state.attributes.get("manual_additions") is not None:
+                        try:
+                            self._manual_additions = float(last_state.attributes.get("manual_additions", 0.0))
+                        except (TypeError, ValueError):
+                            self._manual_additions = 0.0
+                    if last_state.attributes.get("manual_entries") is not None:
+                        try:
+                            self._manual_entries = list(last_state.attributes.get("manual_entries", []))
+                        except Exception:
+                            self._manual_entries = []
             except (TypeError, ValueError):
                 self._attr_native_value = 0
         
@@ -1669,13 +1683,51 @@ class PlantTotalWaterConsumption(RestoreSensor):
                     pot_size = self._plant.pot_size.native_value
                     water_capacity = self._plant.water_capacity.native_value / 100  # Convert from % to decimal
                     volume_drop = (total_drop / 100) * pot_size * water_capacity  # Convert from % to L
-                    
-                    self._attr_native_value = round(volume_drop, 2)
+                    total_with_manual = volume_drop + (self._manual_additions or 0.0)
+                    self._attr_native_value = round(total_with_manual, 2)
                     self._last_update = current_time.isoformat()
                     self.async_write_ha_state()
                 
         except (TypeError, ValueError):
             pass
+
+    async def add_manual_watering(self, amount_liters: float, note: str | None = None) -> None:
+        """Add a manual watering amount to the total and persist it."""
+        try:
+            if amount_liters is None:
+                return
+            if amount_liters < 0:
+                amount_liters = 0
+            self._manual_additions = round((self._manual_additions or 0.0) + float(amount_liters), 2)
+            entry = {
+                "timestamp": dt_util.utcnow().isoformat(),
+                "amount_liters": round(float(amount_liters), 2),
+            }
+            if note:
+                entry["note"] = note
+            try:
+                # keep last 50 entries
+                self._manual_entries.append(entry)
+                self._manual_entries = self._manual_entries[-50:]
+            except Exception:
+                self._manual_entries = [entry]
+
+            # Recompute displayed value as current computed + manual additions
+            displayed_value = self._attr_native_value
+            try:
+                displayed_value = float(displayed_value) if displayed_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None) else 0.0
+            except (TypeError, ValueError):
+                displayed_value = 0.0
+
+            # If we have pot_size and water_capacity, prefer recomputing after next sensor event
+            # For now, just add to current state as well
+            new_value = round(displayed_value + float(amount_liters), 2)
+            self._attr_native_value = new_value
+            self._last_update = dt_util.utcnow().isoformat()
+            self.async_write_ha_state()
+        except Exception:
+            # Ensure no crash on service call
+            self.async_write_ha_state()
 
 
 class PlantTotalFertilizerConsumption(RestoreSensor):
