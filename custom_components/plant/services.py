@@ -69,6 +69,8 @@ from .const import (
     SERVICE_EXPORT_PLANTS,
     SERVICE_IMPORT_PLANTS,
     SERVICE_ADD_WATERING,
+    SERVICE_ADD_CONDUCTIVITY,
+    SERVICE_ADD_PH,
 
 )
 from .plant_helpers import PlantHelper
@@ -151,6 +153,18 @@ ADD_WATERING_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_id,
     vol.Required("amount_liters"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=1000.0)),
     vol.Optional("note"): cv.string,
+})
+
+# Schema for add_conductivity Service
+ADD_CONDUCTIVITY_SCHEMA = vol.Schema({
+    vol.Required("entity_id"): cv.entity_id,
+    vol.Required("value_us_cm"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=100000.0)),
+})
+
+# Schema for add_ph Service
+ADD_PH_SCHEMA = vol.Schema({
+    vol.Required("entity_id"): cv.entity_id,
+    vol.Required("value"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=14.0)),
 })
 
 
@@ -1193,6 +1207,66 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         except Exception as e:
             _LOGGER.error("Error updating total water consumption on add_watering: %s", e)
 
+    async def add_conductivity(call: ServiceCall) -> None:
+        """Add a manual EC measurement (uS/cm) to the current conductivity sensor."""
+        entity_id = call.data.get("entity_id")
+        value = call.data.get("value_us_cm")
+        if value is None:
+            return
+        # Find target plant
+        target_plant = None
+        for entry_id in hass.data.get(DOMAIN, {}):
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if plant.entity_id == entity_id:
+                    target_plant = plant
+                    break
+        if not target_plant or not getattr(target_plant, "sensor_conductivity", None):
+            _LOGGER.warning("Conductivity sensor not available for %s", entity_id)
+            return
+        sensor = target_plant.sensor_conductivity
+        if hasattr(sensor, "set_manual_value"):
+            await sensor.set_manual_value(float(value))
+        else:
+            try:
+                sensor._attr_native_value = float(value)
+                sensor.async_write_ha_state()
+            except Exception:
+                pass
+
+    async def add_ph(call: ServiceCall) -> None:
+        """Add a manual pH measurement to the current pH sensor."""
+        entity_id = call.data.get("entity_id")
+        value = call.data.get("value")
+        if value is None:
+            return
+        # Find target plant
+        target_plant = None
+        for entry_id in hass.data.get(DOMAIN, {}):
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if plant.entity_id == entity_id:
+                    target_plant = plant
+                    break
+        if not target_plant or not getattr(target_plant, "sensor_ph", None):
+            # sensor_ph is stored via add_sensors as 'ph'
+            sensor = None
+            if target_plant and hasattr(target_plant, "ph"):
+                sensor = target_plant.ph
+        else:
+            sensor = target_plant.sensor_ph
+        if not sensor:
+            _LOGGER.warning("pH sensor not available for %s", entity_id)
+            return
+        if hasattr(sensor, "set_manual_value"):
+            await sensor.set_manual_value(float(value))
+        else:
+            try:
+                sensor._attr_native_value = float(value)
+                sensor.async_write_ha_state()
+            except Exception:
+                pass
+
     async def export_plants(call: ServiceCall) -> ServiceResponse:
         """Export selected plant configurations to a ZIP archive."""
         plant_entities = call.data.get("plant_entities", [])
@@ -1746,6 +1820,18 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         add_watering,
         schema=ADD_WATERING_SCHEMA,
     )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ADD_CONDUCTIVITY,
+        add_conductivity,
+        schema=ADD_CONDUCTIVITY_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ADD_PH,
+        add_ph,
+        schema=ADD_PH_SCHEMA,
+    )
     
     # Register export/import services
     hass.services.async_register(
@@ -1777,6 +1863,8 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_MOVE_TO_AREA)
     hass.services.async_remove(DOMAIN, SERVICE_ADD_IMAGE)
     hass.services.async_remove(DOMAIN, SERVICE_ADD_WATERING)
+    hass.services.async_remove(DOMAIN, SERVICE_ADD_CONDUCTIVITY)
+    hass.services.async_remove(DOMAIN, SERVICE_ADD_PH)
     hass.services.async_remove(DOMAIN, SERVICE_CHANGE_POSITION) 
     hass.services.async_remove(DOMAIN, SERVICE_EXPORT_PLANTS)
     hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PLANTS)

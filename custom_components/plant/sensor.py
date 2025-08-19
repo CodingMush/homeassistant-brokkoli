@@ -554,6 +554,16 @@ class PlantCurrentConductivity(PlantCurrentStatus):
         """Device class"""
         return ATTR_CONDUCTIVITY
 
+    async def set_manual_value(self, value: float) -> None:
+        """Set a manual conductivity measurement (uS/cm)."""
+        try:
+            if value is None:
+                return
+            self._attr_native_value = float(value)
+            self.async_write_ha_state()
+        except (TypeError, ValueError):
+            return
+
 
 class PlantCurrentMoisture(PlantCurrentStatus):
     """Entity class for the current moisture meter"""
@@ -2062,3 +2072,18 @@ class PlantCurrentPh(PlantCurrentStatus):
     def device_class(self) -> str:
         """Device class"""
         return DEVICE_CLASS_PH  # Verwende unsere eigene Device Class
+
+    async def set_manual_value(self, value: float) -> None:
+        """Set a manual pH measurement (0-14)."""
+        try:
+            if value is None:
+                return
+            # clamp plausible pH range
+            if value < 0:
+                value = 0
+            if value > 14:
+                value = 14
+            self._attr_native_value = float(value)
+            self.async_write_ha_state()
+        except (TypeError, ValueError):
+            return
