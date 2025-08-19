@@ -11,7 +11,6 @@ add_watering:
           domain:
             - plant
             - cycle
-          integration: plant
     amount_liters:
       name: Menge (L)
       description: Zu addierende Wassermenge in Litern
