@@ -1234,6 +1234,17 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             except Exception:
                 pass
 
+        # Update journal entry (prepend concise log)
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+            journal_line = f"{timestamp}: EC gesetzt {value} uS/cm"
+            if hasattr(target_plant, "journal") and target_plant.journal:
+                current = target_plant.journal.state or ""
+                new_text = f"{journal_line}\n{current}" if current else journal_line
+                await target_plant.journal.async_set_value(new_text)
+        except Exception as e:
+            _LOGGER.debug("Could not update journal on add_conductivity: %s", e)
+
     async def add_ph(call: ServiceCall) -> None:
         """Add a manual pH measurement to the current pH sensor."""
         entity_id = call.data.get("entity_id")
@@ -1266,6 +1277,17 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 sensor.async_write_ha_state()
             except Exception:
                 pass
+
+        # Update journal entry (prepend concise log)
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+            journal_line = f"{timestamp}: pH gesetzt {value}"
+            if hasattr(target_plant, "journal") and target_plant.journal:
+                current = target_plant.journal.state or ""
+                new_text = f"{journal_line}\n{current}" if current else journal_line
+                await target_plant.journal.async_set_value(new_text)
+        except Exception as e:
+            _LOGGER.debug("Could not update journal on add_ph: %s", e)
 
     async def export_plants(call: ServiceCall) -> ServiceResponse:
         """Export selected plant configurations to a ZIP archive."""
