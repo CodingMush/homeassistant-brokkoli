@@ -421,6 +421,11 @@ ICON_ENERGY_COST = "mdi:currency-eur"  # Icon für Energiekosten
 SERVICE_ADD_IMAGE = "add_image"
 FLOW_DOWNLOAD_PATH = "download_path"
 
+# Service to add manual watering entries
+SERVICE_ADD_WATERING = "add_watering"
+SERVICE_ADD_CONDUCTIVITY = "add_conductivity"
+SERVICE_ADD_PH = "add_ph"
+
 # Treatment Options
 TREATMENT_NONE = ""
 TREATMENT_CUT = "cut"
