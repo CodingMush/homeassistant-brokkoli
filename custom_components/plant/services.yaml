@@ -534,7 +534,7 @@ update_plant_attributes:
           min: 0
           max: 365
           mode: box
-    harvested_date:
+    harvested_start:
       name: Harvested Date
       description: Date of harvest
       example: "2024-05-01"
@@ -550,7 +550,7 @@ update_plant_attributes:
           min: 0
           max: 365
           mode: box
-    removed_date:
+    removed_start:
       name: Removed Date
       description: Date of removal
       example: "2024-05-01"

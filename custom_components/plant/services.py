@@ -959,8 +959,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         growth_phase_attrs = [
             "seeds_start", "seeds_duration", "germination_start", "germination_duration",
             "rooting_start", "rooting_duration", "growing_start", "growing_duration", 
-            "flowering_start", "flower_duration", "harvested_date", "harvested_duration",
-            "removed_date", "removed_duration"
+            "flowering_start", "flower_duration", "harvested_start", "harvested_duration",
+            "removed_start", "removed_duration"
         ]
         
         growth_phase_updates = {}
@@ -1758,9 +1758,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         vol.Optional("growing_duration"): cv.positive_int,
         vol.Optional("flowering_start"): cv.string,
         vol.Optional("flower_duration"): cv.positive_int,
-        vol.Optional("harvested_date"): cv.string,
+        vol.Optional("harvested_start"): cv.string,
         vol.Optional("harvested_duration"): cv.positive_int,
-        vol.Optional("removed_date"): cv.string,
+        vol.Optional("removed_start"): cv.string,
         vol.Optional("removed_duration"): cv.positive_int,
     })
 
