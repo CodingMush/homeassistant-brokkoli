@@ -304,8 +304,9 @@ DEVICE_TYPE_CONFIG = "config"  # Neuer Gerätetyp für Konfiguration
 ATTR_DEVICE_TYPE = "device_type"
 
 DEVICE_TYPES = [
-    DEVICE_TYPE_PLANT,
-    DEVICE_TYPE_CYCLE
+DEVICE_TYPE_PLANT,
+    DEVICE_TYPE_CYCLE,
+    "tent",
 ]  # Config wird nicht in der Auswahl angezeigt
 
 # Icons für Device Types

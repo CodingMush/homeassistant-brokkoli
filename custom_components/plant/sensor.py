@@ -129,9 +129,18 @@ async def async_setup_entry(
             # Erstelle Tent-Sensoren
             ttemp = TentCurrentTemperature(hass, entry, tent)
             thum = TentCurrentHumidity(hass, entry, tent)
+            tcond = TentCurrentStatus(hass, entry, tent, "conductivity")
+            tillu = TentCurrentStatus(hass, entry, tent, "illuminance")
+            tco2 = TentCurrentStatus(hass, entry, tent, "co2")
+            tph = TentCurrentStatus(hass, entry, tent, "ph")
+
             tent_sensors = [
                 ttemp,
                 thum,
+                tcond,
+                tillu,
+                tco2,
+                tph
             ]
 
             # Füge die Tent-Sensoren zu HA hinzu
@@ -141,6 +150,10 @@ async def async_setup_entry(
             tent.add_sensors(
                 temperature_sensor=ttemp.entity_id,
                 humidity_sensor=thum.entity_id,
+                conductivity_sensor=tcond.entity_id,
+                illuminance_sensor=tillu.entity_id,
+                co2_sensor=tco2.entity_id,
+                ph_sensor=tph.entity_id,
             )
 
 
@@ -683,10 +696,81 @@ async def async_setup_entry(
 # Tent sensors
 
 
-class TentCurrentTemperature(PlantCurrentStatus):
+class TentCurrentStatus(PlantCurrentStatus):
+    """Base class for tent sensors"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, tentdevice: Entity, sensor_type: str
+    ) -> None:
+        """Initialize the sensor"""
+        self._tentdevice = tentdevice
+        self._sensor_type = sensor_type
+        self._attr_name = f"{tentdevice.name} Tent {sensor_type.capitalize()}"
+        self._attr_unique_id = f"{config.entry_id}-tent-current-{sensor_type}"
+        self._attr_has_entity_name = False
+        self._attr_icon = ICON_TEMPERATURE  # Standard Icon
+        self._attr_native_unit_of_measurement = None  # Muss noch gesetzt werden
+
+        if sensor_type == "temperature":
+            self._external_sensor = tentdevice.temperature_sensor
+            self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+            self._attr_device_class = SensorDeviceClass.TEMPERATURE
+            self._attr_icon = ICON_TEMPERATURE
+        elif sensor_type == "humidity":
+            self._external_sensor = tentdevice.humidity_sensor
+            self._attr_native_unit_of_measurement = PERCENTAGE
+            self._attr_device_class = SensorDeviceClass.HUMIDITY
+            self._attr_icon = ICON_HUMIDITY
+        elif sensor_type == "conductivity":
+            self._external_sensor = tentdevice.conductivity_sensor
+            self._attr_native_unit_of_measurement = UnitOfConductivity.MICROSIEMENS_PER_CM
+            self._attr_device_class = ATTR_CONDUCTIVITY
+            self._attr_icon = ICON_CONDUCTIVITY
+        elif sensor_type == "illuminance":
+            self._external_sensor = tentdevice.illuminance_sensor
+            self._attr_native_unit_of_measurement = LIGHT_LUX
+            self._attr_device_class = SensorDeviceClass.ILLUMINANCE
+            self._attr_icon = ICON_ILLUMINANCE
+        elif sensor_type == "co2":
+            self._external_sensor = tentdevice.co2_sensor
+            self._attr_native_unit_of_measurement = "ppm"
+            self._attr_device_class = SensorDeviceClass.CO2
+            self._attr_icon = ICON_CO2
+        elif sensor_type == "ph":
+            self._external_sensor = tentdevice.ph_sensor
+            self._attr_native_unit_of_measurement = None
+            self._attr_device_class = DEVICE_CLASS_PH
+            self._attr_icon = ICON_PH
+
+        super().__init__(hass, config, tentdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return self._attr_device_class
+
+
+class TentCurrentTemperature(TentCurrentStatus):
     """Entity class for the tent current temperature meter"""
 
     def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, tentdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        super().__init__(hass, config, tentdevice, "temperature")
+
+
+class TentCurrentHumidity(TentCurrentStatus):
+    """Entity class for the tent current humidity meter"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, tentdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        super().__init__(hass, config, tentdevice, "humidity")
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         self, hass: HomeAssistant, config: ConfigEntry, tentdevice: Entity
     ) -> None:
         """Initialize the sensor"""

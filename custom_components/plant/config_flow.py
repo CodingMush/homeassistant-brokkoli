@@ -322,8 +322,33 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input[ATTR_DEVICE_TYPE] == DEVICE_TYPE_CYCLE:
             return await self.async_step_cycle()
+        elif user_input[ATTR_DEVICE_TYPE] == "tent":
+            return await self.async_step_tent_config()
         else:
             return await self.async_step_plant()
+
+    async def async_step_tent_config(self, user_input=None):
+        errors = {}
+
+        if user_input is not None:
+            # Erstelle den Konfigurationsknoten wenn er noch nicht existiert
+            config_data = {
+                FLOW_PLANT_INFO: {
+                    ATTR_NAME: user_input[ATTR_NAME],
+                }
+            }
+            return self.async_create_entry(
+                title=user_input[ATTR_NAME],
+                data=config_data
+            )
+
+        data_schema = {
+            vol.Required(ATTR_NAME): cv.string,
+        }
+
+        return self.async_show_form(
+            step_id="tent_config", data_schema=vol.Schema(data_schema), errors=errors
+        )
 
     async def async_step_cycle(self, user_input=None):
         """Handle cycle configuration."""
@@ -726,7 +751,10 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if tent:
                     self.plant_info[FLOW_SENSOR_TEMPERATURE] = tent.temperature_sensor
                     self.plant_info[FLOW_SENSOR_HUMIDITY] = tent.humidity_sensor
-                    # Add more sensors from the tent here
+                    self.plant_info[FLOW_SENSOR_CONDUCTIVITY] = tent.conductivity_sensor
+                    self.plant_info[FLOW_SENSOR_ILLUMINANCE] = tent.illuminance_sensor
+                    self.plant_info[FLOW_SENSOR_CO2] = tent.co2_sensor
+                    self.plant_info[FLOW_SENSOR_PH] = tent.ph_sensor
 
             plant_helper = PlantHelper(hass=self.hass)
             plant_config = await plant_helper.get_plantbook_data(

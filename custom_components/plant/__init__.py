@@ -158,12 +158,12 @@ async def _get_next_id(hass: HomeAssistant, device_type: str) -> str:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Plant from a config entry."""
 
-    # Dummy Tent Setup - TODO: Remove this
-    tent = TentDevice(hass, name="Test Tent")
-    hass.data[DOMAIN]["tent"] = tent
-
     # Wenn dies ein Konfigurationsknoten ist
     if entry.data.get("is_config", False):
+
+        # Dummy Tent Setup - TODO: Remove this
+        tent = TentDevice(hass, name="Test Tent")
+        hass.data[DOMAIN]["tent"] = tent
         hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
             "config": entry.data[FLOW_PLANT_INFO]
         }
