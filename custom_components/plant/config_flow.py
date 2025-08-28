@@ -719,6 +719,15 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 FLOW_SENSOR_PH: user_input.get(FLOW_SENSOR_PH),
             }
 
+            # If a tent is selected, get the sensors from the tent
+            tent_entity = user_input.get("tent_entity")
+            if tent_entity:
+                tent = self.hass.data[DOMAIN].get("tent")
+                if tent:
+                    self.plant_info[FLOW_SENSOR_TEMPERATURE] = tent.temperature_sensor
+                    self.plant_info[FLOW_SENSOR_HUMIDITY] = tent.humidity_sensor
+                    # Add more sensors from the tent here
+
             plant_helper = PlantHelper(hass=self.hass)
             plant_config = await plant_helper.get_plantbook_data(
                 {
@@ -858,6 +867,8 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     }
                 }
             ),
+            # Tent selection
+            vol.Optional("tent_entity", description={"name": "Tent"}): selector({"entity": {"domain": DOMAIN}}),
             vol.Optional(
                 ATTR_NORMALIZE_MOISTURE,
                 default=config_data.get("default_normalize_moisture"),

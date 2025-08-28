@@ -35,6 +35,7 @@ from homeassistant.helpers.entity import Entity, async_generate_entity_id
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.event import async_call_later
+from .config_flow_tent import TentConfigFlow
 
 from .const import (
     ATTR_CONDUCTIVITY,
@@ -130,6 +131,8 @@ from .services import async_setup_services, async_unload_services
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SELECT, Platform.TEXT]
 
+from .tent import TentDevice
+
 # Use this during testing to generate some dummy-sensors
 # to provide random readings for temperature, moisture etc.
 SETUP_DUMMY_SENSORS = False
@@ -154,7 +157,11 @@ async def _get_next_id(hass: HomeAssistant, device_type: str) -> str:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Plant from a config entry."""
-    
+
+    # Dummy Tent Setup - TODO: Remove this
+    tent = TentDevice(hass, name="Test Tent")
+    hass.data[DOMAIN]["tent"] = tent
+
     # Wenn dies ein Konfigurationsknoten ist
     if entry.data.get("is_config", False):
         hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
