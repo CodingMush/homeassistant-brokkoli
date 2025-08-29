@@ -2059,11 +2059,13 @@ class PlantDevice(Entity):
                 if sensor_type == "total_integral":
                     self._median_sensors[sensor_type] = round(value, 6)  # 6 Nachkommastellen wie bei Plant
                 elif sensor_type in ["ppfd", "dli"]:
-                    self._median_sensors[sensor_type] = round(value, 3)  # 3 Nachkommastellen
-                elif sensor_type in ["temperature", "moisture", "humidity", "moisture_consumption", "CO2"]:
+                    self._median_sensors[sensor_type] = round(value, 1)  # 1 Nachkommastelle für PPFD/DLI
+                elif sensor_type in ["temperature", "moisture", "moisture_consumption"]:
                     self._median_sensors[sensor_type] = round(value, 1)  # 1 Nachkommastelle
-                else:  # conductivity, illuminance, fertilizer_consumption
-                    self._median_sensors[sensor_type] = round(value)  # Keine Nachkommastellen
+                elif sensor_type in ["humidity", "illuminance", "CO2", "conductivity"]:
+                    self._median_sensors[sensor_type] = round(value)  # Keine Nachkommastellen für Lux und Luftfeuchtigkeit
+                else:  # fertilizer_consumption, power_consumption etc.
+                    self._median_sensors[sensor_type] = round(value, 2)  # 2 Nachkommastellen für Verbrauchswerte
 
     def _update_cycle_attributes(self) -> None:
         """Update cycle attributes based on member plants."""

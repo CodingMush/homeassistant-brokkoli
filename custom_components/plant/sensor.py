@@ -517,7 +517,29 @@ class PlantCurrentIlluminance(PlantCurrentStatus):
             FLOW_SENSOR_ILLUMINANCE
         )
         self._attr_native_unit_of_measurement = LIGHT_LUX
+        # Set precision for illuminance (no decimal places)
+        self._attr_suggested_display_precision = 0
         super().__init__(hass, config, plantdevice)
+
+    def state_changed(self, entity_id, new_state):
+        """Override to apply rounding to illuminance values."""
+        super().state_changed(entity_id, new_state)
+        # Round illuminance values to whole numbers
+        if self._attr_native_value is not None:
+            try:
+                self._attr_native_value = round(float(self._attr_native_value))
+            except (ValueError, TypeError):
+                pass
+
+    async def async_update(self) -> None:
+        """Update the sensor with proper rounding."""
+        await super().async_update()
+        # Round illuminance values to whole numbers
+        if self._attr_native_value is not None:
+            try:
+                self._attr_native_value = round(float(self._attr_native_value))
+            except (ValueError, TypeError):
+                pass
 
     @property
     def device_class(self) -> str:
@@ -804,7 +826,29 @@ class PlantCurrentHumidity(PlantCurrentStatus):
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
         self._attr_icon = ICON_HUMIDITY
         self._attr_native_unit_of_measurement = PERCENTAGE
+        # Set precision for humidity (no decimal places)
+        self._attr_suggested_display_precision = 0
         super().__init__(hass, config, plantdevice)
+
+    def state_changed(self, entity_id, new_state):
+        """Override to apply rounding to humidity values."""
+        super().state_changed(entity_id, new_state)
+        # Round humidity values to whole numbers
+        if self._attr_native_value is not None:
+            try:
+                self._attr_native_value = round(float(self._attr_native_value))
+            except (ValueError, TypeError):
+                pass
+
+    async def async_update(self) -> None:
+        """Update the sensor with proper rounding."""
+        await super().async_update()
+        # Round humidity values to whole numbers
+        if self._attr_native_value is not None:
+            try:
+                self._attr_native_value = round(float(self._attr_native_value))
+            except (ValueError, TypeError):
+                pass
 
     @property
     def device_class(self) -> str:
@@ -845,6 +889,8 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         self._attr_has_entity_name = False
         self._attr_unit_of_measurement = UNIT_PPFD
         self._attr_native_unit_of_measurement = UNIT_PPFD
+        # Set precision for PPFD (1 decimal place)
+        self._attr_suggested_display_precision = 1
         self._plant = plantdevice
         self._external_sensor = self._plant.sensor_illuminance.entity_id
         self._attr_icon = ICON_PPFD
@@ -881,11 +927,11 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         μmol/m²/s
         """
         if value is not None and value != STATE_UNAVAILABLE and value != STATE_UNKNOWN:
-            value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
+            ppfd_value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
+            # Round PPFD to 1 decimal place for display
+            return round(ppfd_value, 1)
         else:
-            value = None
-
-        return value
+            return None
 
     async def async_update(self) -> None:
         """Run on every update to allow for changes from the GUI and service call"""
@@ -1331,39 +1377,48 @@ class CycleMedianSensor(SensorEntity):
             )
             self._attr_icon = ICON_TEMPERATURE
             self._attr_device_class = SensorDeviceClass.TEMPERATURE
+            self._attr_suggested_display_precision = 1
         elif sensor_type == "moisture":
             self._attr_native_unit_of_measurement = PERCENTAGE
             self._attr_icon = ICON_MOISTURE
             self._attr_device_class = ATTR_MOISTURE
+            self._attr_suggested_display_precision = 1
         elif sensor_type == "conductivity":
             self._attr_native_unit_of_measurement = UNIT_CONDUCTIVITY
             self._attr_icon = ICON_CONDUCTIVITY
             self._attr_device_class = ATTR_CONDUCTIVITY
+            self._attr_suggested_display_precision = 0
         elif sensor_type == "illuminance":
             self._attr_native_unit_of_measurement = LIGHT_LUX
             self._attr_icon = ICON_ILLUMINANCE
             self._attr_device_class = SensorDeviceClass.ILLUMINANCE
+            self._attr_suggested_display_precision = 0  # Lux ohne Nachkommastellen
         elif sensor_type == "humidity":
             self._attr_native_unit_of_measurement = PERCENTAGE
             self._attr_icon = ICON_HUMIDITY
             self._attr_device_class = SensorDeviceClass.HUMIDITY
+            self._attr_suggested_display_precision = 0  # Luftfeuchtigkeit ohne Nachkommastellen
         elif sensor_type == "CO2":
             self._attr_native_unit_of_measurement = "ppm"
             self._attr_icon = ICON_CO2
             self._attr_device_class = SensorDeviceClass.CO2
+            self._attr_suggested_display_precision = 0
         elif sensor_type == "ph":  # Neuer pH Sensor
             self._attr_native_unit_of_measurement = None  # pH hat keine Einheit
             self._attr_icon = ICON_PH
             self._attr_device_class = SensorDeviceClass.PH
+            self._attr_suggested_display_precision = 1
         elif sensor_type == "ppfd":
             self._attr_native_unit_of_measurement = UNIT_PPFD
             self._attr_icon = ICON_PPFD
             self._attr_device_class = None
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
+            self._attr_suggested_display_precision = 1
         elif sensor_type == "dli":
             self._attr_native_unit_of_measurement = UNIT_DLI
             self._attr_icon = ICON_DLI
             self._attr_device_class = ATTR_DLI
+            self._attr_suggested_display_precision = 1
         elif sensor_type == "total_integral":
             self._attr_native_unit_of_measurement = UNIT_DLI
             self._attr_icon = ICON_DLI
