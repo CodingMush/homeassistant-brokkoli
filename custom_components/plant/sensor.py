@@ -363,6 +363,7 @@ class PlantCurrentStatus(RestoreSensor):
         self._config = config
         self._default_state = 0
         self._plant = plantdevice
+        self._external_sensor = None  # Initialize external sensor
         self.entity_id = async_generate_entity_id(
             f"{DOMAIN}.{{}}", self.name, current_ids={}
         )
@@ -392,11 +393,12 @@ class PlantCurrentStatus(RestoreSensor):
 
     @property
     def extra_state_attributes(self) -> dict:
-        if self._external_sensor:
+        if hasattr(self, '_external_sensor') and self._external_sensor:
             attributes = {
                 "external_sensor": self.external_sensor,
             }
             return attributes
+        return {}
 
     @property
     def external_sensor(self) -> str:
