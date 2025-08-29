@@ -2035,6 +2035,16 @@ class PlantCurrentPowerConsumption(RestoreSensor):
         }
 
     @property
+    def external_sensor(self) -> str:
+        """The external sensor we are tracking"""
+        return getattr(self, '_external_sensor', None)
+
+    def replace_external_sensor(self, new_sensor: str | None) -> None:
+        """Modify the external sensor"""
+        _LOGGER.info("Setting %s external sensor to %s", self.entity_id, new_sensor)
+        self._external_sensor = new_sensor
+
+    @property
     def should_poll(self) -> bool:
         """Return True as we want to poll for updates."""
         return True

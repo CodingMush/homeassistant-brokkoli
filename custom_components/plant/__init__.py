@@ -781,6 +781,8 @@ class PlantDevice(Entity):
         self.min_fertilizer_consumption = None
         self.max_power_consumption = None
         self.min_power_consumption = None
+        self.max_ph = None  # Neue pH Threshold Attributes
+        self.min_ph = None
 
         self.sensor_moisture = None
         self.sensor_temperature = None
