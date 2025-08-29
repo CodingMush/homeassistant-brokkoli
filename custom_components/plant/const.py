@@ -126,6 +126,10 @@ FLOW_PLANT_SPECIES = "plant_species"
 FLOW_PLANT_NAME = "plant_name"
 FLOW_PLANT_IMAGE = "image_url"
 FLOW_PLANT_LIMITS = "limits"
+FLOW_TENT_INFO = "tent_info"
+FLOW_TENT_NAME = "tent_name"
+FLOW_TENT_ENTITY = "tent_entity"
+FLOW_MIGRATE_SENSORS = "migrate_sensors"
 
 FLOW_SENSOR_TEMPERATURE = "temperature_sensor"
 FLOW_SENSOR_MOISTURE = "moisture_sensor"
@@ -181,6 +185,10 @@ SERVICE_REMOVE_CYCLE = "remove_cycle"
 SERVICE_MOVE_TO_AREA = "move_to_area"
 SERVICE_EXPORT_PLANTS = "export_plants"
 SERVICE_IMPORT_PLANTS = "import_plants"
+SERVICE_ASSIGN_TO_TENT = "assign_to_tent"
+SERVICE_UNASSIGN_FROM_TENT = "unassign_from_tent"
+SERVICE_CREATE_TENT = "create_tent"
+SERVICE_REMOVE_TENT = "remove_tent"
 
 STATE_LOW = "Low"
 STATE_HIGH = "High"
@@ -300,17 +308,20 @@ SERVICE_CREATE_PLANT = "create_plant"
 # Neue Konstanten für Device Types
 DEVICE_TYPE_PLANT = "plant"
 DEVICE_TYPE_CYCLE = "cycle"
+DEVICE_TYPE_TENT = "tent"  # Neuer Gerätetyp für Zelte
 DEVICE_TYPE_CONFIG = "config"  # Neuer Gerätetyp für Konfiguration
 ATTR_DEVICE_TYPE = "device_type"
 
 DEVICE_TYPES = [
     DEVICE_TYPE_PLANT,
-    DEVICE_TYPE_CYCLE
+    DEVICE_TYPE_CYCLE,
+    DEVICE_TYPE_TENT
 ]  # Config wird nicht in der Auswahl angezeigt
 
 # Icons für Device Types
 ICON_DEVICE_PLANT = "mdi:flower-outline"
 ICON_DEVICE_CYCLE = "mdi:grass"
+ICON_DEVICE_TENT = "mdi:home-outline"  # Icon für Zelte
 ICON_DEVICE_CONFIG = "mdi:cog"  # Icon für Konfiguration
 
 SERVICE_MOVE_TO_CYCLE = "move_to_cycle"
@@ -454,6 +465,18 @@ HEALTH_MAX_VALUE = 5
 HEALTH_STEP = 0.5
 HEALTH_DEFAULT = HEALTH_MAX_VALUE  # Volle Punktzahl als Standard
 CONF_DEFAULT_HEALTH = "default_health"  # Für Config Node
+
+# Tent-spezifische Attribute
+ATTR_TENT_ASSIGNMENT = "tent_assignment"
+ATTR_TENT_ID = "tent_id"
+ATTR_ASSIGNED_PLANTS = "assigned_plants"
+ATTR_ENVIRONMENTAL_SENSORS = "environmental_sensors"
+ATTR_SHARED_THRESHOLDS = "shared_thresholds"
+ATTR_USE_VIRTUAL_SENSORS = "use_virtual_sensors"
+ATTR_SENSOR_OVERRIDES = "sensor_overrides"
+ATTR_TENT_ASSIGNED_AT = "tent_assigned_at"
+ATTR_VIRTUAL_SENSOR_REFERENCE = "virtual_sensor_reference"
+ATTR_IS_VIRTUAL_SENSOR = "is_virtual_sensor"
 
 # Neue Konstanten für die Positionierung von Pflanzen
 ATTR_POSITION_X = "position_x"

@@ -819,3 +819,152 @@ add_ph:
           max: 14
           step: 0.1
           mode: box
+
+create_tent:
+  name: Create Tent
+  description: Erstellt ein neues Zelt für das Tent Management System
+  fields:
+    name:
+      name: Name
+      description: Name des Zeltes
+      example: "Flower Tent 1"
+      required: true
+      selector:
+        text:
+    area_id:
+      name: Area
+      description: Area/Raum für das Zelt (optional)
+      required: false
+      selector:
+        area:
+    temperature_sensor:
+      name: Temperature Sensor
+      description: Haupt-Temperatursensor für das Zelt
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+    moisture_sensor:
+      name: Moisture Sensor
+      description: Haupt-Feuchtigkeitssensor für das Zelt
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: moisture
+    conductivity_sensor:
+      name: Conductivity Sensor
+      description: Haupt-Leitfähigkeitssensor für das Zelt
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    illuminance_sensor:
+      name: Illuminance Sensor
+      description: Haupt-Helligkeitssensor für das Zelt
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: illuminance
+    humidity_sensor:
+      name: Humidity Sensor
+      description: Haupt-Luftfeuchtigkeitssensor für das Zelt
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: humidity
+    co2_sensor:
+      name: CO2 Sensor
+      description: Haupt-CO2-Sensor für das Zelt
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: co2
+    ph_sensor:
+      name: pH Sensor
+      description: Haupt-pH-Sensor für das Zelt
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: ph
+    power_consumption_sensor:
+      name: Power Consumption Sensor
+      description: Haupt-Energieverbrauchssensor für das Zelt
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: power
+
+assign_to_tent:
+  name: Assign to Tent
+  description: Ordnet eine Pflanze einem Zelt zu und aktiviert virtuelle Sensoren
+  fields:
+    plant_entity:
+      name: Plant Entity
+      description: Die Pflanze, die dem Zelt zugeordnet werden soll
+      required: true
+      selector:
+        entity:
+          domain: plant
+          integration: plant
+    tent_entity:
+      name: Tent Entity
+      description: Das Ziel-Zelt für die Zuordnung
+      required: true
+      selector:
+        entity:
+          domain: plant
+          integration: plant
+    migrate_sensors:
+      name: Migrate Sensors
+      description: Ersetzt individuelle Sensoren durch Zelt-Referenzen (virtuelle Sensoren)
+      default: true
+      required: false
+      selector:
+        boolean:
+
+unassign_from_tent:
+  name: Unassign from Tent
+  description: Entfernt eine Pflanze aus ihrer Zelt-Zuordnung
+  fields:
+    plant_entity:
+      name: Plant Entity
+      description: Die Pflanze, die aus dem Zelt entfernt werden soll
+      required: true
+      selector:
+        entity:
+          domain: plant
+          integration: plant
+    restore_sensors:
+      name: Restore Sensors
+      description: Stellt individuelle Sensoren wieder her (deaktiviert virtuelle Sensoren)
+      default: true
+      required: false
+      selector:
+        boolean:
+
+remove_tent:
+  name: Remove Tent
+  description: Entfernt ein Zelt und optional alle zugeordneten Pflanzen
+  fields:
+    tent_entity:
+      name: Tent Entity
+      description: Das zu entfernende Zelt
+      required: true
+      selector:
+        entity:
+          domain: plant
+          integration: plant
+    force_removal:
+      name: Force Removal
+      description: Erzwingt das Entfernen auch wenn noch Pflanzen zugeordnet sind
+      default: false
+      required: false
+      selector:
+        boolean:

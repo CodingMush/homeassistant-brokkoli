@@ -49,6 +49,7 @@ from .const import (
     FLOW_SENSOR_CO2,
     DEVICE_TYPE_CYCLE,
     DEVICE_TYPE_PLANT,
+    DEVICE_TYPE_TENT,
     SERVICE_CLONE_PLANT,
     ATTR_IS_NEW_PLANT,
     ATTR_DEVICE_TYPE,
@@ -71,7 +72,20 @@ from .const import (
     SERVICE_ADD_WATERING,
     SERVICE_ADD_CONDUCTIVITY,
     SERVICE_ADD_PH,
-
+    # Tent services
+    SERVICE_ASSIGN_TO_TENT,
+    SERVICE_UNASSIGN_FROM_TENT,
+    SERVICE_CREATE_TENT,
+    SERVICE_REMOVE_TENT,
+    # Tent attributes
+    ATTR_TENT_ASSIGNMENT,
+    ATTR_USE_VIRTUAL_SENSORS,
+    ATTR_ENVIRONMENTAL_SENSORS,
+    ATTR_ASSIGNED_PLANTS,
+    FLOW_TENT_INFO,
+    FLOW_TENT_NAME,
+    FLOW_TENT_ENTITY,
+    FLOW_MIGRATE_SENSORS,
 )
 from .plant_helpers import PlantHelper
 from .security_utils import (
@@ -171,6 +185,36 @@ ADD_CONDUCTIVITY_SCHEMA = vol.Schema({
 ADD_PH_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_id,
     vol.Required("value"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=14.0)),
+})
+
+# Tent Service Schemas
+CREATE_TENT_SCHEMA = vol.Schema({
+    vol.Required(ATTR_NAME): cv.string,
+    vol.Optional("area_id"): cv.string,
+    vol.Optional(FLOW_SENSOR_TEMPERATURE): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_MOISTURE): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_CONDUCTIVITY): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_ILLUMINANCE): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_HUMIDITY): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_CO2): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_PH): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): cv.entity_id,
+})
+
+ASSIGN_TO_TENT_SCHEMA = vol.Schema({
+    vol.Required("plant_entity"): cv.entity_id,
+    vol.Required(FLOW_TENT_ENTITY): cv.entity_id,
+    vol.Optional(FLOW_MIGRATE_SENSORS, default=True): cv.boolean,
+})
+
+UNASSIGN_FROM_TENT_SCHEMA = vol.Schema({
+    vol.Required("plant_entity"): cv.entity_id,
+    vol.Optional("restore_sensors", default=True): cv.boolean,
+})
+
+REMOVE_TENT_SCHEMA = vol.Schema({
+    vol.Required("tent_entity"): cv.entity_id,
+    vol.Optional("force_removal", default=False): cv.boolean,
 })
 
 
@@ -1750,6 +1794,186 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             _LOGGER.error(f"Error importing plants: {e}")
             raise HomeAssistantError(f"Error importing plants: {e}")
 
+    async def create_tent(call: ServiceCall) -> ServiceResponse:
+        """Create a new tent."""
+        try:
+            tent_info = {
+                ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
+                ATTR_NAME: call.data[ATTR_NAME],
+                ATTR_ENVIRONMENTAL_SENSORS: {},
+                ATTR_ASSIGNED_PLANTS: [],
+            }
+            
+            # Add area if specified
+            if call.data.get("area_id"):
+                tent_info["area_id"] = call.data["area_id"]
+            
+            # Add environmental sensors
+            sensor_types = [
+                FLOW_SENSOR_TEMPERATURE,
+                FLOW_SENSOR_MOISTURE, 
+                FLOW_SENSOR_CONDUCTIVITY,
+                FLOW_SENSOR_ILLUMINANCE,
+                FLOW_SENSOR_HUMIDITY,
+                FLOW_SENSOR_CO2,
+                FLOW_SENSOR_PH,
+                FLOW_SENSOR_POWER_CONSUMPTION
+            ]
+            
+            for sensor_type in sensor_types:
+                if call.data.get(sensor_type):
+                    # Map flow sensor types to simplified keys
+                    sensor_key = sensor_type.replace("_sensor", "").replace("flow_sensor_", "")
+                    tent_info[ATTR_ENVIRONMENTAL_SENSORS][sensor_key] = call.data[sensor_type]
+            
+            # Create tent config entry
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "import"},
+                data={FLOW_PLANT_INFO: tent_info}
+            )
+            
+            if result["type"] == FlowResultType.CREATE_ENTRY:
+                return {
+                    "success": True,
+                    "tent_entity_id": result["result"].entry_id,
+                    "message": f"Tent {tent_info[ATTR_NAME]} created successfully"
+                }
+            else:
+                raise HomeAssistantError(f"Failed to create tent: {result}")
+                
+        except Exception as e:
+            _LOGGER.error(f"Error creating tent: {e}")
+            raise HomeAssistantError(f"Error creating tent: {e}")
+    
+    async def assign_to_tent(call: ServiceCall) -> None:
+        """Assign a plant to a tent."""
+        plant_entity_id = call.data["plant_entity"]
+        tent_entity_id = call.data[FLOW_TENT_ENTITY]
+        migrate_sensors = call.data.get(FLOW_MIGRATE_SENSORS, True)
+        
+        # Find plant device
+        plant_device = None
+        for entry_id in hass.data[DOMAIN]:
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if device.entity_id == plant_entity_id and device.device_type == DEVICE_TYPE_PLANT:
+                    plant_device = device
+                    break
+        
+        if not plant_device:
+            raise HomeAssistantError(f"Plant entity {plant_entity_id} not found")
+            
+        # Find tent device  
+        tent_device = None
+        for entry_id in hass.data[DOMAIN]:
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
+                    tent_device = device
+                    break
+                    
+        if not tent_device:
+            raise HomeAssistantError(f"Tent entity {tent_entity_id} not found")
+        
+        try:
+            # Assign plant to tent
+            plant_device.assign_to_tent(tent_entity_id, migrate_sensors)
+            
+            # If virtual sensor manager exists, update virtual sensors
+            if "virtual_sensor_manager" in hass.data[DOMAIN]:
+                virtual_manager = hass.data[DOMAIN]["virtual_sensor_manager"]
+                virtual_manager.update_virtual_sensor_references(plant_entity_id)
+            
+            _LOGGER.info(f"Successfully assigned {plant_entity_id} to tent {tent_entity_id}")
+            
+        except Exception as e:
+            _LOGGER.error(f"Error assigning plant to tent: {e}")
+            raise HomeAssistantError(f"Error assigning plant to tent: {e}")
+    
+    async def unassign_from_tent(call: ServiceCall) -> None:
+        """Unassign a plant from its tent."""
+        plant_entity_id = call.data["plant_entity"]
+        restore_sensors = call.data.get("restore_sensors", True)
+        
+        # Find plant device
+        plant_device = None
+        for entry_id in hass.data[DOMAIN]:
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if device.entity_id == plant_entity_id and device.device_type == DEVICE_TYPE_PLANT:
+                    plant_device = device
+                    break
+        
+        if not plant_device:
+            raise HomeAssistantError(f"Plant entity {plant_entity_id} not found")
+            
+        if not plant_device.tent_assignment:
+            _LOGGER.warning(f"Plant {plant_entity_id} is not assigned to any tent")
+            return
+        
+        try:
+            # Unassign plant from tent
+            plant_device.unassign_from_tent()
+            
+            # Clean up virtual sensors if manager exists
+            if "virtual_sensor_manager" in hass.data[DOMAIN]:
+                virtual_manager = hass.data[DOMAIN]["virtual_sensor_manager"]
+                virtual_manager.cleanup_virtual_sensors(plant_entity_id)
+            
+            _LOGGER.info(f"Successfully unassigned {plant_entity_id} from tent")
+            
+        except Exception as e:
+            _LOGGER.error(f"Error unassigning plant from tent: {e}")
+            raise HomeAssistantError(f"Error unassigning plant from tent: {e}")
+    
+    async def remove_tent(call: ServiceCall) -> None:
+        """Remove a tent and optionally unassign all plants."""
+        tent_entity_id = call.data["tent_entity"]
+        force_removal = call.data.get("force_removal", False)
+        
+        # Find tent device
+        tent_device = None
+        tent_entry_id = None
+        for entry_id in hass.data[DOMAIN]:
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
+                    tent_device = device
+                    tent_entry_id = entry_id
+                    break
+        
+        if not tent_device:
+            raise HomeAssistantError(f"Tent entity {tent_entity_id} not found")
+        
+        # Check if tent has assigned plants
+        if tent_device.assigned_plants and not force_removal:
+            assigned_count = len(tent_device.assigned_plants)
+            raise HomeAssistantError(
+                f"Cannot remove tent {tent_entity_id}: {assigned_count} plants are still assigned. "
+                "Unassign plants first or use force_removal=true"
+            )
+        
+        try:
+            # Unassign all plants if force removal
+            if force_removal and tent_device.assigned_plants:
+                for plant_entity_id in tent_device.assigned_plants.copy():
+                    # Find and unassign each plant
+                    for entry_id in hass.data[DOMAIN]:
+                        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                            plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                            if plant.entity_id == plant_entity_id:
+                                plant.unassign_from_tent()
+                                break
+            
+            # Remove tent config entry
+            await hass.config_entries.async_remove(tent_entry_id)
+            _LOGGER.info(f"Successfully removed tent {tent_entity_id}")
+            
+        except Exception as e:
+            _LOGGER.error(f"Error removing tent: {e}")
+            raise HomeAssistantError(f"Error removing tent: {e}")
+
 
 
     # Register services
@@ -1758,6 +1982,36 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_REPLACE_SENSOR, 
         replace_sensor, 
         schema=REPLACE_SENSOR_SCHEMA
+    )
+    
+    # Register tent services
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CREATE_TENT,
+        create_tent,
+        schema=CREATE_TENT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ASSIGN_TO_TENT,
+        assign_to_tent,
+        schema=ASSIGN_TO_TENT_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_UNASSIGN_FROM_TENT,
+        unassign_from_tent,
+        schema=UNASSIGN_FROM_TENT_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REMOVE_TENT,
+        remove_tent,
+        schema=REMOVE_TENT_SCHEMA
     )
     
     # Schema für change_position
@@ -1924,4 +2178,9 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_CHANGE_POSITION) 
     hass.services.async_remove(DOMAIN, SERVICE_EXPORT_PLANTS)
     hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PLANTS)
+    # Remove tent services
+    hass.services.async_remove(DOMAIN, SERVICE_CREATE_TENT)
+    hass.services.async_remove(DOMAIN, SERVICE_ASSIGN_TO_TENT)
+    hass.services.async_remove(DOMAIN, SERVICE_UNASSIGN_FROM_TENT)
+    hass.services.async_remove(DOMAIN, SERVICE_REMOVE_TENT)
  

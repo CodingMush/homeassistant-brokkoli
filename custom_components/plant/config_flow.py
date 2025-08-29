@@ -128,6 +128,7 @@ from .const import (
     ATTR_IS_NEW_PLANT,
     DEVICE_TYPE_PLANT,
     DEVICE_TYPE_CYCLE,
+    DEVICE_TYPE_TENT,
     DEVICE_TYPE_CONFIG,
     DEVICE_TYPES,
     ATTR_DEVICE_TYPE,
@@ -166,6 +167,14 @@ from .const import (
     FLOW_DOWNLOAD_PATH,
     DEFAULT_IMAGE_PATH,
     ATTR_PH,
+    # Tent-related constants
+    ATTR_TENT_ASSIGNMENT,
+    ATTR_TENT_ID,
+    ATTR_ASSIGNED_PLANTS,
+    ATTR_ENVIRONMENTAL_SENSORS,
+    ATTR_SHARED_THRESHOLDS,
+    ATTR_USE_VIRTUAL_SENSORS,
+    ATTR_TENT_ASSIGNED_AT,
 )
 from .plant_helpers import PlantHelper
 
@@ -322,6 +331,8 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input[ATTR_DEVICE_TYPE] == DEVICE_TYPE_CYCLE:
             return await self.async_step_cycle()
+        elif user_input[ATTR_DEVICE_TYPE] == DEVICE_TYPE_TENT:
+            return await self.async_step_tent()
         else:
             return await self.async_step_plant()
 
@@ -666,6 +677,160 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="cycle",
+            data_schema=vol.Schema(data_schema),
+            errors=errors,
+        )
+
+    async def async_step_tent(self, user_input=None):
+        """Handle tent configuration."""
+        errors = {}
+
+        # Hole die Default-Werte aus dem Konfigurationsknoten
+        config_entry = None
+        for entry in self._async_current_entries():
+            if entry.data.get("is_config", False):
+                config_entry = entry
+                break
+
+        if config_entry:
+            config_data = config_entry.data[FLOW_PLANT_INFO]
+        else:
+            config_data = {}
+
+        if user_input is not None:
+            self.plant_info = {
+                ATTR_NAME: user_input[ATTR_NAME],
+                ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
+                ATTR_IS_NEW_PLANT: True,
+                ATTR_STRAIN: "",
+                ATTR_BREEDER: "",
+                "growth_phase": DEFAULT_GROWTH_PHASE,
+                "plant_emoji": user_input.get(
+                    "tent_icon", "🏠"
+                ),
+                # Tent-specific attributes
+                ATTR_ASSIGNED_PLANTS: [],
+                ATTR_ENVIRONMENTAL_SENSORS: {
+                    "temperature": user_input.get(FLOW_SENSOR_TEMPERATURE),
+                    "humidity": user_input.get(FLOW_SENSOR_HUMIDITY),
+                    "co2": user_input.get(FLOW_SENSOR_CO2),
+                    "illuminance": user_input.get(FLOW_SENSOR_ILLUMINANCE),
+                    "conductivity": user_input.get(FLOW_SENSOR_CONDUCTIVITY),
+                    "moisture": user_input.get(FLOW_SENSOR_MOISTURE),
+                    "ph": user_input.get(FLOW_SENSOR_PH),
+                },
+                ATTR_SHARED_THRESHOLDS: {
+                    CONF_MIN_TEMPERATURE: user_input.get(CONF_MIN_TEMPERATURE, config_data.get(CONF_DEFAULT_MIN_TEMPERATURE, 10)),
+                    CONF_MAX_TEMPERATURE: user_input.get(CONF_MAX_TEMPERATURE, config_data.get(CONF_DEFAULT_MAX_TEMPERATURE, 30)),
+                    CONF_MIN_HUMIDITY: user_input.get(CONF_MIN_HUMIDITY, config_data.get(CONF_DEFAULT_MIN_HUMIDITY, 20)),
+                    CONF_MAX_HUMIDITY: user_input.get(CONF_MAX_HUMIDITY, config_data.get(CONF_DEFAULT_MAX_HUMIDITY, 60)),
+                    CONF_MIN_CO2: user_input.get(CONF_MIN_CO2, config_data.get(CONF_DEFAULT_MIN_CO2, 300)),
+                    CONF_MAX_CO2: user_input.get(CONF_MAX_CO2, config_data.get(CONF_DEFAULT_MAX_CO2, 4000)),
+                    CONF_MIN_ILLUMINANCE: user_input.get(CONF_MIN_ILLUMINANCE, config_data.get(CONF_DEFAULT_MIN_ILLUMINANCE, 1500)),
+                    CONF_MAX_ILLUMINANCE: user_input.get(CONF_MAX_ILLUMINANCE, config_data.get(CONF_DEFAULT_MAX_ILLUMINANCE, 30000)),
+                    CONF_MIN_MOISTURE: user_input.get(CONF_MIN_MOISTURE, config_data.get(CONF_DEFAULT_MIN_MOISTURE, 20)),
+                    CONF_MAX_MOISTURE: user_input.get(CONF_MAX_MOISTURE, config_data.get(CONF_DEFAULT_MAX_MOISTURE, 60)),
+                    CONF_MIN_CONDUCTIVITY: user_input.get(CONF_MIN_CONDUCTIVITY, config_data.get(CONF_DEFAULT_MIN_CONDUCTIVITY, 500)),
+                    CONF_MAX_CONDUCTIVITY: user_input.get(CONF_MAX_CONDUCTIVITY, config_data.get(CONF_DEFAULT_MAX_CONDUCTIVITY, 2000)),
+                    CONF_MIN_PH: user_input.get(CONF_MIN_PH, config_data.get(CONF_DEFAULT_MIN_PH, 5.5)),
+                    CONF_MAX_PH: user_input.get(CONF_MAX_PH, config_data.get(CONF_DEFAULT_MAX_PH, 7.5)),
+                },
+                # Optional area assignment
+                "area_id": user_input.get("area_id"),
+                "notes": user_input.get("notes", ""),
+            }
+
+            return self.async_create_entry(
+                title=self.plant_info[ATTR_NAME],
+                data={FLOW_PLANT_INFO: self.plant_info},
+            )
+
+        data_schema = {
+            # Basic tent information
+            vol.Required(ATTR_NAME): cv.string,
+            vol.Optional("tent_icon", default="🏠"): cv.string,
+            vol.Optional("area_id"): selector({
+                "area": {}
+            }),
+            vol.Optional("notes"): cv.string,
+            
+            # Environmental sensor selectors
+            vol.Optional(FLOW_SENSOR_TEMPERATURE): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }
+            ),
+            vol.Optional(FLOW_SENSOR_HUMIDITY): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }
+            ),
+            vol.Optional(FLOW_SENSOR_CO2): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.CO2,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }
+            ),
+            vol.Optional(FLOW_SENSOR_ILLUMINANCE): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.ILLUMINANCE,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }
+            ),
+            vol.Optional(FLOW_SENSOR_CONDUCTIVITY): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.CONDUCTIVITY,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }
+            ),
+            vol.Optional(FLOW_SENSOR_MOISTURE): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.MOISTURE,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }
+            ),
+            vol.Optional(FLOW_SENSOR_PH): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.PH,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }
+            ),
+            
+            # Shared threshold configuration
+            vol.Optional(CONF_MIN_TEMPERATURE, default=config_data.get(CONF_DEFAULT_MIN_TEMPERATURE, 10)): vol.Coerce(float),
+            vol.Optional(CONF_MAX_TEMPERATURE, default=config_data.get(CONF_DEFAULT_MAX_TEMPERATURE, 30)): vol.Coerce(float),
+            vol.Optional(CONF_MIN_HUMIDITY, default=config_data.get(CONF_DEFAULT_MIN_HUMIDITY, 20)): vol.Coerce(float),
+            vol.Optional(CONF_MAX_HUMIDITY, default=config_data.get(CONF_DEFAULT_MAX_HUMIDITY, 60)): vol.Coerce(float),
+            vol.Optional(CONF_MIN_CO2, default=config_data.get(CONF_DEFAULT_MIN_CO2, 300)): vol.Coerce(float),
+            vol.Optional(CONF_MAX_CO2, default=config_data.get(CONF_DEFAULT_MAX_CO2, 4000)): vol.Coerce(float),
+            vol.Optional(CONF_MIN_ILLUMINANCE, default=config_data.get(CONF_DEFAULT_MIN_ILLUMINANCE, 1500)): vol.Coerce(float),
+            vol.Optional(CONF_MAX_ILLUMINANCE, default=config_data.get(CONF_DEFAULT_MAX_ILLUMINANCE, 30000)): vol.Coerce(float),
+            vol.Optional(CONF_MIN_MOISTURE, default=config_data.get(CONF_DEFAULT_MIN_MOISTURE, 20)): vol.Coerce(float),
+            vol.Optional(CONF_MAX_MOISTURE, default=config_data.get(CONF_DEFAULT_MAX_MOISTURE, 60)): vol.Coerce(float),
+            vol.Optional(CONF_MIN_CONDUCTIVITY, default=config_data.get(CONF_DEFAULT_MIN_CONDUCTIVITY, 500)): vol.Coerce(float),
+            vol.Optional(CONF_MAX_CONDUCTIVITY, default=config_data.get(CONF_DEFAULT_MAX_CONDUCTIVITY, 2000)): vol.Coerce(float),
+            vol.Optional(CONF_MIN_PH, default=config_data.get(CONF_DEFAULT_MIN_PH, 5.5)): vol.Coerce(float),
+            vol.Optional(CONF_MAX_PH, default=config_data.get(CONF_DEFAULT_MAX_PH, 7.5)): vol.Coerce(float),
+        }
+
+        return self.async_show_form(
+            step_id="tent",
             data_schema=vol.Schema(data_schema),
             errors=errors,
         )

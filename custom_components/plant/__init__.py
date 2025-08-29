@@ -103,9 +103,11 @@ from .const import (
     DEFAULT_GROWTH_PHASE,
     DEVICE_TYPE_PLANT,
     DEVICE_TYPE_CYCLE,
+    DEVICE_TYPE_TENT,
     ATTR_DEVICE_TYPE,
     ICON_DEVICE_PLANT,
     ICON_DEVICE_CYCLE,
+    ICON_DEVICE_TENT,
     CYCLE_DOMAIN,
     AGGREGATION_MEDIAN,
     AGGREGATION_MEAN,
@@ -123,6 +125,17 @@ from .const import (
     ATTR_POSITION_X,
     ATTR_POSITION_Y,
     ATTR_PH,
+    # Tent-specific imports
+    ATTR_TENT_ASSIGNMENT,
+    ATTR_TENT_ID,
+    ATTR_ASSIGNED_PLANTS,
+    ATTR_ENVIRONMENTAL_SENSORS,
+    ATTR_SHARED_THRESHOLDS,
+    ATTR_USE_VIRTUAL_SENSORS,
+    ATTR_SENSOR_OVERRIDES,
+    ATTR_TENT_ASSIGNED_AT,
+    ATTR_VIRTUAL_SENSOR_REFERENCE,
+    ATTR_IS_VIRTUAL_SENSOR,
 )
 from .plant_helpers import PlantHelper
 from .services import async_setup_services, async_unload_services
@@ -170,7 +183,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         
         return True
 
-    # Normale Plant/Cycle Initialisierung fortsetzen
+    # Normale Plant/Cycle/Tent Initialisierung fortsetzen
     plant_data = entry.data[FLOW_PLANT_INFO]
     
     hass.data.setdefault(DOMAIN, {})
@@ -829,6 +842,15 @@ class PlantDevice(Entity):
         # Median Sensoren (nur für Cycles) 
         self._median_sensors = {}
 
+        # Tent-spezifische Attribute (für alle Device Types)
+        self._tent_assignment = self._plant_info.get(ATTR_TENT_ASSIGNMENT)
+        self._assigned_plants = self._plant_info.get(ATTR_ASSIGNED_PLANTS, []) if self.device_type == DEVICE_TYPE_TENT else []
+        self._environmental_sensors = self._plant_info.get(ATTR_ENVIRONMENTAL_SENSORS, {}) if self.device_type == DEVICE_TYPE_TENT else {}
+        self._shared_thresholds = self._plant_info.get(ATTR_SHARED_THRESHOLDS, {}) if self.device_type == DEVICE_TYPE_TENT else {}
+        self._use_virtual_sensors = self._plant_info.get(ATTR_USE_VIRTUAL_SENSORS, False)
+        self._sensor_overrides = self._plant_info.get(ATTR_SENSOR_OVERRIDES, {})
+        self._tent_assigned_at = self._plant_info.get(ATTR_TENT_ASSIGNED_AT)
+
         self.cycle_select = None  # Neue Property
 
         # Aggregationsmethode für flowering_duration
@@ -1044,6 +1066,23 @@ class PlantDevice(Entity):
         # Füge member_count für Cycles hinzu
         if self.device_type == DEVICE_TYPE_CYCLE:
             attrs = {"member_count": len(self._member_plants)} | attrs
+
+        # Füge Tent-spezifische Attribute hinzu
+        if self.device_type == DEVICE_TYPE_TENT:
+            attrs.update({
+                "assigned_plants": self._assigned_plants,
+                "plant_count": len(self._assigned_plants),
+                "environmental_sensors": self._environmental_sensors,
+                "shared_thresholds": self._shared_thresholds,
+            })
+        elif self.device_type == DEVICE_TYPE_PLANT:
+            # Füge Plant-spezifische Tent-Attribute hinzu
+            attrs.update({
+                "tent_assignment": self._tent_assignment,
+                "uses_virtual_sensors": self._use_virtual_sensors,
+                "tent_assigned_at": self._tent_assigned_at,
+                "sensor_overrides": self._sensor_overrides,
+            })
 
         # Füge Plant-spezifische Attribute nur für Plants hinzu
         if self.device_type == DEVICE_TYPE_PLANT:
@@ -1858,6 +1897,8 @@ class PlantDevice(Entity):
         """Return the icon."""
         if self.device_type == DEVICE_TYPE_CYCLE:
             return ICON_DEVICE_CYCLE
+        elif self.device_type == DEVICE_TYPE_TENT:
+            return ICON_DEVICE_TENT
         return ICON_DEVICE_PLANT
 
     def add_member_plant(self, plant_entity_id: str) -> None:
@@ -2203,6 +2244,199 @@ class PlantDevice(Entity):
         # Aktualisiere den Energiekosten-Sensor wenn vorhanden
         if hasattr(self, 'energy_cost') and self.energy_cost:
             self.energy_cost.async_schedule_update_ha_state(True)
+
+    # Tent Management Methods
+    
+    def assign_to_tent(self, tent_entity_id: str, use_virtual_sensors: bool = True) -> None:
+        """Assign this plant to a tent."""
+        if self.device_type != DEVICE_TYPE_PLANT:
+            raise ValueError("Only plants can be assigned to tents")
+            
+        self._tent_assignment = tent_entity_id
+        self._use_virtual_sensors = use_virtual_sensors
+        self._tent_assigned_at = datetime.now().isoformat()
+        
+        # Update config entry with new tent assignment
+        data = dict(self._config.data)
+        data[FLOW_PLANT_INFO][ATTR_TENT_ASSIGNMENT] = tent_entity_id
+        data[FLOW_PLANT_INFO][ATTR_USE_VIRTUAL_SENSORS] = use_virtual_sensors
+        data[FLOW_PLANT_INFO][ATTR_TENT_ASSIGNED_AT] = self._tent_assigned_at
+        self._hass.config_entries.async_update_entry(self._config, data=data)
+        
+        # Register with tent if it exists
+        tent_device = self._get_tent_device(tent_entity_id)
+        if tent_device:
+            tent_device.register_plant(self.entity_id)
+
+    def unassign_from_tent(self) -> None:
+        """Remove plant assignment from tent."""
+        if self.device_type != DEVICE_TYPE_PLANT:
+            raise ValueError("Only plants can be unassigned from tents")
+            
+        old_tent = self._tent_assignment
+        
+        self._tent_assignment = None
+        self._use_virtual_sensors = False
+        self._tent_assigned_at = None
+        self._sensor_overrides = {}
+        
+        # Update config entry
+        data = dict(self._config.data)
+        data[FLOW_PLANT_INFO].pop(ATTR_TENT_ASSIGNMENT, None)
+        data[FLOW_PLANT_INFO].pop(ATTR_USE_VIRTUAL_SENSORS, None)
+        data[FLOW_PLANT_INFO].pop(ATTR_TENT_ASSIGNED_AT, None)
+        data[FLOW_PLANT_INFO].pop(ATTR_SENSOR_OVERRIDES, None)
+        self._hass.config_entries.async_update_entry(self._config, data=data)
+        
+        # Unregister from old tent
+        if old_tent:
+            tent_device = self._get_tent_device(old_tent)
+            if tent_device:
+                tent_device.unregister_plant(self.entity_id)
+
+    def register_plant(self, plant_entity_id: str) -> None:
+        """Register a plant with this tent (only for tent devices)."""
+        if self.device_type != DEVICE_TYPE_TENT:
+            raise ValueError("Only tent devices can register plants")
+            
+        if plant_entity_id not in self._assigned_plants:
+            self._assigned_plants.append(plant_entity_id)
+            
+            # Update config entry
+            data = dict(self._config.data)
+            data[FLOW_PLANT_INFO][ATTR_ASSIGNED_PLANTS] = self._assigned_plants
+            self._hass.config_entries.async_update_entry(self._config, data=data)
+            
+            self.async_write_ha_state()
+
+    def unregister_plant(self, plant_entity_id: str) -> None:
+        """Unregister a plant from this tent (only for tent devices)."""
+        if self.device_type != DEVICE_TYPE_TENT:
+            raise ValueError("Only tent devices can unregister plants")
+            
+        if plant_entity_id in self._assigned_plants:
+            self._assigned_plants.remove(plant_entity_id)
+            
+            # Update config entry
+            data = dict(self._config.data)
+            data[FLOW_PLANT_INFO][ATTR_ASSIGNED_PLANTS] = self._assigned_plants
+            self._hass.config_entries.async_update_entry(self._config, data=data)
+            
+            self.async_write_ha_state()
+
+    def get_virtual_sensor_reference(self, sensor_type: str) -> str | None:
+        """Get the reference entity ID for a virtual sensor."""
+        if not self._use_virtual_sensors or not self._tent_assignment:
+            return None
+            
+        # Check for plant-specific overrides first
+        if sensor_type in self._sensor_overrides:
+            return self._sensor_overrides[sensor_type]
+            
+        # Get tent device and return its sensor
+        tent_device = self._get_tent_device(self._tent_assignment)
+        if tent_device and sensor_type in tent_device._environmental_sensors:
+            return tent_device._environmental_sensors[sensor_type]
+            
+        return None
+
+    def set_sensor_override(self, sensor_type: str, entity_id: str) -> None:
+        """Set a plant-specific sensor override."""
+        self._sensor_overrides[sensor_type] = entity_id
+        
+        # Update config entry
+        data = dict(self._config.data)
+        data[FLOW_PLANT_INFO][ATTR_SENSOR_OVERRIDES] = self._sensor_overrides
+        self._hass.config_entries.async_update_entry(self._config, data=data)
+
+    def _get_tent_device(self, tent_entity_id: str) -> 'PlantDevice' | None:
+        """Get tent device by entity ID."""
+        for entry_id in self._hass.data[DOMAIN]:
+            if ATTR_PLANT in self._hass.data[DOMAIN][entry_id]:
+                device = self._hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
+                    return device
+        return None
+
+    def get_aggregated_sensor_data(self) -> dict:
+        """Get aggregated data from assigned plants (only for tent devices)."""
+        if self.device_type != DEVICE_TYPE_TENT:
+            return {}
+            
+        aggregated_data = {}
+        sensor_values = {
+            'temperature': [],
+            'moisture': [],
+            'conductivity': [],
+            'illuminance': [],
+            'humidity': [],
+            'co2': [],
+            'ph': [],
+            'power_consumption': []
+        }
+        
+        for plant_entity_id in self._assigned_plants:
+            plant_device = None
+            for entry_id in self._hass.data[DOMAIN]:
+                if ATTR_PLANT in self._hass.data[DOMAIN][entry_id]:
+                    device = self._hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                    if device.entity_id == plant_entity_id:
+                        plant_device = device
+                        break
+                        
+            if not plant_device:
+                continue
+                
+            # Collect sensor values
+            sensors_to_check = {
+                'temperature': plant_device.sensor_temperature,
+                'moisture': plant_device.sensor_moisture,
+                'conductivity': plant_device.sensor_conductivity,
+                'illuminance': plant_device.sensor_illuminance,
+                'humidity': plant_device.sensor_humidity,
+                'co2': plant_device.sensor_CO2,
+                'ph': plant_device.sensor_ph,
+                'power_consumption': plant_device.sensor_power_consumption
+            }
+            
+            for sensor_type, sensor in sensors_to_check.items():
+                if sensor and hasattr(sensor, 'state') and sensor.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None):
+                    try:
+                        sensor_values[sensor_type].append(float(sensor.state))
+                    except (TypeError, ValueError):
+                        continue
+        
+        # Calculate aggregated values
+        for sensor_type, values in sensor_values.items():
+            if values:
+                aggregated_data[sensor_type] = {
+                    'mean': sum(values) / len(values),
+                    'min': min(values),
+                    'max': max(values),
+                    'count': len(values)
+                }
+                
+        return aggregated_data
+
+    @property
+    def tent_assignment(self) -> str | None:
+        """Return the tent assignment for this plant."""
+        return self._tent_assignment
+
+    @property
+    def assigned_plants(self) -> list[str]:
+        """Return list of assigned plants for this tent."""
+        return self._assigned_plants.copy() if self.device_type == DEVICE_TYPE_TENT else []
+
+    @property 
+    def uses_virtual_sensors(self) -> bool:
+        """Return whether this plant uses virtual sensors."""
+        return self._use_virtual_sensors
+
+    @property
+    def environmental_sensors(self) -> dict:
+        """Return environmental sensors for this tent."""
+        return self._environmental_sensors.copy() if self.device_type == DEVICE_TYPE_TENT else {}
 
 
 async def async_remove_config_entry_device(
