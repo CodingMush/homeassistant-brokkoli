@@ -71,9 +71,13 @@ from .const import (
     SERVICE_ADD_WATERING,
     SERVICE_ADD_CONDUCTIVITY,
     SERVICE_ADD_PH,
-
+    # Tent-related constants
+    FLOW_TENT_ENTITY,
+    FLOW_TENT_SENSORS,
+    FLOW_INHERIT_TENT_SENSORS,
 )
 from .plant_helpers import PlantHelper
+from .tent_sensor_manager import TentSensorManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -165,6 +169,31 @@ ADD_CONDUCTIVITY_SCHEMA = vol.Schema({
 ADD_PH_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_id,
     vol.Required("value"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=14.0)),
+})
+
+# Tent management service schemas
+ASSIGN_TENT_SENSORS_SCHEMA = vol.Schema({
+    vol.Required("tent_id"): cv.string,
+    vol.Required("sensors"): vol.Schema({
+        vol.Optional("temperature"): cv.entity_id,
+        vol.Optional("humidity"): cv.entity_id,
+        vol.Optional("co2"): cv.entity_id,
+        vol.Optional("illuminance"): cv.entity_id,
+        vol.Optional("conductivity"): cv.entity_id,
+        vol.Optional("ph"): cv.entity_id,
+    }),
+})
+
+MOVE_PLANT_TO_TENT_SCHEMA = vol.Schema({
+    vol.Required("plant_id"): cv.string,
+    vol.Required("tent_id"): cv.string,
+    vol.Optional("inherit_sensors", default=True): cv.boolean,
+})
+
+OVERRIDE_PLANT_SENSOR_SCHEMA = vol.Schema({
+    vol.Required("plant_id"): cv.string,
+    vol.Required("sensor_type"): vol.In(["temperature", "humidity", "co2", "illuminance", "conductivity", "ph"]),
+    vol.Optional("sensor_entity"): cv.entity_id,  # Optional to allow clearing override
 })
 
 
@@ -1694,6 +1723,105 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             _LOGGER.error(f"Error importing plants: {e}")
             raise HomeAssistantError(f"Error importing plants: {e}")
 
+    # Tent management services
+    async def assign_tent_sensors(call: ServiceCall) -> None:
+        """Assign sensors to a tent entity."""
+        tent_id = call.data.get("tent_id")
+        sensors = call.data.get("sensors", {})
+        
+        tent_sensor_manager = TentSensorManager(hass)
+        
+        # Find tent entry
+        tent_entry = None
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if entry.entry_id == tent_id and entry.data.get("is_tent", False):
+                tent_entry = entry
+                break
+        
+        if not tent_entry:
+            raise HomeAssistantError(f"Tent with ID {tent_id} not found")
+        
+        # Update tent sensor configuration
+        tent_data = dict(tent_entry.data)
+        tent_data[FLOW_TENT_SENSORS] = sensors
+        
+        hass.config_entries.async_update_entry(tent_entry, data=tent_data)
+        
+        # Handle sensor updates for assigned plants
+        affected_plants = await tent_sensor_manager.handle_tent_sensor_update(tent_id)
+        
+        _LOGGER.info(f"Updated tent {tent_id} sensors, affected {len(affected_plants)} plants")
+    
+    async def move_plant_to_tent(call: ServiceCall) -> None:
+        """Move plant to a different tent."""
+        plant_id = call.data.get("plant_id")
+        tent_id = call.data.get("tent_id")
+        inherit_sensors = call.data.get("inherit_sensors", True)
+        
+        tent_sensor_manager = TentSensorManager(hass)
+        
+        # Find plant entry
+        plant_entry = None
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if entry.entry_id == plant_id and not entry.data.get("is_tent", False):
+                plant_entry = entry
+                break
+        
+        if not plant_entry:
+            raise HomeAssistantError(f"Plant with ID {plant_id} not found")
+        
+        # Validate tent exists
+        if not await tent_sensor_manager.validate_tent_assignment(tent_id):
+            raise HomeAssistantError(f"Tent with ID {tent_id} not found or invalid")
+        
+        # Apply tent sensors to plant
+        success = await tent_sensor_manager.apply_tent_sensors_to_plant(
+            plant_entry, tent_id, inherit_sensors
+        )
+        
+        if success:
+            _LOGGER.info(f"Moved plant {plant_id} to tent {tent_id}")
+            # Reload plant entry to apply changes
+            await hass.config_entries.async_reload(plant_id)
+        else:
+            raise HomeAssistantError(f"Failed to move plant {plant_id} to tent {tent_id}")
+    
+    async def override_plant_sensor(call: ServiceCall) -> None:
+        """Override specific sensor for a plant."""
+        plant_id = call.data.get("plant_id")
+        sensor_type = call.data.get("sensor_type")
+        sensor_entity = call.data.get("sensor_entity")
+        
+        # Find plant entry
+        plant_entry = None
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if entry.entry_id == plant_id and not entry.data.get("is_tent", False):
+                plant_entry = entry
+                break
+        
+        if not plant_entry:
+            raise HomeAssistantError(f"Plant with ID {plant_id} not found")
+        
+        # Update plant configuration
+        plant_data = dict(plant_entry.data)
+        plant_info = dict(plant_data.get(FLOW_PLANT_INFO, {}))
+        
+        sensor_key = f"{sensor_type}_sensor"
+        if sensor_entity:
+            plant_info[sensor_key] = sensor_entity
+        else:
+            # Clear override
+            plant_info.pop(sensor_key, None)
+        
+        plant_data[FLOW_PLANT_INFO] = plant_info
+        
+        hass.config_entries.async_update_entry(plant_entry, data=plant_data)
+        
+        _LOGGER.info(f"Updated plant {plant_id} {sensor_type} sensor override")
+        
+        # Reload plant entry to apply changes
+        await hass.config_entries.async_reload(plant_id)
+
 
 
     # Register services
@@ -1848,6 +1976,28 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         import_plants,
         schema=IMPORT_PLANTS_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL
+    )
+    
+    # Register tent management services
+    hass.services.async_register(
+        DOMAIN,
+        "assign_tent_sensors",
+        assign_tent_sensors,
+        schema=ASSIGN_TENT_SENSORS_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        "move_plant_to_tent",
+        move_plant_to_tent,
+        schema=MOVE_PLANT_TO_TENT_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        "override_plant_sensor",
+        override_plant_sensor,
+        schema=OVERRIDE_PLANT_SENSOR_SCHEMA
     )
     
 

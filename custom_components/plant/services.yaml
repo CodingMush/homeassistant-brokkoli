@@ -145,6 +145,82 @@ create_plant:
           domain: sensor
           device_class: ph
 
+# Tent Management Services
+assign_tent_sensors:
+  description: Assign sensors to a tent entity
+  fields:
+    tent_id:
+      name: Tent ID
+      description: The tent entry ID to assign sensors to
+      required: true
+      selector:
+        text:
+    sensors:
+      name: Sensor Mappings
+      description: Mapping of sensor types to entity IDs
+      required: true
+      selector:
+        object:
+      example:
+        temperature: sensor.tent_temperature
+        humidity: sensor.tent_humidity
+        co2: sensor.tent_co2
+        illuminance: sensor.tent_light
+        conductivity: sensor.tent_ec
+        ph: sensor.tent_ph
+
+move_plant_to_tent:
+  description: Move plant to a different tent with sensor inheritance
+  fields:
+    plant_id:
+      name: Plant ID
+      description: The plant entry ID to move
+      required: true
+      selector:
+        text:
+    tent_id:
+      name: Tent ID  
+      description: The target tent entry ID
+      required: true
+      selector:
+        text:
+    inherit_sensors:
+      name: Inherit Tent Sensors
+      description: Whether to inherit sensors from the tent
+      default: true
+      selector:
+        boolean:
+
+override_plant_sensor:
+  description: Override specific sensor for a plant
+  fields:
+    plant_id:
+      name: Plant ID
+      description: The plant entry ID to modify
+      required: true
+      selector:
+        text:
+    sensor_type:
+      name: Sensor Type
+      description: Type of sensor to override
+      required: true
+      selector:
+        select:
+          options:
+            - temperature
+            - humidity
+            - co2
+            - illuminance
+            - conductivity
+            - ph
+    sensor_entity:
+      name: Sensor Entity
+      description: New sensor entity ID (leave empty to clear override)
+      required: false
+      selector:
+        entity:
+          domain: sensor
+
 move_to_cycle:
   name: Move to cycle
   description: Moves one or more plants to a cycle device. If no cycle is specified, removes plants from their current cycle.

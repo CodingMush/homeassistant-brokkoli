@@ -166,8 +166,13 @@ from .const import (
     FLOW_DOWNLOAD_PATH,
     DEFAULT_IMAGE_PATH,
     ATTR_PH,
+    # Tent-related constants
+    FLOW_TENT_ENTITY,
+    FLOW_TENT_SENSORS,
+    FLOW_INHERIT_TENT_SENSORS,
 )
 from .plant_helpers import PlantHelper
+from .tent_sensor_manager import TentSensorManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -182,6 +187,14 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize flow."""
         self.plant_info = {}
         self.error = None
+        self._tent_sensor_manager = None
+
+    @property
+    def tent_sensor_manager(self) -> TentSensorManager:
+        """Get tent sensor manager instance."""
+        if self._tent_sensor_manager is None:
+            self._tent_sensor_manager = TentSensorManager(self.hass)
+        return self._tent_sensor_manager
 
     @staticmethod
     @callback
@@ -744,17 +757,38 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 FLOW_SENSOR_PH: user_input.get(FLOW_SENSOR_PH),
             }
 
-            # If a tent is selected, get the sensors from the tent
-            tent_entity = user_input.get("tent_entity")
+            # Enhanced tent and sensor inheritance handling
+            tent_entity = user_input.get(FLOW_TENT_ENTITY)
+            inherit_tent_sensors = user_input.get(FLOW_INHERIT_TENT_SENSORS, True)
+            
+            # Store tent assignment info
             if tent_entity:
-                tent = self.hass.data[DOMAIN].get("tent")
-                if tent:
-                    self.plant_info[FLOW_SENSOR_TEMPERATURE] = tent.temperature_sensor
-                    self.plant_info[FLOW_SENSOR_HUMIDITY] = tent.humidity_sensor
-                    self.plant_info[FLOW_SENSOR_CONDUCTIVITY] = tent.conductivity_sensor
-                    self.plant_info[FLOW_SENSOR_ILLUMINANCE] = tent.illuminance_sensor
-                    self.plant_info[FLOW_SENSOR_CO2] = tent.co2_sensor
-                    self.plant_info[FLOW_SENSOR_PH] = tent.ph_sensor
+                self.plant_info[FLOW_TENT_ENTITY] = tent_entity
+                self.plant_info[FLOW_INHERIT_TENT_SENSORS] = inherit_tent_sensors
+                
+                # Validate tent assignment
+                if not await self.tent_sensor_manager.validate_tent_assignment(tent_entity):
+                    _LOGGER.warning(f"Invalid tent assignment: {tent_entity}")
+                    # Continue anyway but log warning
+                
+                # Resolve final sensor configuration using the manager
+                resolved_sensors = await self.tent_sensor_manager.resolve_plant_sensors(
+                    plant_config={
+                        FLOW_SENSOR_TEMPERATURE: user_input.get(FLOW_SENSOR_TEMPERATURE),
+                        FLOW_SENSOR_HUMIDITY: user_input.get(FLOW_SENSOR_HUMIDITY),
+                        FLOW_SENSOR_CO2: user_input.get(FLOW_SENSOR_CO2),
+                        FLOW_SENSOR_ILLUMINANCE: user_input.get(FLOW_SENSOR_ILLUMINANCE),
+                        FLOW_SENSOR_CONDUCTIVITY: user_input.get(FLOW_SENSOR_CONDUCTIVITY),
+                        FLOW_SENSOR_PH: user_input.get(FLOW_SENSOR_PH),
+                    },
+                    tent_entry_id=tent_entity,
+                    inherit_sensors=inherit_tent_sensors
+                )
+                
+                # Apply resolved sensors to plant_info
+                for sensor_type, sensor_entity in resolved_sensors.items():
+                    sensor_key = f"{sensor_type}_sensor"
+                    self.plant_info[sensor_key] = sensor_entity
 
             plant_helper = PlantHelper(hass=self.hass)
             plant_config = await plant_helper.get_plantbook_data(
@@ -895,8 +929,13 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     }
                 }
             ),
-            # Tent selection
-            vol.Optional("tent_entity", description={"name": "Tent"}): selector({"entity": {"domain": DOMAIN}}),
+            # Tent selection with sensor inheritance option
+            vol.Optional(FLOW_TENT_ENTITY, description={"name": "Tent"}): await self._get_tent_selector(),
+            vol.Optional(
+                FLOW_INHERIT_TENT_SENSORS, 
+                default=True, 
+                description={"name": "Inherit Tent Sensors"}
+            ): cv.boolean,
             vol.Optional(
                 ATTR_NORMALIZE_MOISTURE,
                 default=config_data.get("default_normalize_moisture"),

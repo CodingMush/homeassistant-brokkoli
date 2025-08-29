@@ -109,6 +109,7 @@ from .const import (
     ICON_ENERGY_COST,
     DEVICE_CLASS_PH,  # Importiere unsere eigene Device Class
 )
+from .tent_sensor_manager import TentSensorManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -116,188 +117,88 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ):
-    """Set up Plant Sensors from a config entry."""
+    """Set up Plant Sensors from a config entry with tent sensor inheritance support."""
     plant = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
-
-    # Erstelle die Standard-Sensoren für Plants
-    if plant.device_type != DEVICE_TYPE_CYCLE:
-        # Standard Sensoren erstellen
-        
-        # Überprüfe, ob ein Zelt zugewiesen ist
-        tent = hass.data[DOMAIN].get("tent")
-        if tent:
-            # Erstelle Tent-Sensoren
-            ttemp = TentCurrentTemperature(hass, entry, tent)
-            thum = TentCurrentHumidity(hass, entry, tent)
-            tcond = TentCurrentStatus(hass, entry, tent, "conductivity")
-            tillu = TentCurrentStatus(hass, entry, tent, "illuminance")
-            tco2 = TentCurrentStatus(hass, entry, tent, "co2")
-            tph = TentCurrentStatus(hass, entry, tent, "ph")
-
-            tent_sensors = [
-                ttemp,
-                thum,
-                tcond,
-                tillu,
-                tco2,
-                tph
-            ]
-
-            # Füge die Tent-Sensoren zu HA hinzu
-            async_add_entities(tent_sensors)
-
-            # Weise die externen Sensoren der Tent-Entität zu
-            tent.add_sensors(
-                temperature_sensor=ttemp.entity_id,
-                humidity_sensor=thum.entity_id,
-                conductivity_sensor=tcond.entity_id,
-                illuminance_sensor=tillu.entity_id,
-                co2_sensor=tco2.entity_id,
-                ph_sensor=tph.entity_id,
-            )
-
-
-
-        else:
-            # Erstelle Plant-Sensoren
-            pcurb = PlantCurrentIlluminance(hass, entry, plant)
-            pcurc = PlantCurrentConductivity(hass, entry, plant)
-            pcurm = PlantCurrentMoisture(hass, entry, plant)
-            pcurt = PlantCurrentTemperature(hass, entry, plant)
-            pcurh = PlantCurrentHumidity(hass, entry, plant)
-            pcurCO2 = PlantCurrentCO2(hass, entry, plant)
-            pcurph = PlantCurrentPh(hass, entry, plant)  # Neuer pH Sensor
-
-            plant_sensors = [
-                pcurb,
-                pcurc,
-                pcurm,
-                pcurt,
-                pcurh,
-                pcurph,
-                pcurCO2,
-            ]  # pH Sensor hinzugefügt
-
-            # Erst die Entities zu HA hinzufügen
-            async_add_entities(plant_sensors)
-            hass.data[DOMAIN][entry.entry_id][ATTR_SENSORS] = plant_sensors
-
-            # Dann die Sensoren der Plant hinzufügen
-            plant.add_sensors(
-                temperature=pcurt,
-                moisture=pcurm,
-                conductivity=pcurc,
-                illuminance=pcurb,
-                humidity=pcurh,
-                CO2=pcurCO2,
-                power_consumption=None,  # Wird später gesetzt
-                ph=pcurph,  # pH Sensor hinzugefügt
-            )
-
-            # Jetzt erst die externen Sensoren zuweisen
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_ILLUMINANCE):
-                pcurb.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_ILLUMINANCE]
-                )
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CONDUCTIVITY):
-                pcurc.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_CONDUCTIVITY]
-                )
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_MOISTURE):
-                pcurm.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_MOISTURE]
-                )
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_TEMPERATURE):
-                pcurt.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_TEMPERATURE]
-                )
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY):
-                pcurh.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_HUMIDITY]
-                )
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2):
-                pcurCO2.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_CO2]
-                )
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_PH):  # pH Sensor zuweisen
-                pcurph.replace_external_sensor(entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_PH])
-
-        # PPFD und DLI für Plants
-        pcurppfd = PlantCurrentPpfd(hass, entry, plant)
-        async_add_entities([pcurppfd])
-
-        pintegral = PlantTotalLightIntegral(hass, entry, pcurppfd, plant)
-        async_add_entities([pintegral], update_before_add=True)
-
-        # Consumption Sensoren erstellen
-        moisture_consumption = None
-        total_water_consumption = None  # Initialisiere Total Water
-        fertilizer_consumption = None
-        total_fertilizer_consumption = None  # Initialisiere Total Fertilizer
-
-        if plant.sensor_moisture:
-            moisture_consumption = PlantCurrentMoistureConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([moisture_consumption])
-
-            # Total Water Consumption hinzufügen
-            total_water_consumption = PlantTotalWaterConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([total_water_consumption])
-
-        if plant.sensor_conductivity:
-            fertilizer_consumption = PlantCurrentFertilizerConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([fertilizer_consumption])
-
-            # Total Fertilizer Consumption hinzufügen
-            total_fertilizer_consumption = PlantTotalFertilizerConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([total_fertilizer_consumption])
-
-        # Jetzt können wir add_calculations aufrufen
-        plant.add_calculations(
-            pcurppfd, pintegral, moisture_consumption, fertilizer_consumption
-        )
-        # Füge die Total Consumption Sensoren hinzu
-        plant.total_water_consumption = total_water_consumption
-        plant.total_fertilizer_consumption = total_fertilizer_consumption
-
-        pdli = PlantDailyLightIntegral(hass, entry, pintegral, plant)
-        async_add_entities(new_entities=[pdli], update_before_add=True)
-
-        plant.add_dli(dli=pdli)
-
-        # Füge zuerst den Total Power Consumption Sensor hinzu
-        if plant.device_type != DEVICE_TYPE_CYCLE:
-            total_power_consumption = PlantTotalPowerConsumption(hass, entry, plant)
-            async_add_entities([total_power_consumption])
-
-            # Weise den externen Sensor zu
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_POWER_CONSUMPTION):
-                total_power_consumption.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_POWER_CONSUMPTION]
-                )
-
-            # Dann erst den Current Power Consumption Sensor erstellen
-            pcurp = PlantCurrentPowerConsumption(hass, entry, plant)
-            async_add_entities([pcurp])
-
-            # Jetzt können wir beide Sensoren der Plant hinzufügen
-            plant.add_power_consumption_sensors(
-                current=pcurp, total=total_power_consumption
+    plant_info = entry.data.get(FLOW_PLANT_INFO, {})
+    tent_sensor_manager = TentSensorManager(hass)
+    
+    # Skip sensor setup for cycle devices
+    if plant.device_type == DEVICE_TYPE_CYCLE:
+        return
+    
+    # Check if plant is assigned to a tent and should inherit sensors
+    tent_entry_id = plant_info.get(FLOW_TENT_ENTITY)
+    inherit_tent_sensors = plant_info.get(FLOW_INHERIT_TENT_SENSORS, True)
+    
+    # Resolve final sensor configuration considering tent inheritance
+    resolved_sensors = await tent_sensor_manager.resolve_plant_sensors(
+        plant_config={
+            FLOW_SENSOR_TEMPERATURE: plant_info.get(FLOW_SENSOR_TEMPERATURE),
+            FLOW_SENSOR_HUMIDITY: plant_info.get(FLOW_SENSOR_HUMIDITY),
+            FLOW_SENSOR_CO2: plant_info.get(FLOW_SENSOR_CO2),
+            FLOW_SENSOR_ILLUMINANCE: plant_info.get(FLOW_SENSOR_ILLUMINANCE),
+            FLOW_SENSOR_CONDUCTIVITY: plant_info.get(FLOW_SENSOR_CONDUCTIVITY),
+            FLOW_SENSOR_PH: plant_info.get(FLOW_SENSOR_PH),
+            FLOW_SENSOR_MOISTURE: plant_info.get(FLOW_SENSOR_MOISTURE),
+            FLOW_SENSOR_POWER_CONSUMPTION: plant_info.get(FLOW_SENSOR_POWER_CONSUMPTION),
+        },
+        tent_entry_id=tent_entry_id,
+        inherit_sensors=inherit_tent_sensors
+    )
+    
+    # Create plant sensor entities
+    plant_sensors = []
+    
+    # Standard environmental sensors
+    pcurb = PlantCurrentIlluminance(hass, entry, plant)
+    pcurc = PlantCurrentConductivity(hass, entry, plant)
+    pcurm = PlantCurrentMoisture(hass, entry, plant)
+    pcurt = PlantCurrentTemperature(hass, entry, plant)
+    pcurh = PlantCurrentHumidity(hass, entry, plant)
+    pcurCO2 = PlantCurrentCO2(hass, entry, plant)
+    pcurph = PlantCurrentPh(hass, entry, plant)
+    
+    plant_sensors.extend([
+        pcurb, pcurc, pcurm, pcurt, pcurh, pcurCO2, pcurph
+    ])
+    
+    # Add entities to Home Assistant
+    async_add_entities(plant_sensors)
+    hass.data[DOMAIN][entry.entry_id][ATTR_SENSORS] = plant_sensors
+    
+    # Add sensors to plant device
+    plant.add_sensors(
+        temperature=pcurt,
+        moisture=pcurm,
+        conductivity=pcurc,
+        illuminance=pcurb,
+        humidity=pcurh,
+        CO2=pcurCO2,
+        power_consumption=None,  # Set later
+        ph=pcurph,
+    )
+    
+    # Apply resolved external sensors (from tent inheritance or direct assignment)
+    await _apply_external_sensors(resolved_sensors, {
+        "illuminance": pcurb,
+        "conductivity": pcurc,
+        "moisture": pcurm,
+        "temperature": pcurt,
+        "humidity": pcurh,
+        "co2": pcurCO2,
+        "ph": pcurph,
+    })
+    
+    # Set up derived sensors (PPFD, DLI, etc.)
+    await _setup_derived_sensors(hass, entry, plant, async_add_entities)
+    
+    # Set up consumption sensors
+    await _setup_consumption_sensors(hass, entry, plant, async_add_entities)
+    
+    # Set up power consumption sensors
+    await _setup_power_consumption_sensors(
+        hass, entry, plant, async_add_entities, resolved_sensors
+    )
             )
     if plant.device_type == DEVICE_TYPE_CYCLE:
 =======
@@ -397,224 +298,18 @@ async def async_setup_entry(
             if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_PH):  # pH Sensor zuweisen
                 pcurph.replace_external_sensor(entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_PH])
 
-        # PPFD und DLI für Plants
-        pcurppfd = PlantCurrentPpfd(hass, entry, plant)
-        async_add_entities([pcurppfd])
-
-        pintegral = PlantTotalLightIntegral(hass, entry, pcurppfd, plant)
-        async_add_entities([pintegral], update_before_add=True)
-
-        # Consumption Sensoren erstellen
-        moisture_consumption = None
-        total_water_consumption = None  # Initialisiere Total Water
-        fertilizer_consumption = None
-        total_fertilizer_consumption = None  # Initialisiere Total Fertilizer
-
-        if plant.sensor_moisture:
-            moisture_consumption = PlantCurrentMoistureConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([moisture_consumption])
-
-            # Total Water Consumption hinzufügen
-            total_water_consumption = PlantTotalWaterConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([total_water_consumption])
-
-        if plant.sensor_conductivity:
-            fertilizer_consumption = PlantCurrentFertilizerConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([fertilizer_consumption])
-
-            # Total Fertilizer Consumption hinzufügen
-            total_fertilizer_consumption = PlantTotalFertilizerConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([total_fertilizer_consumption])
-
-        # Jetzt können wir add_calculations aufrufen
-        plant.add_calculations(
-            pcurppfd, pintegral, moisture_consumption, fertilizer_consumption
+        # Set up derived sensors (PPFD, DLI, etc.)
+        await _setup_derived_sensors(hass, entry, plant, async_add_entities)
+        
+        # Set up consumption sensors
+        await _setup_consumption_sensors(hass, entry, plant, async_add_entities)
+        
+        # Set up power consumption sensors
+        await _setup_power_consumption_sensors(
+            hass, entry, plant, async_add_entities, resolved_sensors
         )
-        # Füge die Total Consumption Sensoren hinzu
-        plant.total_water_consumption = total_water_consumption
-        plant.total_fertilizer_consumption = total_fertilizer_consumption
-
-        pdli = PlantDailyLightIntegral(hass, entry, pintegral, plant)
-        async_add_entities(new_entities=[pdli], update_before_add=True)
-
-        plant.add_dli(dli=pdli)
-
-        # Füge zuerst den Total Power Consumption Sensor hinzu
-        if plant.device_type != DEVICE_TYPE_CYCLE:
-            total_power_consumption = PlantTotalPowerConsumption(hass, entry, plant)
-            async_add_entities([total_power_consumption])
-
-            # Weise den externen Sensor zu
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_POWER_CONSUMPTION):
-                total_power_consumption.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_POWER_CONSUMPTION]
-                )
-
-            # Dann erst den Current Power Consumption Sensor erstellen
-            pcurp = PlantCurrentPowerConsumption(hass, entry, plant)
-            async_add_entities([pcurp])
-
-            # Jetzt können wir beide Sensoren der Plant hinzufügen
-            plant.add_power_consumption_sensors(
-                current=pcurp, total=total_power_consumption
-            )
-    if plant.device_type == DEVICE_TYPE_CYCLE:
-        pcurb = PlantCurrentIlluminance(hass, entry, plant)
-        pcurc = PlantCurrentConductivity(hass, entry, plant)
-        pcurm = PlantCurrentMoisture(hass, entry, plant)
-        pcurt = PlantCurrentTemperature(hass, entry, plant)
-        pcurh = PlantCurrentHumidity(hass, entry, plant)
-        pcurCO2 = PlantCurrentCO2(hass, entry, plant)
-        pcurph = PlantCurrentPh(hass, entry, plant)  # Neuer pH Sensor
-
-        plant_sensors = [
-            pcurb,
-            pcurc,
-            pcurm,
-            pcurt,
-            pcurh,
-            pcurph,
-            pcurCO2,
-        ]  # pH Sensor hinzugefügt
-
-        # Erst die Entities zu HA hinzufügen
-        async_add_entities(plant_sensors)
-        hass.data[DOMAIN][entry.entry_id][ATTR_SENSORS] = plant_sensors
-
-        # Dann die Sensoren der Plant hinzufügen
-        plant.add_sensors(
-            temperature=pcurt,
-            moisture=pcurm,
-            conductivity=pcurc,
-            illuminance=pcurb,
-            humidity=pcurh,
-            CO2=pcurCO2,
-            power_consumption=None,  # Wird später gesetzt
-            ph=pcurph,  # pH Sensor hinzugefügt
-        )
-
-        # Jetzt erst die externen Sensoren zuweisen
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_ILLUMINANCE):
-            pcurb.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_ILLUMINANCE]
-            )
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CONDUCTIVITY):
-            pcurc.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_CONDUCTIVITY]
-            )
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_MOISTURE):
-            pcurm.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_MOISTURE]
-            )
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_TEMPERATURE):
-            pcurt.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_TEMPERATURE]
-            )
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY):
-            pcurh.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_HUMIDITY]
-            )
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2):
-            pcurCO2.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_CO2]
-            )
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_PH):  # pH Sensor zuweisen
-            pcurph.replace_external_sensor(entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_PH])
-
-        # PPFD und DLI für Plants
-        pcurppfd = PlantCurrentPpfd(hass, entry, plant)
-        async_add_entities([pcurppfd])
-
-        pintegral = PlantTotalLightIntegral(hass, entry, pcurppfd, plant)
-        async_add_entities([pintegral], update_before_add=True)
-
-        # Consumption Sensoren erstellen
-        moisture_consumption = None
-        total_water_consumption = None  # Initialisiere Total Water
-        fertilizer_consumption = None
-        total_fertilizer_consumption = None  # Initialisiere Total Fertilizer
-
-        if plant.sensor_moisture:
-            moisture_consumption = PlantCurrentMoistureConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([moisture_consumption])
-
-            # Total Water Consumption hinzufügen
-            total_water_consumption = PlantTotalWaterConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([total_water_consumption])
-
-        if plant.sensor_conductivity:
-            fertilizer_consumption = PlantCurrentFertilizerConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([fertilizer_consumption])
-
-            # Total Fertilizer Consumption hinzufügen
-            total_fertilizer_consumption = PlantTotalFertilizerConsumption(
-                hass,
-                entry,
-                plant,
-            )
-            async_add_entities([total_fertilizer_consumption])
-
-        # Jetzt können wir add_calculations aufrufen
-        plant.add_calculations(
-            pcurppfd, pintegral, moisture_consumption, fertilizer_consumption
-        )
-        # Füge die Total Consumption Sensoren hinzu
-        plant.total_water_consumption = total_water_consumption
-        plant.total_fertilizer_consumption = total_fertilizer_consumption
-
-        pdli = PlantDailyLightIntegral(hass, entry, pintegral, plant)
-        async_add_entities(new_entities=[pdli], update_before_add=True)
-
-        plant.add_dli(dli=pdli)
-
-        # Füge zuerst den Total Power Consumption Sensor hinzu
-        if plant.device_type != DEVICE_TYPE_CYCLE:
-            total_power_consumption = PlantTotalPowerConsumption(hass, entry, plant)
-            async_add_entities([total_power_consumption])
-
-            # Weise den externen Sensor zu
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_POWER_CONSUMPTION):
-                total_power_consumption.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_POWER_CONSUMPTION]
-                )
-
-            # Dann erst den Current Power Consumption Sensor erstellen
-            pcurp = PlantCurrentPowerConsumption(hass, entry, plant)
-            async_add_entities([pcurp])
-
-            # Jetzt können wir beide Sensoren der Plant hinzufügen
-            plant.add_power_consumption_sensors(
-                current=pcurp, total=total_power_consumption
-            )
-    if plant.device_type == DEVICE_TYPE_CYCLE:
+    
+    elif plant.device_type == DEVICE_TYPE_CYCLE:
         cycle_sensors = {}
 
         # Basis-Sensoren
@@ -685,119 +380,12 @@ async def async_setup_entry(
             total=cycle_sensors["total_power_consumption"],
         )
 
-    # Füge Energiekosten-Sensor hinzu
+    # Add energy cost sensor
     energy_cost = PlantEnergyCost(hass, entry, plant)
     plant.energy_cost = energy_cost
     async_add_entities([energy_cost])
 
     return True
-
-
-# Tent sensors
-
-
-class TentCurrentStatus(PlantCurrentStatus):
-    """Base class for tent sensors"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, tentdevice: Entity, sensor_type: str
-    ) -> None:
-        """Initialize the sensor"""
-        self._tentdevice = tentdevice
-        self._sensor_type = sensor_type
-        self._attr_name = f"{tentdevice.name} Tent {sensor_type.capitalize()}"
-        self._attr_unique_id = f"{config.entry_id}-tent-current-{sensor_type}"
-        self._attr_has_entity_name = False
-        self._attr_icon = ICON_TEMPERATURE  # Standard Icon
-        self._attr_native_unit_of_measurement = None  # Muss noch gesetzt werden
-
-        if sensor_type == "temperature":
-            self._external_sensor = tentdevice.temperature_sensor
-            self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-            self._attr_device_class = SensorDeviceClass.TEMPERATURE
-            self._attr_icon = ICON_TEMPERATURE
-        elif sensor_type == "humidity":
-            self._external_sensor = tentdevice.humidity_sensor
-            self._attr_native_unit_of_measurement = PERCENTAGE
-            self._attr_device_class = SensorDeviceClass.HUMIDITY
-            self._attr_icon = ICON_HUMIDITY
-        elif sensor_type == "conductivity":
-            self._external_sensor = tentdevice.conductivity_sensor
-            self._attr_native_unit_of_measurement = UnitOfConductivity.MICROSIEMENS_PER_CM
-            self._attr_device_class = ATTR_CONDUCTIVITY
-            self._attr_icon = ICON_CONDUCTIVITY
-        elif sensor_type == "illuminance":
-            self._external_sensor = tentdevice.illuminance_sensor
-            self._attr_native_unit_of_measurement = LIGHT_LUX
-            self._attr_device_class = SensorDeviceClass.ILLUMINANCE
-            self._attr_icon = ICON_ILLUMINANCE
-        elif sensor_type == "co2":
-            self._external_sensor = tentdevice.co2_sensor
-            self._attr_native_unit_of_measurement = "ppm"
-            self._attr_device_class = SensorDeviceClass.CO2
-            self._attr_icon = ICON_CO2
-        elif sensor_type == "ph":
-            self._external_sensor = tentdevice.ph_sensor
-            self._attr_native_unit_of_measurement = None
-            self._attr_device_class = DEVICE_CLASS_PH
-            self._attr_icon = ICON_PH
-
-        super().__init__(hass, config, tentdevice)
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return self._attr_device_class
-
-
-class TentCurrentTemperature(TentCurrentStatus):
-    """Entity class for the tent current temperature meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, tentdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        super().__init__(hass, config, tentdevice, "temperature")
-
-
-class TentCurrentHumidity(TentCurrentStatus):
-    """Entity class for the tent current humidity meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, tentdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        super().__init__(hass, config, tentdevice, "humidity")
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-        self, hass: HomeAssistant, config: ConfigEntry, tentdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{tentdevice.name} Tent Temperature"
-        self._attr_unique_id = f"{config.entry_id}-tent-current-temperature"
-        self._attr_has_entity_name = False
-        self._attr_icon = ICON_TEMPERATURE
-        self._external_sensor = tentdevice.temperature_sensor
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        super().__init__(hass, config, tentdevice)
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.TEMPERATURE
-
-
-class TentCurrentHumidity(PlantCurrentStatus):
-    """Entity class for the tent current humidity meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, tentdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{tentdevice.name} Tent Humidity"
-        self._attr_unique_id = f"{config.entry_id}-tent-current-humidity"
-        self._attr_has_entity_name = False
         self._external_sensor = tentdevice.humidity_sensor
         self._attr_icon = ICON_HUMIDITY
         self._attr_native_unit_of_measurement = PERCENTAGE
@@ -2670,3 +2258,106 @@ class PlantCurrentPh(PlantCurrentStatus):
             self.async_write_ha_state()
         except (TypeError, ValueError):
             return
+
+
+# Helper functions for tent sensor management
+
+async def _apply_external_sensors(resolved_sensors: dict, sensor_entities: dict) -> None:
+    """Apply external sensor assignments to plant sensor entities."""
+    for sensor_type, sensor_entity in resolved_sensors.items():
+        if sensor_type in sensor_entities and sensor_entity:
+            sensor_entities[sensor_type].replace_external_sensor(sensor_entity)
+
+
+async def _setup_derived_sensors(
+    hass: HomeAssistant, 
+    entry: ConfigEntry, 
+    plant, 
+    async_add_entities: AddEntitiesCallback
+) -> None:
+    """Set up derived sensors like PPFD and DLI."""
+    # PPFD sensor
+    pcurppfd = PlantCurrentPpfd(hass, entry, plant)
+    async_add_entities([pcurppfd])
+    
+    # Light integral sensor
+    pintegral = PlantTotalLightIntegral(hass, entry, pcurppfd, plant)
+    async_add_entities([pintegral], update_before_add=True)
+    
+    # DLI sensor
+    pdli = PlantDailyLightIntegral(hass, entry, pintegral, plant)
+    async_add_entities([pdli], update_before_add=True)
+    
+    # Add to plant
+    plant.add_calculations(pcurppfd, pintegral, None, None)
+    plant.add_dli(dli=pdli)
+
+
+async def _setup_consumption_sensors(
+    hass: HomeAssistant, 
+    entry: ConfigEntry, 
+    plant, 
+    async_add_entities: AddEntitiesCallback
+) -> None:
+    """Set up consumption sensors."""
+    moisture_consumption = None
+    total_water_consumption = None
+    fertilizer_consumption = None
+    total_fertilizer_consumption = None
+    
+    # Water consumption sensors
+    if plant.sensor_moisture:
+        moisture_consumption = PlantCurrentMoistureConsumption(hass, entry, plant)
+        async_add_entities([moisture_consumption])
+        
+        total_water_consumption = PlantTotalWaterConsumption(hass, entry, plant)
+        async_add_entities([total_water_consumption])
+    
+    # Fertilizer consumption sensors
+    if plant.sensor_conductivity:
+        fertilizer_consumption = PlantCurrentFertilizerConsumption(hass, entry, plant)
+        async_add_entities([fertilizer_consumption])
+        
+        total_fertilizer_consumption = PlantTotalFertilizerConsumption(hass, entry, plant)
+        async_add_entities([total_fertilizer_consumption])
+    
+    # Store total consumption sensors
+    plant.total_water_consumption = total_water_consumption
+    plant.total_fertilizer_consumption = total_fertilizer_consumption
+    
+    # Update plant calculations with consumption sensors
+    if hasattr(plant, '_pcurppfd') and hasattr(plant, '_pintegral'):
+        plant.add_calculations(
+            plant._pcurppfd, 
+            plant._pintegral, 
+            moisture_consumption, 
+            fertilizer_consumption
+        )
+
+
+async def _setup_power_consumption_sensors(
+    hass: HomeAssistant, 
+    entry: ConfigEntry, 
+    plant, 
+    async_add_entities: AddEntitiesCallback,
+    resolved_sensors: dict
+) -> None:
+    """Set up power consumption sensors."""
+    # Total power consumption sensor
+    total_power_consumption = PlantTotalPowerConsumption(hass, entry, plant)
+    async_add_entities([total_power_consumption])
+    
+    # Apply external sensor if available
+    power_sensor = resolved_sensors.get("power_consumption")
+    if power_sensor:
+        total_power_consumption.replace_external_sensor(power_sensor)
+    
+    # Current power consumption sensor
+    pcurp = PlantCurrentPowerConsumption(hass, entry, plant)
+    async_add_entities([pcurp])
+    
+    # Add to plant
+    plant.add_power_consumption_sensors(
+        current=pcurp, 
+        total=total_power_consumption
+    )

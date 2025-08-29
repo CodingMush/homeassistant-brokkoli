@@ -136,6 +136,15 @@ FLOW_SENSOR_CO2 = "co2_sensor"
 FLOW_SENSOR_POWER_CONSUMPTION = "power_consumption_sensor"
 FLOW_SENSOR_PH = "ph_sensor"
 
+# Tent configuration flow constants
+FLOW_TENT_INFO = "tent_info"
+FLOW_TENT_NAME = "tent_name"
+FLOW_TENT_AREA = "tent_area"
+FLOW_TENT_DESCRIPTION = "tent_description"
+FLOW_TENT_SENSORS = "tent_sensors"
+FLOW_TENT_ENTITY = "tent_entity"
+FLOW_INHERIT_TENT_SENSORS = "inherit_tent_sensors"
+
 FLOW_TEMP_UNIT = "temperature_unit"
 FLOW_ILLUMINANCE_TRIGGER = "illuminance_trigger"
 FLOW_HUMIDITY_TRIGGER = "humidity_trigger"
