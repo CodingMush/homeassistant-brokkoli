@@ -74,6 +74,12 @@ from .const import (
 
 )
 from .plant_helpers import PlantHelper
+from .security_utils import (
+    validate_image_url,
+    secure_file_path,
+    SecurityError,
+    sanitize_entity_id,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1046,26 +1052,38 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 )
 
     async def add_image(call: ServiceCall) -> None:
-        """Add an image to a plant or cycle."""
+        """Add an image to a plant or cycle with security validation."""
         entity_id = call.data.get("entity_id")
         image_url = call.data.get("image_url")
 
         if not entity_id or not image_url:
-            return
+            _LOGGER.error("Missing required parameters: entity_id or image_url")
+            raise HomeAssistantError("Missing required parameters")
 
-        # Finde die Entity (Plant oder Cycle)
+        # Security validation
+        safe_entity_id = sanitize_entity_id(entity_id)
+        if not safe_entity_id:
+            _LOGGER.error("Invalid entity_id format: %s", entity_id)
+            raise SecurityError("Invalid entity ID format")
+            
+        if not validate_image_url(image_url):
+            _LOGGER.error("Invalid or unsafe image URL: %s", image_url)
+            raise SecurityError("Invalid or unsafe image URL")
+
+        # Find the target entity (Plant or Cycle)
         target_entity = None
         for entry_id in hass.data[DOMAIN]:
             if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 entity = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if entity.entity_id == entity_id:
+                if entity.entity_id == safe_entity_id:
                     target_entity = entity
                     break
 
         if not target_entity:
-            return
+            _LOGGER.error("Entity not found: %s", safe_entity_id)
+            raise HomeAssistantError(f"Entity {safe_entity_id} not found")
 
-        # Hole den Download-Pfad aus der Konfiguration
+        # Get download path from configuration
         config_entry = None
         for entry in hass.config_entries.async_entries(DOMAIN):
             if entry.data.get("is_config", False):
@@ -1075,51 +1093,87 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         download_path = config_entry.data[FLOW_PLANT_INFO].get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH) if config_entry else DEFAULT_IMAGE_PATH
 
         try:
-            # Erstelle den Download-Pfad falls er nicht existiert
+            # Create download directory if it doesn't exist
             if not os.path.exists(download_path):
-                os.makedirs(download_path)
+                os.makedirs(download_path, mode=0o755)  # Secure permissions
 
-            # Generiere Dateinamen aus entity_id und Timestamp
+            # Generate secure file path
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{entity_id}_{timestamp}.jpg"
-            filepath = os.path.join(download_path, filename)
+            filepath = secure_file_path(download_path, safe_entity_id, timestamp)
+            
+            if not filepath:
+                _LOGGER.error("Failed to create secure file path")
+                raise SecurityError("Failed to create secure file path")
 
-            # Lade das Bild herunter
-            async with aiohttp.ClientSession() as session:
+            # Download the image with timeout and size limits
+            timeout = aiohttp.ClientTimeout(total=30)  # 30 second timeout
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(image_url) as response:
                     if response.status != 200:
-                        return
+                        _LOGGER.error("Failed to download image: HTTP %s", response.status)
+                        raise HomeAssistantError(f"Failed to download image: HTTP {response.status}")
+                    
+                    # Check content type
+                    content_type = response.headers.get('content-type', '')
+                    if not content_type.startswith('image/'):
+                        _LOGGER.error("Invalid content type: %s", content_type)
+                        raise SecurityError("File is not an image")
+                    
+                    # Check content length (max 10MB)
+                    content_length = response.headers.get('content-length')
+                    if content_length and int(content_length) > 10 * 1024 * 1024:
+                        _LOGGER.error("Image too large: %s bytes", content_length)
+                        raise SecurityError("Image file too large")
+                    
                     image_data = await response.read()
+                    
+                    # Additional size check after download
+                    if len(image_data) > 10 * 1024 * 1024:
+                        _LOGGER.error("Downloaded image too large: %s bytes", len(image_data))
+                        raise SecurityError("Downloaded image too large")
 
-            # Speichere das Bild
+            # Save the image securely
             def write_file():
+                # Write with secure permissions
                 with open(filepath, "wb") as f:
                     f.write(image_data)
+                os.chmod(filepath, 0o644)  # Set secure file permissions
 
             await hass.async_add_executor_job(write_file)
 
-            # Hole die aktuelle Bilderliste
+            # Get current image list
             current_images = target_entity._images if hasattr(target_entity, '_images') else []
             
-            # Füge den neuen Dateinamen zur Liste hinzu
+            # Add new filename to list
+            filename = os.path.basename(filepath)
             current_images.append(filename)
             
-            # Aktualisiere die Attribute über den update_plant_attributes Service
-            # Konvertiere die Liste in einen komma-getrennten String ohne Leerzeichen
+            # Update attributes via update_plant_attributes service
             images_string = ",".join(str(img).strip() for img in current_images)
             
             await hass.services.async_call(
                 DOMAIN,
                 "update_plant_attributes",
                 {
-                    "entity_id": entity_id,
+                    "entity_id": safe_entity_id,
                     "images": images_string
                 },
                 blocking=True
             )
+            
+            _LOGGER.info("Successfully added image to %s: %s", safe_entity_id, filename)
 
+        except SecurityError:
+            raise  # Re-raise security errors
+        except aiohttp.ClientError as e:
+            _LOGGER.error("Network error downloading image: %s", e)
+            raise HomeAssistantError(f"Network error: {e}")
+        except OSError as e:
+            _LOGGER.error("File system error: %s", e)
+            raise HomeAssistantError(f"File system error: {e}")
         except Exception as e:
-            _LOGGER.error("Error adding image: %s", e)
+            _LOGGER.error("Unexpected error adding image: %s", e)
+            raise HomeAssistantError(f"Unexpected error: {e}")
 
     async def change_position(call: ServiceCall) -> None:
         """Ändert die Position einer Pflanze mit x- und y-Koordinaten."""
@@ -1181,8 +1235,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 current = target_plant.journal.state or ""
                 new_text = f"{journal_line}\n{current}" if current else journal_line
                 await target_plant.journal.async_set_value(new_text)
+        except (AttributeError, ValueError) as e:
+            _LOGGER.warning("Could not update journal on add_watering: %s", e)
         except Exception as e:
-            _LOGGER.debug("Could not update journal on add_watering: %s", e)
+            _LOGGER.error("Unexpected error updating journal: %s", e)
 
         # Update total water consumption sensor value via helper method if available
         try:
