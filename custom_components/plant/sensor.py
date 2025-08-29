@@ -358,7 +358,7 @@ def _setup_calculated_sensors(hass: HomeAssistant, entry: ConfigEntry, plant: En
     plant.total_fertilizer_consumption = ptotal_fertilizer_consumption
 
     # DLI als UtilityMeter hinzufügen
-    pdli = PlantDliSensor(hass, entry, plant)
+    pdli = PlantDailyLightIntegral(hass, entry, plant)
     async_add_entities([pdli], update_before_add=True)
     plant.add_dli(dli=pdli)
 
