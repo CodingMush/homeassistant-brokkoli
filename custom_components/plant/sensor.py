@@ -330,8 +330,8 @@ def _setup_calculated_sensors(hass: HomeAssistant, entry: ConfigEntry, plant: En
     async_add_entities([pintegral], update_before_add=True)
 
     # Consumption Sensoren erstellen
-    pmoisture_consumption = PlantMoistureConsumption(hass, entry, plant)
-    pfertilizer_consumption = PlantFertilizerConsumption(hass, entry, plant)
+    pmoisture_consumption = PlantCurrentMoistureConsumption(hass, entry, plant)
+    pfertilizer_consumption = PlantCurrentFertilizerConsumption(hass, entry, plant)
     ptotal_water_consumption = PlantTotalWaterConsumption(hass, entry, plant)
     ptotal_fertilizer_consumption = PlantTotalFertilizerConsumption(
         hass, entry, plant
