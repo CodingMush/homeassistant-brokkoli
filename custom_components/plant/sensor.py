@@ -47,6 +47,12 @@ from homeassistant.util import dt as dt_util
 from homeassistant.components.recorder import history, get_instance
 
 from . import SETUP_DUMMY_SENSORS
+from .sensor_definitions import (
+    apply_sensor_definition,
+    round_sensor_value,
+    SensorDefinitionMixin,
+    get_sensor_definition,
+)
 from .const import (
     ATTR_CONDUCTIVITY,
     ATTR_DLI,
@@ -502,7 +508,7 @@ class PlantCurrentStatus(RestoreSensor):
             self._attr_native_value = self._default_state
 
 
-class PlantCurrentIlluminance(PlantCurrentStatus):
+class PlantCurrentIlluminance(SensorDefinitionMixin, PlantCurrentStatus):
     """Entity class for the current illuminance meter"""
 
     def __init__(
@@ -512,39 +518,25 @@ class PlantCurrentIlluminance(PlantCurrentStatus):
         self._attr_name = f"{plantdevice.name} {READING_ILLUMINANCE}"
         self._attr_unique_id = f"{config.entry_id}-current-illuminance"
         self._attr_has_entity_name = False
-        self._attr_icon = ICON_ILLUMINANCE
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(
             FLOW_SENSOR_ILLUMINANCE
         )
-        self._attr_native_unit_of_measurement = LIGHT_LUX
-        # Set precision for illuminance (no decimal places)
-        self._attr_suggested_display_precision = 0
-        super().__init__(hass, config, plantdevice)
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("illuminance", hass, config, plantdevice)
 
     def state_changed(self, entity_id, new_state):
         """Override to apply rounding to illuminance values."""
         super().state_changed(entity_id, new_state)
-        # Round illuminance values to whole numbers
+        # Round illuminance values using sensor definition
         if self._attr_native_value is not None:
-            try:
-                self._attr_native_value = round(float(self._attr_native_value))
-            except (ValueError, TypeError):
-                pass
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
     async def async_update(self) -> None:
         """Update the sensor with proper rounding."""
         await super().async_update()
-        # Round illuminance values to whole numbers
+        # Round illuminance values using sensor definition
         if self._attr_native_value is not None:
-            try:
-                self._attr_native_value = round(float(self._attr_native_value))
-            except (ValueError, TypeError):
-                pass
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.ILLUMINANCE
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
 
 class PlantCurrentConductivity(PlantCurrentStatus):
@@ -813,7 +805,7 @@ class PlantCurrentTemperature(PlantCurrentStatus):
         return SensorDeviceClass.TEMPERATURE
 
 
-class PlantCurrentHumidity(PlantCurrentStatus):
+class PlantCurrentHumidity(SensorDefinitionMixin, PlantCurrentStatus):
     """Entity class for the current humidity meter"""
 
     def __init__(
@@ -824,36 +816,22 @@ class PlantCurrentHumidity(PlantCurrentStatus):
         self._attr_unique_id = f"{config.entry_id}-current-humidity"
         self._attr_has_entity_name = False
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
-        self._attr_icon = ICON_HUMIDITY
-        self._attr_native_unit_of_measurement = PERCENTAGE
-        # Set precision for humidity (no decimal places)
-        self._attr_suggested_display_precision = 0
-        super().__init__(hass, config, plantdevice)
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("humidity", hass, config, plantdevice)
 
     def state_changed(self, entity_id, new_state):
         """Override to apply rounding to humidity values."""
         super().state_changed(entity_id, new_state)
-        # Round humidity values to whole numbers
+        # Round humidity values using sensor definition
         if self._attr_native_value is not None:
-            try:
-                self._attr_native_value = round(float(self._attr_native_value))
-            except (ValueError, TypeError):
-                pass
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
     async def async_update(self) -> None:
         """Update the sensor with proper rounding."""
         await super().async_update()
-        # Round humidity values to whole numbers
+        # Round humidity values using sensor definition
         if self._attr_native_value is not None:
-            try:
-                self._attr_native_value = round(float(self._attr_native_value))
-            except (ValueError, TypeError):
-                pass
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.HUMIDITY
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
 
 class PlantCurrentCO2(PlantCurrentStatus):

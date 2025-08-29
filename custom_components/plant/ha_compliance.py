@@ -1,146 +1,57 @@
-"""Home Assistant compliance utilities and improvements."""
+"""Home Assistant compliance utilities and improvements.
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.const import (
-    UnitOfTemperature,
-    UnitOfTime,
-    PERCENTAGE,
-    LIGHT_LUX,
-    UnitOfConductivity,
-    UnitOfVolume,
-    UnitOfEnergy,
-    UnitOfPower,
+⚠️  DEPRECATED: This module is deprecated. Use sensor_definitions.py instead.
+
+This module will be removed in a future version. All functionality has been
+consolidated into sensor_definitions.py for better maintainability.
+
+For migration:
+- Replace imports from ha_compliance with sensor_definitions
+- Use SensorDefinitionMixin instead of HAComplianceMixin
+- Use apply_sensor_definition() for applying definitions to entities
+"""
+
+# Import from the new consolidated module for backwards compatibility
+from .sensor_definitions import (
+    SensorDefinitionMixin as HAComplianceMixin,
+    apply_sensor_definition as apply_compliance_fix,
+    get_sensor_definition,
+    SENSOR_DEFINITIONS,
 )
 
-# Entity category mappings for different sensor types
-ENTITY_CATEGORIES = {
-    # Diagnostic sensors (internal/computed values)
-    "health": EntityCategory.DIAGNOSTIC,
-    "problem_status": EntityCategory.DIAGNOSTIC,
-    "growth_phase": EntityCategory.DIAGNOSTIC,
-    "flowering_days": EntityCategory.DIAGNOSTIC,
-    "vegetative_days": EntityCategory.DIAGNOSTIC,
-    "total_days": EntityCategory.DIAGNOSTIC,
-    "cycle_median_sensor": EntityCategory.DIAGNOSTIC,
-    
-    # Configuration sensors
-    "threshold_min": EntityCategory.CONFIG,
-    "threshold_max": EntityCategory.CONFIG,
-    "pot_size": EntityCategory.CONFIG,
-    "water_capacity": EntityCategory.CONFIG,
-    
-    # Main sensors (no category - appear in main dashboard)
-    "temperature": None,
-    "moisture": None,
-    "conductivity": None,
-    "illuminance": None,
-    "humidity": None,
-    "co2": None,
-    "ph": None,
-    "ppfd": None,
-    "dli": None,
-    "power_consumption": None,
-    "energy_cost": None,
-    "water_consumption": None,
-    "fertilizer_consumption": None,
-}
+# Re-export for backwards compatibility
+__all__ = [
+    'HAComplianceMixin',
+    'apply_compliance_fix', 
+    'get_sensor_definition',
+    'SENSOR_DEFINITIONS',
+]
 
-# Device class mappings
-DEVICE_CLASSES = {
-    "temperature": SensorDeviceClass.TEMPERATURE,
-    "moisture": SensorDeviceClass.MOISTURE,
-    "conductivity": SensorDeviceClass.CONDUCTIVITY,
-    "illuminance": SensorDeviceClass.ILLUMINANCE,
-    "humidity": SensorDeviceClass.HUMIDITY,
-    "co2": SensorDeviceClass.CO2,
-    "power_consumption": SensorDeviceClass.POWER,
-    "energy_cost": SensorDeviceClass.MONETARY,
-    "water_consumption": SensorDeviceClass.VOLUME,
-    "fertilizer_consumption": SensorDeviceClass.VOLUME,
-    "timestamp": SensorDeviceClass.TIMESTAMP,
-    "duration": SensorDeviceClass.DURATION,
-    # pH doesn't have a standard device class, use None
-    "ph": None,
-    "ppfd": None,  # Custom light measurement
-    "dli": None,   # Custom daily light integral
-}
+# Legacy mappings for backwards compatibility
+ENTITY_CATEGORIES = {k: v.entity_category for k, v in SENSOR_DEFINITIONS.items()}
+DEVICE_CLASSES = {k: v.device_class for k, v in SENSOR_DEFINITIONS.items()}
+STATE_CLASSES = {k: v.state_class for k, v in SENSOR_DEFINITIONS.items()}
+UNITS_OF_MEASUREMENT = {k: v.unit_of_measurement for k, v in SENSOR_DEFINITIONS.items()}
 
-# State class mappings
-STATE_CLASSES = {
-    # Measurement values
-    "temperature": SensorStateClass.MEASUREMENT,
-    "moisture": SensorStateClass.MEASUREMENT,
-    "conductivity": SensorStateClass.MEASUREMENT,
-    "illuminance": SensorStateClass.MEASUREMENT,
-    "humidity": SensorStateClass.MEASUREMENT,
-    "co2": SensorStateClass.MEASUREMENT,
-    "ph": SensorStateClass.MEASUREMENT,
-    "ppfd": SensorStateClass.MEASUREMENT,
-    "dli": SensorStateClass.MEASUREMENT,
-    "power_consumption": SensorStateClass.MEASUREMENT,
-    "health": SensorStateClass.MEASUREMENT,
-    
-    # Total values (cumulative)
-    "total_water_consumption": SensorStateClass.TOTAL,
-    "total_fertilizer_consumption": SensorStateClass.TOTAL,
-    "total_power_consumption": SensorStateClass.TOTAL,
-    "total_energy_cost": SensorStateClass.TOTAL,
-    "total_light_integral": SensorStateClass.TOTAL,
-    "flowering_days": SensorStateClass.TOTAL,
-    "vegetative_days": SensorStateClass.TOTAL,
-    "total_days": SensorStateClass.TOTAL,
-    
-    # Increasing values (monotonic)
-    "water_consumption": SensorStateClass.TOTAL_INCREASING,
-    "fertilizer_consumption": SensorStateClass.TOTAL_INCREASING,
-    "energy_cost": SensorStateClass.TOTAL_INCREASING,
-}
+def get_entity_category(sensor_type: str):
+    """Legacy function - use get_sensor_definition() instead."""
+    definition = get_sensor_definition(sensor_type)
+    return definition.entity_category if definition else None
 
-# Unit of measurement mappings
-UNITS_OF_MEASUREMENT = {
-    "temperature": UnitOfTemperature.CELSIUS,
-    "moisture": PERCENTAGE,
-    "conductivity": UnitOfConductivity.MICROSIEMENS_PER_CENTIMETER,
-    "illuminance": LIGHT_LUX,
-    "humidity": PERCENTAGE,
-    "co2": "ppm",
-    "ph": "pH",
-    "ppfd": "μmol/m²/s",
-    "dli": "mol/m²/d",
-    "power_consumption": UnitOfPower.WATT,
-    "energy_cost": "€",  # or currency from config
-    "water_consumption": UnitOfVolume.LITERS,
-    "fertilizer_consumption": UnitOfVolume.LITERS,
-    "total_water_consumption": UnitOfVolume.LITERS,
-    "total_fertilizer_consumption": UnitOfVolume.LITERS,
-    "total_power_consumption": UnitOfEnergy.KILO_WATT_HOUR,
-    "total_energy_cost": "€",
-    "flowering_days": UnitOfTime.DAYS,
-    "vegetative_days": UnitOfTime.DAYS,
-    "total_days": UnitOfTime.DAYS,
-    "health": "/10",  # Health score out of 10
-}
+def get_device_class(sensor_type: str):
+    """Legacy function - use get_sensor_definition() instead."""
+    definition = get_sensor_definition(sensor_type)
+    return definition.device_class if definition else None
 
+def get_state_class(sensor_type: str):
+    """Legacy function - use get_sensor_definition() instead."""
+    definition = get_sensor_definition(sensor_type)
+    return definition.state_class if definition else None
 
-def get_entity_category(sensor_type: str) -> EntityCategory | None:
-    """Get appropriate entity category for sensor type."""
-    return ENTITY_CATEGORIES.get(sensor_type.lower())
-
-
-def get_device_class(sensor_type: str) -> SensorDeviceClass | None:
-    """Get appropriate device class for sensor type."""
-    return DEVICE_CLASSES.get(sensor_type.lower())
-
-
-def get_state_class(sensor_type: str) -> SensorStateClass | None:
-    """Get appropriate state class for sensor type."""
-    return STATE_CLASSES.get(sensor_type.lower())
-
-
-def get_unit_of_measurement(sensor_type: str) -> str | None:
-    """Get appropriate unit of measurement for sensor type."""
-    return UNITS_OF_MEASUREMENT.get(sensor_type.lower())
+def get_unit_of_measurement(sensor_type: str):
+    """Legacy function - use get_sensor_definition() instead."""
+    definition = get_sensor_definition(sensor_type)
+    return definition.unit_of_measurement if definition else None
 
 
 class HAComplianceMixin:

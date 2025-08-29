@@ -1,78 +1,48 @@
-"""Precision and rounding utilities for plant sensors."""
+"""Precision and rounding utilities for plant sensors.
 
-from homeassistant.components.sensor import SensorDeviceClass
-from typing import Optional, Union
+⚠️  DEPRECATED: This module is deprecated. Use sensor_definitions.py instead.
 
-# Sensor precision mappings (suggested display precision)
-SENSOR_PRECISION = {
-    # Environmental sensors
-    "temperature": 1,           # 20.5°C
-    "humidity": 0,              # 65% (Luftfeuchtigkeit ohne Nachkommastellen)
-    "moisture": 1,              # 45.5% (Bodenfeuchtigkeit mit 1 Nachkommastelle)
-    "illuminance": 0,           # 25000 lux (Lux ohne Nachkommastellen)
-    "conductivity": 0,          # 1500 µS/cm
-    "co2": 0,                  # 400 ppm
-    "ph": 1,                   # 6.5 pH
-    
-    # Light calculations
-    "ppfd": 1,                 # 250.5 µmol/m²/s
-    "dli": 1,                  # 15.2 mol/m²/d
-    "total_integral": 3,       # 1250.456
-    
-    # Consumption sensors
-    "water_consumption": 2,     # 1.25 L
-    "fertilizer_consumption": 2, # 0.15 L
-    "power_consumption": 1,     # 45.5 W
-    "energy_cost": 2,          # 2.35 €
-    
-    # Totals
-    "total_water_consumption": 1,      # 125.5 L
-    "total_fertilizer_consumption": 1, # 15.5 L
-    "total_power_consumption": 1,      # 1250.5 kWh
-    "total_energy_cost": 2,           # 125.35 €
-    
-    # Health and diagnostics
-    "health": 1,               # 7.5/10
-    "flowering_days": 0,       # 45 days
-    "vegetative_days": 0,      # 30 days
-    "total_days": 0,           # 75 days
-}
+This module will be removed in a future version. All functionality has been
+consolidated into sensor_definitions.py for better maintainability.
 
-# Sensor rounding precision for calculations (kann mehr Nachkommastellen haben als Display)
-CALCULATION_PRECISION = {
-    "temperature": 2,
-    "humidity": 1,
-    "moisture": 2,
-    "illuminance": 0,
-    "conductivity": 0,
-    "co2": 0,
-    "ph": 2,
-    "ppfd": 3,
-    "dli": 3,
-    "total_integral": 6,
-    "water_consumption": 3,
-    "fertilizer_consumption": 3,
-    "power_consumption": 2,
-    "energy_cost": 3,
-    "total_water_consumption": 2,
-    "total_fertilizer_consumption": 2,
-    "total_power_consumption": 2,
-    "total_energy_cost": 3,
-    "health": 2,
-    "flowering_days": 0,
-    "vegetative_days": 0,
-    "total_days": 0,
-}
+For migration:
+- Replace imports from precision_utils with sensor_definitions
+- Use SensorDefinitionMixin instead of PrecisionMixin
+- Use round_sensor_value() from sensor_definitions
+"""
 
+# Import from the new consolidated module for backwards compatibility
+from .sensor_definitions import (
+    round_sensor_value,
+    format_sensor_value,
+    apply_sensor_definition as apply_sensor_precision,
+    SensorDefinitionMixin as PrecisionMixin,
+    get_sensor_definition,
+    SENSOR_DEFINITIONS,
+)
+
+# Re-export for backwards compatibility
+__all__ = [
+    'round_sensor_value',
+    'format_sensor_value',
+    'apply_sensor_precision',
+    'PrecisionMixin',
+    'get_sensor_definition',
+]
+
+# Legacy mappings for backwards compatibility
+SENSOR_PRECISION = {k: v.display_precision for k, v in SENSOR_DEFINITIONS.items()}
+CALCULATION_PRECISION = {k: v.calculation_precision for k, v in SENSOR_DEFINITIONS.items()}
 
 def get_sensor_precision(sensor_type: str) -> int:
-    """Get suggested display precision for sensor type."""
-    return SENSOR_PRECISION.get(sensor_type.lower(), 2)
-
+    """Legacy function - use get_sensor_definition() instead."""
+    definition = get_sensor_definition(sensor_type)
+    return definition.display_precision if definition else 2
 
 def get_calculation_precision(sensor_type: str) -> int:
-    """Get calculation precision for sensor type."""
-    return CALCULATION_PRECISION.get(sensor_type.lower(), 3)
+    """Legacy function - use get_sensor_definition() instead."""
+    definition = get_sensor_definition(sensor_type)
+    return definition.calculation_precision if definition else 3
 
 
 def round_sensor_value(value: Union[float, int, str, None], sensor_type: str, for_display: bool = True) -> Optional[Union[float, int]]:
