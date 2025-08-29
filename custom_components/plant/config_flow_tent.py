@@ -10,12 +10,13 @@ from homeassistant.helpers.entity_registry import async_get as async_get_entity_
 from homeassistant.helpers.area_registry import async_get as async_get_area_registry
 
 from homeassistant import config_entries, data_entry_flow
-from homeassistant.const import ATTR_NAME, ATTR_ENTITY, ATTR_DEVICE_CLASS, ATTR_DOMAIN
+from homeassistant.const import ATTR_NAME, ATTR_DEVICE_CLASS, ATTR_DOMAIN
 from homeassistant.core import HomeAssistant, callback
 
 from .const import (
     DOMAIN,
     DOMAIN_SENSOR,
+    ATTR_ENTITY,
     FLOW_TENT_NAME,
     FLOW_TENT_AREA,
     FLOW_TENT_DESCRIPTION,
