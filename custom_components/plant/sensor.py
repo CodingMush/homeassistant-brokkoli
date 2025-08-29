@@ -108,8 +108,11 @@ from .const import (
     READING_ENERGY_COST,
     ICON_ENERGY_COST,
     DEVICE_CLASS_PH,  # Importiere unsere eigene Device Class
+    FLOW_TENT_ENTITY,
+    FLOW_INHERIT_TENT_SENSORS,
 )
 from .tent_sensor_manager import TentSensorManager
+from .optimized_sensor_manager import OptimizedSensorManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -117,88 +120,40 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ):
-    """Set up Plant Sensors from a config entry with tent sensor inheritance support."""
+    """Set up Plant Sensors from a config entry with optimized database usage."""
     plant = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
+    
+    # Use optimized sensor manager for plants with tent assignments
     plant_info = entry.data.get(FLOW_PLANT_INFO, {})
-    tent_sensor_manager = TentSensorManager(hass)
-    
-    # Skip sensor setup for cycle devices
-    if plant.device_type == DEVICE_TYPE_CYCLE:
-        return
-    
-    # Check if plant is assigned to a tent and should inherit sensors
     tent_entry_id = plant_info.get(FLOW_TENT_ENTITY)
-    inherit_tent_sensors = plant_info.get(FLOW_INHERIT_TENT_SENSORS, True)
     
-    # Resolve final sensor configuration considering tent inheritance
-    resolved_sensors = await tent_sensor_manager.resolve_plant_sensors(
-        plant_config={
-            FLOW_SENSOR_TEMPERATURE: plant_info.get(FLOW_SENSOR_TEMPERATURE),
-            FLOW_SENSOR_HUMIDITY: plant_info.get(FLOW_SENSOR_HUMIDITY),
-            FLOW_SENSOR_CO2: plant_info.get(FLOW_SENSOR_CO2),
-            FLOW_SENSOR_ILLUMINANCE: plant_info.get(FLOW_SENSOR_ILLUMINANCE),
-            FLOW_SENSOR_CONDUCTIVITY: plant_info.get(FLOW_SENSOR_CONDUCTIVITY),
-            FLOW_SENSOR_PH: plant_info.get(FLOW_SENSOR_PH),
-            FLOW_SENSOR_MOISTURE: plant_info.get(FLOW_SENSOR_MOISTURE),
-            FLOW_SENSOR_POWER_CONSUMPTION: plant_info.get(FLOW_SENSOR_POWER_CONSUMPTION),
-        },
-        tent_entry_id=tent_entry_id,
-        inherit_sensors=inherit_tent_sensors
-    )
+    if plant.device_type == DEVICE_TYPE_CYCLE:
+        # Handle cycle devices with traditional approach
+        await _setup_cycle_sensors(hass, entry, plant, async_add_entities)
+        return True
     
-    # Create plant sensor entities
-    plant_sensors = []
+    # Use optimized sensor manager for database efficiency
+    optimized_manager = OptimizedSensorManager(hass)
     
-    # Standard environmental sensors
-    pcurb = PlantCurrentIlluminance(hass, entry, plant)
-    pcurc = PlantCurrentConductivity(hass, entry, plant)
-    pcurm = PlantCurrentMoisture(hass, entry, plant)
-    pcurt = PlantCurrentTemperature(hass, entry, plant)
-    pcurh = PlantCurrentHumidity(hass, entry, plant)
-    pcurCO2 = PlantCurrentCO2(hass, entry, plant)
-    pcurph = PlantCurrentPh(hass, entry, plant)
-    
-    plant_sensors.extend([
-        pcurb, pcurc, pcurm, pcurt, pcurh, pcurCO2, pcurph
-    ])
-    
-    # Add entities to Home Assistant
-    async_add_entities(plant_sensors)
-    hass.data[DOMAIN][entry.entry_id][ATTR_SENSORS] = plant_sensors
-    
-    # Add sensors to plant device
-    plant.add_sensors(
-        temperature=pcurt,
-        moisture=pcurm,
-        conductivity=pcurc,
-        illuminance=pcurb,
-        humidity=pcurh,
-        CO2=pcurCO2,
-        power_consumption=None,  # Set later
-        ph=pcurph,
-    )
-    
-    # Apply resolved external sensors (from tent inheritance or direct assignment)
-    await _apply_external_sensors(resolved_sensors, {
-        "illuminance": pcurb,
-        "conductivity": pcurc,
-        "moisture": pcurm,
-        "temperature": pcurt,
-        "humidity": pcurh,
-        "co2": pcurCO2,
-        "ph": pcurph,
-    })
-    
-    # Set up derived sensors (PPFD, DLI, etc.)
-    await _setup_derived_sensors(hass, entry, plant, async_add_entities)
-    
-    # Set up consumption sensors
-    await _setup_consumption_sensors(hass, entry, plant, async_add_entities)
-    
-    # Set up power consumption sensors
-    await _setup_power_consumption_sensors(
-        hass, entry, plant, async_add_entities, resolved_sensors
-    )
+    try:
+        sensor_entities = await optimized_manager.setup_optimized_sensors(
+            hass, entry, plant, async_add_entities
+        )
+        
+        # Store sensor references
+        hass.data[DOMAIN][entry.entry_id][ATTR_SENSORS] = list(sensor_entities.values())
+        
+        _LOGGER.info(
+            f"Optimized sensor setup completed for {plant.name}: "
+            f"{len(sensor_entities)} total sensors configured"
+        )
+        
+        return True
+        
+    except Exception as e:
+        _LOGGER.error(f"Failed to setup optimized sensors for {plant.name}: {e}")
+        # Fallback to traditional sensor setup
+        return await _setup_traditional_sensors(hass, entry, plant, async_add_entities)
             )
     if plant.device_type == DEVICE_TYPE_CYCLE:
 =======
@@ -333,68 +288,18 @@ async def async_setup_entry(
             "dli",
             "total_integral",
             "moisture_consumption",
-            "total_water_consumption",  # Füge Total Water hinzu
+            "total_water_consumption",
             "fertilizer_consumption",
-            "total_fertilizer_consumption",  # Füge Total Fertilizer hinzu
+            "total_fertilizer_consumption",
             "power_consumption",
-            "total_power_consumption",  # Füge Total Power hinzu
+            "total_power_consumption",
         ]
         for sensor_type in calculated_sensor_types:
             cycle_sensors[sensor_type] = CycleMedianSensor(
                 hass, entry, plant, sensor_type
             )
 
-        # Füge alle Sensoren zu Home Assistant hinzu
-        async_add_entities(cycle_sensors.values())
-
-        # Füge die Sensoren der Plant hinzu
-        plant.add_sensors(
-            temperature=cycle_sensors["temperature"],
-            moisture=cycle_sensors["moisture"],
-            conductivity=cycle_sensors["conductivity"],
-            illuminance=cycle_sensors["illuminance"],
-            humidity=cycle_sensors["humidity"],
-            CO2=cycle_sensors["CO2"],
-            power_consumption=cycle_sensors["power_consumption"],
-            ph=cycle_sensors["ph"],
-        )
-
-        # Füge die berechneten Sensoren hinzu
-        plant.add_calculations(
-            ppfd=cycle_sensors["ppfd"],
-            total_integral=cycle_sensors["total_integral"],
-            moisture_consumption=cycle_sensors["moisture_consumption"],
-            fertilizer_consumption=cycle_sensors["fertilizer_consumption"],
-        )
-        plant.add_dli(dli=cycle_sensors["dli"])
-
-        # Total Consumption Sensoren
-        plant.total_water_consumption = cycle_sensors["total_water_consumption"]
-        plant.total_fertilizer_consumption = cycle_sensors[
-            "total_fertilizer_consumption"
-        ]
-
-        # Power Consumption Sensoren
-        plant.add_power_consumption_sensors(
-            current=cycle_sensors["power_consumption"],
-            total=cycle_sensors["total_power_consumption"],
-        )
-
-    # Add energy cost sensor
-    energy_cost = PlantEnergyCost(hass, entry, plant)
-    plant.energy_cost = energy_cost
-    async_add_entities([energy_cost])
-
     return True
-        self._external_sensor = tentdevice.humidity_sensor
-        self._attr_icon = ICON_HUMIDITY
-        self._attr_native_unit_of_measurement = PERCENTAGE
-        super().__init__(hass, config, tentdevice)
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.HUMIDITY
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -2361,3 +2266,180 @@ async def _setup_power_consumption_sensors(
         current=pcurp, 
         total=total_power_consumption
     )
+
+
+async def _setup_cycle_sensors(
+    hass: HomeAssistant, 
+    entry: ConfigEntry, 
+    plant, 
+    async_add_entities: AddEntitiesCallback
+) -> bool:
+    """Set up sensors for cycle devices using traditional approach."""
+    cycle_sensors = {}
+
+    # Basis-Sensoren
+    base_sensor_types = [
+        "temperature",
+        "moisture",
+        "conductivity",
+        "illuminance",
+        "humidity",
+        "ph",
+        "CO2",
+    ]
+    for sensor_type in base_sensor_types:
+        cycle_sensors[sensor_type] = CycleMedianSensor(
+            hass, entry, plant, sensor_type
+        )
+
+    # Berechnete Sensoren
+    calculated_sensor_types = [
+        "ppfd",
+        "dli",
+        "total_integral",
+        "moisture_consumption",
+        "total_water_consumption",
+        "fertilizer_consumption",
+        "total_fertilizer_consumption",
+        "power_consumption",
+        "total_power_consumption",
+    ]
+    for sensor_type in calculated_sensor_types:
+        cycle_sensors[sensor_type] = CycleMedianSensor(
+            hass, entry, plant, sensor_type
+        )
+
+    # Füge alle Sensoren zu Home Assistant hinzu
+    async_add_entities(cycle_sensors.values())
+
+    # Füge die Sensoren der Plant hinzu
+    plant.add_sensors(
+        temperature=cycle_sensors["temperature"],
+        moisture=cycle_sensors["moisture"],
+        conductivity=cycle_sensors["conductivity"],
+        illuminance=cycle_sensors["illuminance"],
+        humidity=cycle_sensors["humidity"],
+        CO2=cycle_sensors["CO2"],
+        power_consumption=cycle_sensors["power_consumption"],
+        ph=cycle_sensors["ph"],
+    )
+
+    # Füge die berechneten Sensoren hinzu
+    plant.add_calculations(
+        ppfd=cycle_sensors["ppfd"],
+        total_integral=cycle_sensors["total_integral"],
+        moisture_consumption=cycle_sensors["moisture_consumption"],
+        fertilizer_consumption=cycle_sensors["fertilizer_consumption"],
+    )
+    plant.add_dli(dli=cycle_sensors["dli"])
+
+    # Total Consumption Sensoren
+    plant.total_water_consumption = cycle_sensors["total_water_consumption"]
+    plant.total_fertilizer_consumption = cycle_sensors[
+        "total_fertilizer_consumption"
+    ]
+
+    # Power Consumption Sensoren
+    plant.add_power_consumption_sensors(
+        current=cycle_sensors["power_consumption"],
+        total=cycle_sensors["total_power_consumption"],
+    )
+    
+    # Add energy cost sensor
+    energy_cost = PlantEnergyCost(hass, entry, plant)
+    plant.energy_cost = energy_cost
+    async_add_entities([energy_cost])
+    
+    return True
+
+
+async def _setup_traditional_sensors(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    plant,
+    async_add_entities: AddEntitiesCallback
+) -> bool:
+    """Traditional sensor setup as fallback."""
+    plant_info = entry.data.get(FLOW_PLANT_INFO, {})
+    tent_sensor_manager = TentSensorManager(hass)
+    
+    # Check if plant is assigned to a tent and should inherit sensors
+    tent_entry_id = plant_info.get(FLOW_TENT_ENTITY)
+    inherit_tent_sensors = plant_info.get(FLOW_INHERIT_TENT_SENSORS, True)
+    
+    # Resolve final sensor configuration considering tent inheritance
+    resolved_sensors = await tent_sensor_manager.resolve_plant_sensors(
+        plant_config={
+            FLOW_SENSOR_TEMPERATURE: plant_info.get(FLOW_SENSOR_TEMPERATURE),
+            FLOW_SENSOR_HUMIDITY: plant_info.get(FLOW_SENSOR_HUMIDITY),
+            FLOW_SENSOR_CO2: plant_info.get(FLOW_SENSOR_CO2),
+            FLOW_SENSOR_ILLUMINANCE: plant_info.get(FLOW_SENSOR_ILLUMINANCE),
+            FLOW_SENSOR_CONDUCTIVITY: plant_info.get(FLOW_SENSOR_CONDUCTIVITY),
+            FLOW_SENSOR_PH: plant_info.get(FLOW_SENSOR_PH),
+            FLOW_SENSOR_MOISTURE: plant_info.get(FLOW_SENSOR_MOISTURE),
+            FLOW_SENSOR_POWER_CONSUMPTION: plant_info.get(FLOW_SENSOR_POWER_CONSUMPTION),
+        },
+        tent_entry_id=tent_entry_id,
+        inherit_sensors=inherit_tent_sensors
+    )
+    
+    # Create plant sensor entities
+    plant_sensors = []
+    
+    # Standard environmental sensors
+    pcurb = PlantCurrentIlluminance(hass, entry, plant)
+    pcurc = PlantCurrentConductivity(hass, entry, plant)
+    pcurm = PlantCurrentMoisture(hass, entry, plant)
+    pcurt = PlantCurrentTemperature(hass, entry, plant)
+    pcurh = PlantCurrentHumidity(hass, entry, plant)
+    pcurCO2 = PlantCurrentCO2(hass, entry, plant)
+    pcurph = PlantCurrentPh(hass, entry, plant)
+    
+    plant_sensors.extend([
+        pcurb, pcurc, pcurm, pcurt, pcurh, pcurCO2, pcurph
+    ])
+    
+    # Add entities to Home Assistant
+    async_add_entities(plant_sensors)
+    hass.data[DOMAIN][entry.entry_id][ATTR_SENSORS] = plant_sensors
+    
+    # Add sensors to plant device
+    plant.add_sensors(
+        temperature=pcurt,
+        moisture=pcurm,
+        conductivity=pcurc,
+        illuminance=pcurb,
+        humidity=pcurh,
+        CO2=pcurCO2,
+        power_consumption=None,  # Set later
+        ph=pcurph,
+    )
+    
+    # Apply resolved external sensors (from tent inheritance or direct assignment)
+    await _apply_external_sensors(resolved_sensors, {
+        "illuminance": pcurb,
+        "conductivity": pcurc,
+        "moisture": pcurm,
+        "temperature": pcurt,
+        "humidity": pcurh,
+        "co2": pcurCO2,
+        "ph": pcurph,
+    })
+    
+    # Set up derived sensors (PPFD, DLI, etc.)
+    await _setup_derived_sensors(hass, entry, plant, async_add_entities)
+    
+    # Set up consumption sensors
+    await _setup_consumption_sensors(hass, entry, plant, async_add_entities)
+    
+    # Set up power consumption sensors
+    await _setup_power_consumption_sensors(
+        hass, entry, plant, async_add_entities, resolved_sensors
+    )
+    
+    # Add energy cost sensor
+    energy_cost = PlantEnergyCost(hass, entry, plant)
+    plant.energy_cost = energy_cost
+    async_add_entities([energy_cost])
+    
+    return True

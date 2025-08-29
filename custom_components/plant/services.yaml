@@ -895,3 +895,92 @@ add_ph:
           max: 14
           step: 0.1
           mode: box
+
+# Optimization Services
+
+set_optimization_level:
+  name: Set Optimization Level
+  description: Configure the database optimization level for tent sensor inheritance.
+  fields:
+    level:
+      name: Optimization Level
+      description: The optimization level to apply.
+      required: true
+      selector:
+        select:
+          options:
+            - disabled
+            - basic
+            - aggressive
+            - custom
+    custom_settings:
+      name: Custom Settings
+      description: Custom optimization settings (only used with 'custom' level).
+      required: false
+      selector:
+        object:
+
+migrate_installation:
+  name: Migrate Installation
+  description: Migrate existing installation to use tent sensor optimization.
+  fields:
+    force:
+      name: Force Migration
+      description: Force migration even if risks are detected.
+      required: false
+      default: false
+      selector:
+        boolean:
+    dry_run:
+      name: Dry Run
+      description: Analyze migration requirements without making changes.
+      required: false
+      default: false
+      selector:
+        boolean:
+
+cleanup_optimization:
+  name: Cleanup Optimization
+  description: Clean up orphaned virtual sensors and optimize entity registry.
+  fields:
+    plant_entry_id:
+      name: Plant Entry ID
+      description: Specific plant to optimize (leave empty for system-wide cleanup).
+      required: false
+      selector:
+        text:
+    force_cleanup:
+      name: Force Cleanup
+      description: Force cleanup even if potential issues are detected.
+      required: false
+      default: false
+      selector:
+        boolean:
+
+optimize_plant:
+  name: Optimize Plant
+  description: Optimize sensor configuration for a specific plant.
+  fields:
+    plant_entry_id:
+      name: Plant Entry ID
+      description: The entry ID of the plant to optimize.
+      required: true
+      selector:
+        text:
+    tent_id:
+      name: Tent ID
+      description: Tent to assign for sensor inheritance (optional).
+      required: false
+      selector:
+        text:
+    inherit_sensors:
+      name: Inherit Sensors
+      description: Whether to inherit sensors from the assigned tent.
+      required: false
+      default: true
+      selector:
+        boolean:
+
+get_optimization_status:
+  name: Get Optimization Status
+  description: Get comprehensive status of the optimization system.

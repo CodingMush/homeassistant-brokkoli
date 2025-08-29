@@ -78,6 +78,8 @@ from .const import (
 )
 from .plant_helpers import PlantHelper
 from .tent_sensor_manager import TentSensorManager
+from .optimized_sensor_manager import OptimizedSensorManager
+from .optimization_config import get_optimization_config, get_optimization_migrator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -194,6 +196,33 @@ OVERRIDE_PLANT_SENSOR_SCHEMA = vol.Schema({
     vol.Required("plant_id"): cv.string,
     vol.Required("sensor_type"): vol.In(["temperature", "humidity", "co2", "illuminance", "conductivity", "ph"]),
     vol.Optional("sensor_entity"): cv.entity_id,  # Optional to allow clearing override
+})
+
+# Optimization service schemas
+SET_OPTIMIZATION_LEVEL_SCHEMA = vol.Schema({
+    vol.Required("level"): vol.In(["disabled", "basic", "aggressive", "custom"]),
+    vol.Optional("custom_settings"): vol.Schema({
+        vol.Optional("use_virtual_sensors"): cv.boolean,
+        vol.Optional("enable_database_exclusion"): cv.boolean,
+        vol.Optional("cleanup_orphaned_sensors"): cv.boolean,
+        vol.Optional("auto_migrate_existing"): cv.boolean,
+    }),
+})
+
+MIGRATE_INSTALLATION_SCHEMA = vol.Schema({
+    vol.Optional("force", default=False): cv.boolean,
+    vol.Optional("dry_run", default=False): cv.boolean,
+})
+
+CLEANUP_OPTIMIZATION_SCHEMA = vol.Schema({
+    vol.Optional("plant_entry_id"): cv.string,
+    vol.Optional("force_cleanup", default=False): cv.boolean,
+})
+
+OPTIMIZE_PLANT_SCHEMA = vol.Schema({
+    vol.Required("plant_entry_id"): cv.string,
+    vol.Optional("tent_id"): cv.string,
+    vol.Optional("inherit_sensors", default=True): cv.boolean,
 })
 
 
@@ -2000,6 +2029,46 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         schema=OVERRIDE_PLANT_SENSOR_SCHEMA
     )
     
+    # Register optimization services
+    hass.services.async_register(
+        DOMAIN,
+        "set_optimization_level",
+        set_optimization_level,
+        schema=SET_OPTIMIZATION_LEVEL_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        "migrate_installation",
+        migrate_installation,
+        schema=MIGRATE_INSTALLATION_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        "cleanup_optimization",
+        cleanup_optimization,
+        schema=CLEANUP_OPTIMIZATION_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        "optimize_plant",
+        optimize_plant,
+        schema=OPTIMIZE_PLANT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        "get_optimization_status",
+        get_optimization_status,
+        supports_response=SupportsResponse.ONLY
+    )
+    
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
@@ -2018,4 +2087,200 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_CHANGE_POSITION) 
     hass.services.async_remove(DOMAIN, SERVICE_EXPORT_PLANTS)
     hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PLANTS)
+    
+    # Remove tent management services
+    hass.services.async_remove(DOMAIN, "assign_tent_sensors")
+    hass.services.async_remove(DOMAIN, "move_plant_to_tent")
+    hass.services.async_remove(DOMAIN, "override_plant_sensor")
+    
+    # Remove optimization services
+    hass.services.async_remove(DOMAIN, "set_optimization_level")
+    hass.services.async_remove(DOMAIN, "migrate_installation")
+    hass.services.async_remove(DOMAIN, "cleanup_optimization")
+    hass.services.async_remove(DOMAIN, "optimize_plant")
+    hass.services.async_remove(DOMAIN, "get_optimization_status")
+
+
+# Optimization Service Implementations
+
+async def set_optimization_level(call: ServiceCall) -> ServiceResponse:
+    """Set the optimization level for the system."""
+    hass = call.hass
+    level = call.data["level"]
+    custom_settings = call.data.get("custom_settings")
+    
+    config_manager = get_optimization_config(hass)
+    
+    success = await config_manager.set_optimization_level(level, custom_settings)
+    
+    if success:
+        # Apply configuration changes
+        settings = await config_manager.get_settings()
+        
+        # Setup recording exclusions if enabled
+        if settings.get("enable_database_exclusion", False):
+            await config_manager.add_recording_exclusion("sensor.*_virtual")
+        
+        response = {
+            "success": True,
+            "level": level,
+            "settings": settings,
+            "message": f"Optimization level set to {level}"
+        }
+    else:
+        response = {
+            "success": False,
+            "message": f"Failed to set optimization level to {level}"
+        }
+    
+    _LOGGER.info(f"Set optimization level: {response}")
+    return response
+
+
+async def migrate_installation(call: ServiceCall) -> ServiceResponse:
+    """Migrate existing installation to use optimization."""
+    hass = call.hass
+    force = call.data.get("force", False)
+    dry_run = call.data.get("dry_run", False)
+    
+    migrator = get_optimization_migrator(hass)
+    
+    if dry_run:
+        # Perform analysis without making changes
+        response = {
+            "success": True,
+            "dry_run": True,
+            "message": "Migration analysis completed",
+            "analysis": {
+                "plants_found": len([
+                    entry for entry in hass.config_entries.async_entries(DOMAIN)
+                    if FLOW_PLANT_INFO in entry.data and not entry.data.get("is_tent", False)
+                ]),
+                "tents_found": len([
+                    entry for entry in hass.config_entries.async_entries(DOMAIN)
+                    if entry.data.get("is_tent", False)
+                ]),
+                "force_required": not force
+            }
+        }
+    else:
+        # Perform actual migration
+        migration_results = await migrator.migrate_existing_installation()
+        
+        response = {
+            "success": migration_results["completed"],
+            "migration_results": migration_results,
+            "message": "Migration completed" if migration_results["completed"] else "Migration failed"
+        }
+    
+    _LOGGER.info(f"Migration service called: {response}")
+    return response
+
+
+async def cleanup_optimization(call: ServiceCall) -> ServiceResponse:
+    """Clean up optimization artifacts and orphaned sensors."""
+    hass = call.hass
+    plant_entry_id = call.data.get("plant_entry_id")
+    force_cleanup = call.data.get("force_cleanup", False)
+    
+    manager = OptimizedSensorManager(hass)
+    
+    if plant_entry_id:
+        # Clean up specific plant
+        optimization_results = await manager.optimize_plant_entities(plant_entry_id)
+        cleanup_stats = {"plants_optimized": 1}
+    else:
+        # System-wide cleanup
+        cleanup_stats = await manager.cleanup_orphaned_sensors()
+        optimization_results = None
+    
+    response = {
+        "success": True,
+        "cleanup_stats": cleanup_stats,
+        "optimization_results": optimization_results,
+        "message": "Cleanup completed successfully"
+    }
+    
+    _LOGGER.info(f"Optimization cleanup: {response}")
+    return response
+
+
+async def optimize_plant(call: ServiceCall) -> ServiceResponse:
+    """Optimize a specific plant's sensor configuration."""
+    hass = call.hass
+    plant_entry_id = call.data["plant_entry_id"]
+    tent_id = call.data.get("tent_id")
+    inherit_sensors = call.data.get("inherit_sensors", True)
+    
+    manager = OptimizedSensorManager(hass)
+    
+    try:
+        if tent_id:
+            # Assign plant to tent and optimize
+            await manager.handle_tent_assignment_change(
+                plant_entry_id, tent_id, inherit_sensors
+            )
+        
+        # Get optimization results
+        optimization_results = await manager.optimize_plant_entities(plant_entry_id)
+        
+        response = {
+            "success": True,
+            "plant_entry_id": plant_entry_id,
+            "tent_id": tent_id,
+            "optimization_results": optimization_results,
+            "message": "Plant optimization completed"
+        }
+        
+    except Exception as e:
+        response = {
+            "success": False,
+            "plant_entry_id": plant_entry_id,
+            "error": str(e),
+            "message": f"Plant optimization failed: {str(e)}"
+        }
+        _LOGGER.error(f"Plant optimization failed: {e}")
+    
+    return response
+
+
+async def get_optimization_status(call: ServiceCall) -> ServiceResponse:
+    """Get comprehensive optimization system status."""
+    hass = call.hass
+    
+    try:
+        config_manager = get_optimization_config(hass)
+        manager = OptimizedSensorManager(hass)
+        
+        # Get configuration
+        config = await config_manager.async_load()
+        
+        # Get optimization statistics
+        stats = manager.get_optimization_stats()
+        
+        # Get health report
+        health = await manager.validate_optimization_health()
+        
+        # Get transition history
+        transition_history = await manager.get_transition_history()
+        
+        response = {
+            "success": True,
+            "timestamp": datetime.now().isoformat(),
+            "configuration": config,
+            "statistics": stats,
+            "health": health,
+            "transition_history": list(transition_history.values())[-10:],  # Last 10 transitions
+            "message": "Status retrieved successfully"
+        }
+        
+    except Exception as e:
+        response = {
+            "success": False,
+            "error": str(e),
+            "message": f"Failed to get optimization status: {str(e)}"
+        }
+        _LOGGER.error(f"Failed to get optimization status: {e}")
+    
+    return response
  
