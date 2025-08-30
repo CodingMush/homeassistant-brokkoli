@@ -140,8 +140,8 @@ async def async_setup_entry(
 
     # Erstelle die Standard-Sensoren für Plants
     if plant.device_type != DEVICE_TYPE_CYCLE and plant.device_type != DEVICE_TYPE_TENT:
-        # Check if plant uses virtual sensors (assigned to tent)
-        if plant.uses_virtual_sensors and plant.tent_assignment:
+        # Check if plant uses virtual sensors (can be assigned to tent or standalone)
+        if plant.uses_virtual_sensors:
             # Create virtual sensors instead of regular sensors
             virtual_sensors = virtual_manager.create_virtual_sensors_for_plant(plant, entry)
             
@@ -165,7 +165,7 @@ async def async_setup_entry(
                 # Fallback to regular sensors if virtual setup fails
                 _create_regular_plant_sensors(hass, entry, plant, async_add_entities)
         else:
-            # Create regular sensors for non-tent plants
+            # Create regular sensors for non-virtual plants
             _create_regular_plant_sensors(hass, entry, plant, async_add_entities)
             
         # Continue with PPFD, DLI, and consumption sensors (same for both virtual and regular)
@@ -2325,11 +2325,43 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
             reference_id = self._plant.get_virtual_sensor_reference(self._sensor_type)
             # Handle case where reference_id is None or empty
             if not reference_id:
-                # Clear existing reference if we had one
-                if self._reference_entity_id:
+                # For standalone virtual sensors, check if there's a direct external sensor mapping
+                external_sensor_mapping = {
+                    'temperature': FLOW_SENSOR_TEMPERATURE,
+                    'moisture': FLOW_SENSOR_MOISTURE,
+                    'conductivity': FLOW_SENSOR_CONDUCTIVITY,
+                    'illuminance': FLOW_SENSOR_ILLUMINANCE,
+                    'humidity': FLOW_SENSOR_HUMIDITY,
+                    'co2': FLOW_SENSOR_CO2,
+                    'ph': FLOW_SENSOR_PH,
+                    'power_consumption': FLOW_SENSOR_POWER_CONSUMPTION
+                }
+                
+                # Check if this sensor type has a direct external sensor mapping
+                if self._sensor_type in external_sensor_mapping:
+                    flow_key = external_sensor_mapping[self._sensor_type]
+                    external_sensor = self._plant._config.data[FLOW_PLANT_INFO].get(flow_key)
+                    if external_sensor:
+                        reference_id = external_sensor
+                
+                # Clear existing reference if we had one and no new reference
+                if not reference_id and self._reference_entity_id:
                     _LOGGER.debug("Clearing virtual sensor %s reference", self._sensor_type)
                     self._reference_entity_id = None
                     self._external_sensor = None
+                # Update reference if it's different
+                elif reference_id and reference_id != self._reference_entity_id:
+                    _LOGGER.debug("Updating virtual sensor %s reference from %s to %s", 
+                                 self._sensor_type, self._reference_entity_id, reference_id)
+                    self._reference_entity_id = reference_id
+                    self._external_sensor = reference_id
+                    # Set up tracking for the reference entity
+                    if self._reference_entity_id:
+                        async_track_state_change_event(
+                            self._hass,
+                            [self._reference_entity_id],
+                            self._state_changed_event,
+                        )
             elif reference_id != self._reference_entity_id:
                 _LOGGER.debug("Updating virtual sensor %s reference from %s to %s", 
                              self._sensor_type, self._reference_entity_id, reference_id)
@@ -2412,8 +2444,8 @@ class VirtualSensorManager:
         plant_device: Entity, 
         config: ConfigEntry
     ) -> dict[str, VirtualSensor]:
-        """Create virtual sensors for a plant assigned to a tent."""
-        if not plant_device.uses_virtual_sensors or not plant_device.tent_assignment:
+        """Create virtual sensors for a plant (can be assigned to tent or standalone)."""
+        if not plant_device.uses_virtual_sensors:
             return {}
             
         virtual_sensors = {}

@@ -2676,18 +2676,21 @@ class PlantDevice(Entity):
 
     def get_virtual_sensor_reference(self, sensor_type: str) -> str | None:
         """Get the reference entity ID for a virtual sensor."""
-        if not self._use_virtual_sensors or not self._tent_assignment:
+        if not self._use_virtual_sensors:
             return None
             
-        # Check for plant-specific overrides first
+        # Check for plant-specific overrides first (works for both tent-assigned and standalone plants)
         if sensor_type in self._sensor_overrides:
             return self._sensor_overrides[sensor_type]
             
-        # Get tent device and return its sensor
-        tent_device = self._get_tent_device(self._tent_assignment)
-        if tent_device and sensor_type in tent_device._environmental_sensors:
-            return tent_device._environmental_sensors[sensor_type]
-            
+        # For tent-assigned plants, get sensor from tent device
+        if self._tent_assignment:
+            # Get tent device and return its sensor
+            tent_device = self._get_tent_device(self._tent_assignment)
+            if tent_device and sensor_type in tent_device._environmental_sensors:
+                return tent_device._environmental_sensors[sensor_type]
+        
+        # For standalone virtual sensors, return None (sensor will use external sensor references)
         return None
 
     def set_sensor_override(self, sensor_type: str, entity_id: str) -> None:
