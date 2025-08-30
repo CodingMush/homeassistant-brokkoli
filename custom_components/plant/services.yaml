@@ -1052,3 +1052,31 @@ reassign_to_tent:
       required: false
       selector:
         boolean:
+
+migrate_to_virtual_sensors:
+  name: Migrate to Virtual Sensors
+  description: Migriert eine bestehende Pflanze zur Verwendung von virtuellen Sensoren mit einem Zelt
+  fields:
+    plant_entity:
+      name: Plant Entity
+      description: Die Pflanze, die zu virtuellen Sensoren migriert werden soll
+      required: true
+      selector:
+        entity:
+          domain: plant
+          integration: plant
+    tent_entity:
+      name: Tent Entity
+      description: Das Zelt, dem die Pflanze zugeordnet werden soll
+      required: true
+      selector:
+        entity:
+          domain: plant
+          integration: plant
+    migrate_sensors:
+      name: Migrate Sensors
+      description: Ersetzt individuelle Sensoren durch Zelt-Referenzen (virtuelle Sensoren)
+      default: true
+      required: false
+      selector:
+        boolean:

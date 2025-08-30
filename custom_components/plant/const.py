@@ -190,6 +190,7 @@ SERVICE_UNASSIGN_FROM_TENT = "unassign_from_tent"
 SERVICE_CREATE_TENT = "create_tent"
 SERVICE_REMOVE_TENT = "remove_tent"
 SERVICE_REASSIGN_TO_TENT = "reassign_to_tent"
+SERVICE_MIGRATE_TO_VIRTUAL_SENSORS = "migrate_to_virtual_sensors"
 
 STATE_LOW = "Low"
 STATE_HIGH = "High"
