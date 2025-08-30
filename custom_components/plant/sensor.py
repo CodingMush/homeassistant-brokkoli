@@ -515,6 +515,9 @@ class PlantCurrentStatus(RestoreSensor):
                         self._attr_native_unit_of_measurement = state.attributes[
                             ATTR_UNIT_OF_MEASUREMENT
                         ]
+                    # Round value for display using sensor definition
+                    if self._attr_native_value is not None:
+                        self._attr_native_value = self._round_value_for_display(self._attr_native_value)
             except AttributeError:
                 _LOGGER.debug(
                     "Unknown external sensor for %s: %s, setting to default: %s",
@@ -2279,7 +2282,7 @@ class PlantCurrentPh(PlantCurrentStatus):
             return
 
 
-class VirtualSensor(PlantCurrentStatus):
+class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
     """Virtual sensor that references another entity instead of creating duplicate storage."""
 
     def __init__(
@@ -2307,54 +2310,18 @@ class VirtualSensor(PlantCurrentStatus):
         if device_class:
             self._attr_device_class = device_class
         
-        super().__init__(hass, config, plantdevice)
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__(sensor_type, hass, config, plantdevice)
         
         # Update reference entity from plant configuration
         self._update_virtual_reference()
 
-    def _update_virtual_reference(self) -> None:
-        """Update the virtual sensor reference from plant device."""
-        if hasattr(self._plant, 'get_virtual_sensor_reference'):
-            reference_id = self._plant.get_virtual_sensor_reference(self._sensor_type)
-            if reference_id and reference_id != self._reference_entity_id:
-                self._reference_entity_id = reference_id
-                self._external_sensor = reference_id
-                # Set up tracking for the reference entity
-                if self._reference_entity_id:
-                    async_track_state_change_event(
-                        self._hass,
-                        [self._reference_entity_id],
-                        self._state_changed_event,
-                    )
-                    
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Return extra attributes including virtual sensor info."""
-        attrs = super().extra_state_attributes
-        attrs.update({
-            ATTR_IS_VIRTUAL_SENSOR: True,
-            ATTR_VIRTUAL_SENSOR_REFERENCE: self._reference_entity_id,
-            "sensor_type": self._sensor_type,
-        })
-        return attrs
-        
-    def replace_external_sensor(self, new_sensor: str | None) -> None:
-        """Modify the external sensor and update virtual reference."""
-        _LOGGER.info("Setting virtual sensor %s external sensor to %s", self.entity_id, new_sensor)
-        self._external_sensor = new_sensor
-        self._reference_entity_id = new_sensor
-        
-        # Update plant device with override if this is not from tent assignment
-        if new_sensor and hasattr(self._plant, 'set_sensor_override'):
-            self._plant.set_sensor_override(self._sensor_type, new_sensor)
-            
-        if new_sensor:
-            async_track_state_change_event(
-                self._hass,
-                [new_sensor],
-                self._state_changed_event,
-            )
-        self.async_write_ha_state()
+    def state_changed(self, entity_id, new_state):
+        """Run on every update to allow for changes from the GUI and service call"""
+        super().state_changed(entity_id, new_state)
+        # Round value for display using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
     async def async_update(self) -> None:
         """Update the virtual sensor by checking reference changes."""
@@ -2364,16 +2331,9 @@ class VirtualSensor(PlantCurrentStatus):
         # Call parent update to get the actual sensor data
         await super().async_update()
         
-    @property
-    def is_virtual(self) -> bool:
-        """Return True since this is a virtual sensor."""
-        return True
-        
-    @property
-    def reference_entity_id(self) -> str | None:
-        """Return the entity ID this virtual sensor references."""
-        return self._reference_entity_id
-
+        # Round value for display using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
 class VirtualSensorManager:
     """Manager for creating and managing virtual sensors efficiently."""
