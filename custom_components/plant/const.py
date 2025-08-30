@@ -189,6 +189,7 @@ SERVICE_ASSIGN_TO_TENT = "assign_to_tent"
 SERVICE_UNASSIGN_FROM_TENT = "unassign_from_tent"
 SERVICE_CREATE_TENT = "create_tent"
 SERVICE_REMOVE_TENT = "remove_tent"
+SERVICE_REASSIGN_TO_TENT = "reassign_to_tent"
 
 STATE_LOW = "Low"
 STATE_HIGH = "High"

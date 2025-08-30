@@ -227,6 +227,20 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         
         return available_tents
     
+    def _get_tent_area(self, tent_entry_id: str) -> str | None:
+        """Get area assignment from a tent entity."""
+        # Find the tent config entry based on the entry ID
+        for entry in self._async_current_entries():
+            if (
+                entry.entry_id == tent_entry_id
+                and entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT
+                and not entry.data.get("is_config", False)
+            ):
+                # Found the tent, return its area
+                return entry.data[FLOW_PLANT_INFO].get("area_id")
+        
+        return None
+
     def _get_tent_sensors(self, tent_entry_id: str) -> dict[str, str]:
         """Get sensor assignments from a tent entity."""
         tent_sensors = {}
@@ -747,6 +761,17 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            env_sensors = {
+                "temperature": user_input.get(FLOW_SENSOR_TEMPERATURE),
+                "humidity": user_input.get(FLOW_SENSOR_HUMIDITY),
+                "co2": user_input.get(FLOW_SENSOR_CO2),
+                "illuminance": user_input.get(FLOW_SENSOR_ILLUMINANCE),
+                "conductivity": user_input.get(FLOW_SENSOR_CONDUCTIVITY),
+                "moisture": user_input.get(FLOW_SENSOR_MOISTURE),
+                "ph": user_input.get(FLOW_SENSOR_PH),
+                "power_consumption": user_input.get(FLOW_SENSOR_POWER_CONSUMPTION),
+            }
+            
             self.plant_info = {
                 ATTR_NAME: user_input[ATTR_NAME],
                 ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
@@ -757,16 +782,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "plant_emoji": user_input.get("tent_icon", "🏠"),
                 # Simplified tent attributes - just sensor assignments
                 ATTR_ASSIGNED_PLANTS: [],
-                ATTR_ENVIRONMENTAL_SENSORS: {
-                    "temperature": user_input.get(FLOW_SENSOR_TEMPERATURE),
-                    "humidity": user_input.get(FLOW_SENSOR_HUMIDITY),
-                    "co2": user_input.get(FLOW_SENSOR_CO2),
-                    "illuminance": user_input.get(FLOW_SENSOR_ILLUMINANCE),
-                    "conductivity": user_input.get(FLOW_SENSOR_CONDUCTIVITY),
-                    "moisture": user_input.get(FLOW_SENSOR_MOISTURE),
-                    "ph": user_input.get(FLOW_SENSOR_PH),
-                    "power_consumption": user_input.get(FLOW_SENSOR_POWER_CONSUMPTION),
-                },
+                ATTR_ENVIRONMENTAL_SENSORS: env_sensors,
                 # Optional area assignment
                 "area_id": user_input.get("area_id"),
                 "notes": user_input.get("notes", ""),
@@ -905,10 +921,27 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             
             # If tent is selected, inherit tent sensors instead of individual sensor assignments
             if user_input.get(FLOW_TENT_ENTITY):
+                _LOGGER.debug("Tent selected for inheritance: %s", user_input[FLOW_TENT_ENTITY])
                 # Get tent sensors from the selected tent entity
                 tent_sensors = self._get_tent_sensors(user_input[FLOW_TENT_ENTITY])
-                self.plant_info.update(tent_sensors)
+                _LOGGER.debug("Inherited tent sensors: %s", tent_sensors)
+                if tent_sensors:
+                    self.plant_info.update(tent_sensors)
+                    _LOGGER.debug("Plant info after tent sensor update: %s", {k: v for k, v in self.plant_info.items() if 'sensor' in k.lower()})
+                else:
+                    _LOGGER.warning("No tent sensors found for inheritance from tent: %s", user_input[FLOW_TENT_ENTITY])
+                
+                # Also inherit area from tent if not explicitly set for plant
+                if not user_input.get("area_id"):
+                    tent_area = self._get_tent_area(user_input[FLOW_TENT_ENTITY])
+                    if tent_area:
+                        self.plant_info["area_id"] = tent_area
+                        _LOGGER.debug("Inherited area from tent: %s", tent_area)
+                else:
+                    # Use explicitly selected area for plant
+                    self.plant_info["area_id"] = user_input["area_id"]
             else:
+                _LOGGER.debug("No tent selected, using individual sensor assignments")
                 # Use individual sensor assignments
                 self.plant_info.update({
                     FLOW_SENSOR_TEMPERATURE: user_input.get(FLOW_SENSOR_TEMPERATURE),
@@ -922,6 +955,9 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                     FLOW_SENSOR_PH: user_input.get(FLOW_SENSOR_PH),
                 })
+                # Use explicitly selected area for plant
+                if user_input.get("area_id"):
+                    self.plant_info["area_id"] = user_input["area_id"]
 
             plant_helper = PlantHelper(hass=self.hass)
             plant_config = await plant_helper.get_plantbook_data(
@@ -930,6 +966,20 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ATTR_BREEDER: self.plant_info[ATTR_BREEDER],
                 }
             )
+
+            # Store tent sensors before plantbook data potentially overwrites them
+            tent_sensor_backup = {}
+            tent_area_backup = None
+            if user_input.get(FLOW_TENT_ENTITY):
+                for key in [FLOW_SENSOR_TEMPERATURE, FLOW_SENSOR_MOISTURE, FLOW_SENSOR_CONDUCTIVITY, 
+                           FLOW_SENSOR_ILLUMINANCE, FLOW_SENSOR_HUMIDITY, FLOW_SENSOR_CO2, 
+                           FLOW_SENSOR_POWER_CONSUMPTION, FLOW_SENSOR_PH]:
+                    if key in self.plant_info:
+                        tent_sensor_backup[key] = self.plant_info[key]
+                # Also backup area inheritance
+                tent_area_backup = self.plant_info.get("area_id")
+                _LOGGER.debug("Backed up tent sensors before plantbook update: %s", tent_sensor_backup)
+                _LOGGER.debug("Backed up tent area before plantbook update: %s", tent_area_backup)
 
             if (
                 plant_config
@@ -944,6 +994,16 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 plant_info["plant_emoji"] = plant_emoji
                 self.plant_info.update(plant_info)
+                
+                # Restore tent sensors after plantbook update
+                if tent_sensor_backup:
+                    self.plant_info.update(tent_sensor_backup)
+                    _LOGGER.debug("Restored tent sensors after plantbook update: %s", tent_sensor_backup)
+                
+                # Restore tent area after plantbook update if it was inherited
+                if tent_area_backup:
+                    self.plant_info["area_id"] = tent_area_backup
+                    _LOGGER.debug("Restored tent area after plantbook update: %s", tent_area_backup)
             else:
                 # Wenn keine OpenPlantbook-Daten verfügbar sind, füge trotzdem das Emoji zum Namen hinzu
                 plant_emoji = self.plant_info.get("plant_emoji", "")
@@ -994,6 +1054,11 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ATTR_WATER_CAPACITY, default=config_data.get("default_water_capacity")
             ): vol.Coerce(int),
         }
+        
+        # Add area selector
+        data_schema[vol.Optional("area_id")] = selector({
+            "area": {}
+        })
         
         # Add tent selector if tents are available
         if available_tents:

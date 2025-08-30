@@ -968,3 +968,87 @@ remove_tent:
       required: false
       selector:
         boolean:
+
+reassign_to_tent:
+  name: Reassign to Tent
+  description: Ordnet eine Pflanze einem neuen Zelt zu mit selektiver Sensor-Vererbung
+  fields:
+    plant_entity:
+      name: Plant Entity
+      description: Die Pflanze, die einem neuen Zelt zugeordnet werden soll
+      required: true
+      selector:
+        entity:
+          domain: plant
+          integration: plant
+    tent_entity:
+      name: Tent Entity
+      description: Das neue Zielt-Zelt
+      required: true
+      selector:
+        entity:
+          domain: plant
+          integration: plant
+    inherit_temperature:
+      name: Inherit Temperature Sensor
+      description: Temperatur-Sensor vom Zelt übernehmen
+      default: true
+      required: false
+      selector:
+        boolean:
+    inherit_humidity:
+      name: Inherit Humidity Sensor
+      description: Luftfeuchtigkeits-Sensor vom Zelt übernehmen
+      default: true
+      required: false
+      selector:
+        boolean:
+    inherit_co2:
+      name: Inherit CO2 Sensor
+      description: CO2-Sensor vom Zelt übernehmen
+      default: true
+      required: false
+      selector:
+        boolean:
+    inherit_illuminance:
+      name: Inherit Illuminance Sensor
+      description: Beleuchtungs-Sensor vom Zelt übernehmen
+      default: true
+      required: false
+      selector:
+        boolean:
+    inherit_conductivity:
+      name: Inherit Conductivity Sensor
+      description: Leitfähigkeits-Sensor vom Zelt übernehmen
+      default: true
+      required: false
+      selector:
+        boolean:
+    inherit_moisture:
+      name: Inherit Moisture Sensor
+      description: Feuchtigkeits-Sensor vom Zelt übernehmen
+      default: true
+      required: false
+      selector:
+        boolean:
+    inherit_ph:
+      name: Inherit pH Sensor
+      description: pH-Sensor vom Zelt übernehmen
+      default: true
+      required: false
+      selector:
+        boolean:
+    inherit_power_consumption:
+      name: Inherit Power Consumption Sensor
+      description: Energieverbrauchs-Sensor vom Zelt übernehmen
+      default: true
+      required: false
+      selector:
+        boolean:
+    inherit_area:
+      name: Inherit Area
+      description: Bereich-Zuordnung vom Zelt übernehmen
+      default: true
+      required: false
+      selector:
+        boolean:
