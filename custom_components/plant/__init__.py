@@ -1103,6 +1103,7 @@ class PlantDevice(Entity):
                 "uses_virtual_sensors": self._use_virtual_sensors,
                 "tent_assigned_at": self._tent_assigned_at,
                 "sensor_overrides": self._sensor_overrides,
+                "used_sensors": self.get_used_sensors(),
             })
         elif self.device_type == DEVICE_TYPE_CYCLE:
             # Cycle-specific attributes
@@ -1131,9 +1132,52 @@ class PlantDevice(Entity):
                 "assigned_plants": self._assigned_plants,
                 "plant_count": len(self._assigned_plants),
                 "environmental_sensors": self._environmental_sensors,
+                "used_sensors": self.get_used_sensors(),
             })
 
         return attrs
+
+    def get_used_sensors(self) -> dict:
+        """Get a dictionary of currently used sensors for this plant."""
+        used_sensors = {}
+        
+        # Add regular sensors
+        sensor_mapping = {
+            'temperature': self.sensor_temperature,
+            'moisture': self.sensor_moisture,
+            'conductivity': self.sensor_conductivity,
+            'illuminance': self.sensor_illuminance,
+            'humidity': self.sensor_humidity,
+            'co2': self.sensor_CO2,
+            'power_consumption': self.sensor_power_consumption,
+            'ph': self.sensor_ph,
+        }
+        
+        for sensor_type, sensor_entity in sensor_mapping.items():
+            if sensor_entity and hasattr(sensor_entity, 'entity_id'):
+                # Check if it's a virtual sensor
+                if hasattr(sensor_entity, '_reference_entity_id'):
+                    used_sensors[sensor_type] = {
+                        'entity_id': sensor_entity.entity_id,
+                        'type': 'virtual',
+                        'reference': sensor_entity._reference_entity_id
+                    }
+                # Check if it's a regular sensor with external sensor
+                elif hasattr(sensor_entity, 'external_sensor') and sensor_entity.external_sensor:
+                    used_sensors[sensor_type] = {
+                        'entity_id': sensor_entity.entity_id,
+                        'type': 'regular',
+                        'reference': sensor_entity.external_sensor
+                    }
+                # Regular sensor without external reference
+                else:
+                    used_sensors[sensor_type] = {
+                        'entity_id': sensor_entity.entity_id,
+                        'type': 'direct',
+                        'reference': None
+                    }
+        
+        return used_sensors
 
     @property
     def websocket_info(self) -> dict:
