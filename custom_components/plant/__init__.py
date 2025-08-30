@@ -816,16 +816,18 @@ class PlantDevice(Entity):
         self.total_fertilizer_consumption = None  # Füge Total Fertilizer Consumption hinzu
         self.power_consumption = None
 
-        self.conductivity_status = None
-        self.illuminance_status = None
-        self.moisture_status = None
-        self.temperature_status = None
-        self.humidity_status = None
-        self.CO2_status = None
-        self.dli_status = None
-        self.water_consumption_status = None
-        self.fertilizer_consumption_status = None
-        self.power_consumption_status = None
+        # Initialize sensor status attributes to Unknown instead of None
+        # This prevents false "Low" status when sensors are missing
+        self.conductivity_status = STATE_UNKNOWN
+        self.illuminance_status = STATE_UNKNOWN
+        self.moisture_status = STATE_UNKNOWN
+        self.temperature_status = STATE_UNKNOWN
+        self.humidity_status = STATE_UNKNOWN
+        self.CO2_status = STATE_UNKNOWN
+        self.dli_status = STATE_UNKNOWN
+        self.water_consumption_status = STATE_UNKNOWN
+        self.fertilizer_consumption_status = STATE_UNKNOWN
+        self.power_consumption_status = STATE_UNKNOWN
 
         self.flowering_duration = None
 
@@ -1595,6 +1597,22 @@ class PlantDevice(Entity):
         new_state = STATE_OK
         known_state = False
 
+        # Initialize all sensor statuses to UNKNOWN at the start of each update
+        # This ensures missing sensors are properly marked as Unknown, not Low
+        self.temperature_status = STATE_UNKNOWN
+        self.moisture_status = STATE_UNKNOWN
+        self.conductivity_status = STATE_UNKNOWN
+        self.illuminance_status = STATE_UNKNOWN
+        self.humidity_status = STATE_UNKNOWN
+        self.CO2_status = STATE_UNKNOWN
+        self.dli_status = STATE_UNKNOWN
+        self.water_consumption_status = STATE_UNKNOWN
+        self.fertilizer_consumption_status = STATE_UNKNOWN
+        self.power_consumption_status = STATE_UNKNOWN
+        
+        # Track which sensors have actual problems vs missing data
+        sensors_with_problems = []
+
         # Tents don't have threshold checking, just monitor sensors
         if self.device_type == DEVICE_TYPE_TENT:
             # For tents, just mark all sensors as OK if they have values
@@ -1626,11 +1644,11 @@ class PlantDevice(Entity):
                     if float(temperature) < float(self.min_temperature.state):
                         self.temperature_status = STATE_LOW
                         if self.temperature_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('temperature')
                     elif float(temperature) > float(self.max_temperature.state):
                         self.temperature_status = STATE_HIGH
                         if self.temperature_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('temperature')
                     else:
                         self.temperature_status = STATE_OK
 
@@ -1641,11 +1659,11 @@ class PlantDevice(Entity):
                     if float(moisture) < float(self.min_moisture.state):
                         self.moisture_status = STATE_LOW
                         if self.moisture_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('moisture')
                     elif float(moisture) > float(self.max_moisture.state):
                         self.moisture_status = STATE_HIGH
                         if self.moisture_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('moisture')
                     else:
                         self.moisture_status = STATE_OK
 
@@ -1656,11 +1674,11 @@ class PlantDevice(Entity):
                     if float(conductivity) < float(self.min_conductivity.state):
                         self.conductivity_status = STATE_LOW
                         if self.conductivity_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('conductivity')
                     elif float(conductivity) > float(self.max_conductivity.state):
                         self.conductivity_status = STATE_HIGH
                         if self.conductivity_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('conductivity')
                     else:
                         self.conductivity_status = STATE_OK
 
@@ -1671,11 +1689,11 @@ class PlantDevice(Entity):
                     if float(illuminance) < float(self.min_illuminance.state):
                         self.illuminance_status = STATE_LOW
                         if self.illuminance_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('illuminance')
                     elif float(illuminance) > float(self.max_illuminance.state):
                         self.illuminance_status = STATE_HIGH
                         if self.illuminance_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('illuminance')
                     else:
                         self.illuminance_status = STATE_OK
 
@@ -1686,11 +1704,11 @@ class PlantDevice(Entity):
                     if float(humidity) < float(self.min_humidity.state):
                         self.humidity_status = STATE_LOW
                         if self.humidity_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('humidity')
                     elif float(humidity) > float(self.max_humidity.state):
                         self.humidity_status = STATE_HIGH
                         if self.humidity_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('humidity')
                     else:
                         self.humidity_status = STATE_OK
 
@@ -1701,11 +1719,11 @@ class PlantDevice(Entity):
                     if float(CO2) < float(self.min_CO2.state):
                         self.CO2_status = STATE_LOW
                         if self.CO2_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('CO2')
                     elif float(CO2) > float(self.max_CO2.state):
                         self.CO2_status = STATE_HIGH
                         if self.CO2_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('CO2')
                     else:
                         self.CO2_status = STATE_OK
 
@@ -1718,11 +1736,11 @@ class PlantDevice(Entity):
                         if float(dli) < float(self.min_dli.state):
                             self.dli_status = STATE_LOW
                             if self.dli_trigger:
-                                new_state = STATE_PROBLEM
+                                sensors_with_problems.append('dli')
                         elif float(dli) > float(self.max_dli.state):
                             self.dli_status = STATE_HIGH
                             if self.dli_trigger:
-                                new_state = STATE_PROBLEM
+                                sensors_with_problems.append('dli')
                         else:
                             self.dli_status = STATE_OK
                     else:
@@ -1737,11 +1755,11 @@ class PlantDevice(Entity):
                     if float(water_consumption) < float(self.min_water_consumption.state):
                         self.water_consumption_status = STATE_LOW
                         if self.water_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('water_consumption')
                     elif float(water_consumption) > float(self.max_water_consumption.state):
                         self.water_consumption_status = STATE_HIGH
                         if self.water_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('water_consumption')
                     else:
                         self.water_consumption_status = STATE_OK
 
@@ -1753,11 +1771,11 @@ class PlantDevice(Entity):
                     if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
                         self.fertilizer_consumption_status = STATE_LOW
                         if self.fertilizer_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('fertilizer_consumption')
                     elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
                         self.fertilizer_consumption_status = STATE_HIGH
                         if self.fertilizer_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('fertilizer_consumption')
                     else:
                         self.fertilizer_consumption_status = STATE_OK
 
@@ -1769,11 +1787,11 @@ class PlantDevice(Entity):
                     if float(power_consumption) < float(self.min_power_consumption.state):
                         self.power_consumption_status = STATE_LOW
                         if self.power_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('power_consumption')
                     elif float(power_consumption) > float(self.max_power_consumption.state):
                         self.power_consumption_status = STATE_HIGH
                         if self.power_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('power_consumption')
                     else:
                         self.power_consumption_status = STATE_OK
 
@@ -1786,11 +1804,11 @@ class PlantDevice(Entity):
                     if float(moisture) < float(self.min_moisture.state):
                         self.moisture_status = STATE_LOW
                         if self.moisture_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('moisture')
                     elif float(moisture) > float(self.max_moisture.state):
                         self.moisture_status = STATE_HIGH
                         if self.moisture_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('moisture')
                     else:
                         self.moisture_status = STATE_OK
 
@@ -1801,11 +1819,11 @@ class PlantDevice(Entity):
                     if float(conductivity) < float(self.min_conductivity.state):
                         self.conductivity_status = STATE_LOW
                         if self.conductivity_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('conductivity')
                     elif float(conductivity) > float(self.max_conductivity.state):
                         self.conductivity_status = STATE_HIGH
                         if self.conductivity_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('conductivity')
                     else:
                         self.conductivity_status = STATE_OK
 
@@ -1817,11 +1835,11 @@ class PlantDevice(Entity):
                     if float(temperature) < float(self.min_temperature.state):
                         self.temperature_status = STATE_LOW
                         if self.temperature_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('temperature')
                     elif float(temperature) > float(self.max_temperature.state):
                         self.temperature_status = STATE_HIGH
                         if self.temperature_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('temperature')
                     else:
                         self.temperature_status = STATE_OK
 
@@ -1832,11 +1850,11 @@ class PlantDevice(Entity):
                     if float(illuminance) < float(self.min_illuminance.state):
                         self.illuminance_status = STATE_LOW
                         if self.illuminance_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('illuminance')
                     elif float(illuminance) > float(self.max_illuminance.state):
                         self.illuminance_status = STATE_HIGH
                         if self.illuminance_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('illuminance')
                     else:
                         self.illuminance_status = STATE_OK
 
@@ -1847,11 +1865,11 @@ class PlantDevice(Entity):
                     if float(humidity) < float(self.min_humidity.state):
                         self.humidity_status = STATE_LOW
                         if self.humidity_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('humidity')
                     elif float(humidity) > float(self.max_humidity.state):
                         self.humidity_status = STATE_HIGH
                         if self.humidity_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('humidity')
                     else:
                         self.humidity_status = STATE_OK
 
@@ -1862,11 +1880,11 @@ class PlantDevice(Entity):
                     if float(CO2) < float(self.min_CO2.state):
                         self.CO2_status = STATE_LOW
                         if self.CO2_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('CO2')
                     elif float(CO2) > float(self.max_CO2.state):
                         self.CO2_status = STATE_HIGH
                         if self.CO2_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('CO2')
                     else:
                         self.CO2_status = STATE_OK
 
@@ -1879,11 +1897,11 @@ class PlantDevice(Entity):
                         if float(dli) < float(self.min_dli.state):
                             self.dli_status = STATE_LOW
                             if self.dli_trigger:
-                                new_state = STATE_PROBLEM
+                                sensors_with_problems.append('dli')
                         elif float(dli) > float(self.max_dli.state):
                             self.dli_status = STATE_HIGH
                             if self.dli_trigger:
-                                new_state = STATE_PROBLEM
+                                sensors_with_problems.append('dli')
                         else:
                             self.dli_status = STATE_OK
                     else:
@@ -1898,11 +1916,11 @@ class PlantDevice(Entity):
                     if float(water_consumption) < float(self.min_water_consumption.state):
                         self.water_consumption_status = STATE_LOW
                         if self.water_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('water_consumption')
                     elif float(water_consumption) > float(self.max_water_consumption.state):
                         self.water_consumption_status = STATE_HIGH
                         if self.water_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('water_consumption')
                     else:
                         self.water_consumption_status = STATE_OK
 
@@ -1914,11 +1932,11 @@ class PlantDevice(Entity):
                     if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
                         self.fertilizer_consumption_status = STATE_LOW
                         if self.fertilizer_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('fertilizer_consumption')
                     elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
                         self.fertilizer_consumption_status = STATE_HIGH
                         if self.fertilizer_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('fertilizer_consumption')
                     else:
                         self.fertilizer_consumption_status = STATE_OK
 
@@ -1930,16 +1948,21 @@ class PlantDevice(Entity):
                     if float(power_consumption) < float(self.min_power_consumption.state):
                         self.power_consumption_status = STATE_LOW
                         if self.power_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('power_consumption')
                     elif float(power_consumption) > float(self.max_power_consumption.state):
                         self.power_consumption_status = STATE_HIGH
                         if self.power_consumption_trigger:
-                            new_state = STATE_PROBLEM
+                            sensors_with_problems.append('power_consumption')
                     else:
                         self.power_consumption_status = STATE_OK
 
-        if not known_state:
+        # Set final state based on actual sensor problems and data availability
+        if sensors_with_problems:
+            new_state = STATE_PROBLEM
+        elif not known_state:
             new_state = STATE_UNKNOWN
+        else:
+            new_state = STATE_OK
 
         self._attr_state = new_state
         self.update_registry()
