@@ -816,18 +816,18 @@ class PlantDevice(Entity):
         self.total_fertilizer_consumption = None  # Füge Total Fertilizer Consumption hinzu
         self.power_consumption = None
 
-        # Initialize sensor status attributes to Unknown instead of None
-        # This prevents false "Low" status when sensors are missing
-        self.conductivity_status = STATE_UNKNOWN
-        self.illuminance_status = STATE_UNKNOWN
-        self.moisture_status = STATE_UNKNOWN
-        self.temperature_status = STATE_UNKNOWN
-        self.humidity_status = STATE_UNKNOWN
-        self.CO2_status = STATE_UNKNOWN
-        self.dli_status = STATE_UNKNOWN
-        self.water_consumption_status = STATE_UNKNOWN
-        self.fertilizer_consumption_status = STATE_UNKNOWN
-        self.power_consumption_status = STATE_UNKNOWN
+        # Initialize sensor status attributes to None for compatibility
+        # The update logic will handle proper status setting
+        self.conductivity_status = None
+        self.illuminance_status = None
+        self.moisture_status = None
+        self.temperature_status = None
+        self.humidity_status = None
+        self.CO2_status = None
+        self.dli_status = None
+        self.water_consumption_status = None
+        self.fertilizer_consumption_status = None
+        self.power_consumption_status = None
 
         self.flowering_duration = None
 
@@ -1127,7 +1127,7 @@ class PlantDevice(Entity):
                 "images": self._images,
             })
         elif self.device_type == DEVICE_TYPE_TENT:
-            # Tent-specific attributes only (no plant-specific ones)
+            # Tent-specific attributes - only show assigned plants and sensor information
             attrs.update({
                 "assigned_plants": self._assigned_plants,
                 "plant_count": len(self._assigned_plants),
@@ -1433,6 +1433,14 @@ class PlantDevice(Entity):
                 "type": "select"
             }
 
+        # Add tent basic info for websocket response
+        if self.device_type == DEVICE_TYPE_TENT:
+            response.update({
+                "plant_count": len(self._assigned_plants),
+                "assigned_plants": self._assigned_plants,
+                "environmental_sensors": self._environmental_sensors
+            })
+            
         return response
 
     @property
@@ -1597,18 +1605,19 @@ class PlantDevice(Entity):
         new_state = STATE_OK
         known_state = False
 
-        # Initialize all sensor statuses to UNKNOWN at the start of each update
-        # This ensures missing sensors are properly marked as Unknown, not Low
-        self.temperature_status = STATE_UNKNOWN
-        self.moisture_status = STATE_UNKNOWN
-        self.conductivity_status = STATE_UNKNOWN
-        self.illuminance_status = STATE_UNKNOWN
-        self.humidity_status = STATE_UNKNOWN
-        self.CO2_status = STATE_UNKNOWN
-        self.dli_status = STATE_UNKNOWN
-        self.water_consumption_status = STATE_UNKNOWN
-        self.fertilizer_consumption_status = STATE_UNKNOWN
-        self.power_consumption_status = STATE_UNKNOWN
+        # Initialize all sensor statuses to None for backward compatibility
+        # The threshold validation logic will handle proper status setting
+        # Only set status when sensors have valid data and thresholds exist
+        self.temperature_status = None
+        self.moisture_status = None
+        self.conductivity_status = None
+        self.illuminance_status = None
+        self.humidity_status = None
+        self.CO2_status = None
+        self.dli_status = None
+        self.water_consumption_status = None
+        self.fertilizer_consumption_status = None
+        self.power_consumption_status = None
         
         # Track which sensors have actual problems vs missing data
         sensors_with_problems = []
@@ -1639,7 +1648,7 @@ class PlantDevice(Entity):
             # Cycle-Update-Logik
             if self.sensor_temperature is not None:
                 temperature = self._median_sensors.get('temperature')
-                if temperature is not None:
+                if temperature is not None and temperature not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None]:
                     known_state = True
                     # Only check thresholds if they exist and have valid states
                     if (self.min_temperature is not None and self.max_temperature is not None and 
@@ -1647,20 +1656,27 @@ class PlantDevice(Entity):
                         self.min_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
                         self.max_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
                         try:
-                            if float(temperature) < float(self.min_temperature.state):
+                            temp_val = float(temperature)
+                            min_val = float(self.min_temperature.state)
+                            max_val = float(self.max_temperature.state)
+                            
+                            if temp_val < min_val:
                                 self.temperature_status = STATE_LOW
                                 if self.temperature_trigger:
                                     sensors_with_problems.append('temperature')
-                            elif float(temperature) > float(self.max_temperature.state):
+                            elif temp_val > max_val:
                                 self.temperature_status = STATE_HIGH
                                 if self.temperature_trigger:
                                     sensors_with_problems.append('temperature')
                             else:
                                 self.temperature_status = STATE_OK
                         except (ValueError, TypeError):
+                            # If threshold comparison fails, sensor has data but thresholds are invalid
                             self.temperature_status = STATE_OK
                     else:
+                        # Sensor has data but no valid thresholds - mark as OK, not low
                         self.temperature_status = STATE_OK
+                # If sensor has no data, leave status as None
 
             if self.sensor_moisture is not None:
                 moisture = self._median_sensors.get('moisture')
@@ -1895,29 +1911,34 @@ class PlantDevice(Entity):
             # Plant-Update-Logik
             if self.sensor_moisture is not None:
                 moisture = self.sensor_moisture.state
-                if moisture is not None and moisture != STATE_UNAVAILABLE and moisture != STATE_UNKNOWN:
+                if moisture is not None and moisture not in [STATE_UNAVAILABLE, STATE_UNKNOWN]:
                     known_state = True
-                    # Only check thresholds if they exist and have valid states
-                    if (self.min_moisture is not None and self.max_moisture is not None and 
-                        self.min_moisture.state is not None and self.max_moisture.state is not None and
-                        self.min_moisture.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
-                        self.max_moisture.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                    # Get effective thresholds (including shared thresholds fallback)
+                    effective_min_moisture = self.get_effective_threshold('min_moisture', self.min_moisture)
+                    effective_max_moisture = self.get_effective_threshold('max_moisture', self.max_moisture)
+                    
+                    # Only check thresholds if effective values are available
+                    if effective_min_moisture is not None and effective_max_moisture is not None:
                         try:
-                            if float(moisture) < float(self.min_moisture.state):
+                            moisture_val = float(moisture)
+                            min_val = float(effective_min_moisture)
+                            max_val = float(effective_max_moisture)
+                            
+                            if moisture_val < min_val:
                                 self.moisture_status = STATE_LOW
                                 if self.moisture_trigger:
                                     sensors_with_problems.append('moisture')
-                            elif float(moisture) > float(self.max_moisture.state):
+                            elif moisture_val > max_val:
                                 self.moisture_status = STATE_HIGH
                                 if self.moisture_trigger:
                                     sensors_with_problems.append('moisture')
                             else:
                                 self.moisture_status = STATE_OK
                         except (ValueError, TypeError):
-                            # If threshold comparison fails, mark as OK (sensor has data but thresholds are invalid)
+                            # If threshold comparison fails, sensor has data but thresholds are invalid
                             self.moisture_status = STATE_OK
                     else:
-                        # Sensor has data but no valid thresholds - mark as OK
+                        # Sensor has data but no valid thresholds (own or shared) - mark as OK
                         self.moisture_status = STATE_OK
 
             if self.sensor_conductivity is not None:
@@ -1950,27 +1971,34 @@ class PlantDevice(Entity):
             # Füge die fehlenden Sensor-Prüfungen hinzu
             if self.sensor_temperature is not None:
                 temperature = self.sensor_temperature.state
-                if temperature is not None and temperature != STATE_UNAVAILABLE and temperature != STATE_UNKNOWN:
+                if temperature is not None and temperature not in [STATE_UNAVAILABLE, STATE_UNKNOWN]:
                     known_state = True
-                    # Only check thresholds if they exist and have valid states
-                    if (self.min_temperature is not None and self.max_temperature is not None and 
-                        self.min_temperature.state is not None and self.max_temperature.state is not None and
-                        self.min_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
-                        self.max_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                    # Get effective thresholds (including shared thresholds fallback)
+                    effective_min_temp = self.get_effective_threshold('min_temperature', self.min_temperature)
+                    effective_max_temp = self.get_effective_threshold('max_temperature', self.max_temperature)
+                    
+                    # Only check thresholds if effective values are available
+                    if effective_min_temp is not None and effective_max_temp is not None:
                         try:
-                            if float(temperature) < float(self.min_temperature.state):
+                            temp_val = float(temperature)
+                            min_val = float(effective_min_temp)
+                            max_val = float(effective_max_temp)
+                            
+                            if temp_val < min_val:
                                 self.temperature_status = STATE_LOW
                                 if self.temperature_trigger:
                                     sensors_with_problems.append('temperature')
-                            elif float(temperature) > float(self.max_temperature.state):
+                            elif temp_val > max_val:
                                 self.temperature_status = STATE_HIGH
                                 if self.temperature_trigger:
                                     sensors_with_problems.append('temperature')
                             else:
                                 self.temperature_status = STATE_OK
                         except (ValueError, TypeError):
+                            # If threshold comparison fails, sensor has data but thresholds are invalid
                             self.temperature_status = STATE_OK
                     else:
+                        # Sensor has data but no valid thresholds (own or shared) - mark as OK
                         self.temperature_status = STATE_OK
 
             if self.sensor_illuminance is not None:
@@ -2595,6 +2623,9 @@ class PlantDevice(Entity):
         if plant_entity_id not in self._assigned_plants:
             self._assigned_plants.append(plant_entity_id)
             
+            # Update shared thresholds from all assigned plants
+            self.update_shared_thresholds()
+            
             # Update config entry
             data = dict(self._config.data)
             data[FLOW_PLANT_INFO][ATTR_ASSIGNED_PLANTS] = self._assigned_plants
@@ -2610,12 +2641,42 @@ class PlantDevice(Entity):
         if plant_entity_id in self._assigned_plants:
             self._assigned_plants.remove(plant_entity_id)
             
+            # Update shared thresholds from remaining assigned plants
+            self.update_shared_thresholds()
+            
             # Update config entry
             data = dict(self._config.data)
             data[FLOW_PLANT_INFO][ATTR_ASSIGNED_PLANTS] = self._assigned_plants
             self._hass.config_entries.async_update_entry(self._config, data=data)
             
             self.async_write_ha_state()
+
+    def notify_plant_threshold_change(self, plant_entity_id: str) -> None:
+        """Called when an assigned plant's threshold values change."""
+        if self.device_type != DEVICE_TYPE_TENT:
+            return
+            
+        if plant_entity_id in self._assigned_plants:
+            _LOGGER.debug(f"Plant {plant_entity_id} threshold changed, updating tent {self.entity_id} aggregated thresholds")
+            # Update aggregated thresholds
+            self.update_shared_thresholds()
+
+    def get_effective_threshold(self, threshold_type: str, threshold_entity):
+        """Get the effective threshold value from the plant's own threshold entity.
+        
+        Args:
+            threshold_type: Type of threshold (e.g., 'min_temperature', 'max_moisture')
+            threshold_entity: The plant's own threshold entity
+            
+        Returns:
+            The threshold value to use, or None if not available
+        """
+        # Only use the plant's own threshold
+        if threshold_entity and hasattr(threshold_entity, 'state') and threshold_entity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None]:
+            return threshold_entity.state
+                    
+        return None
+    
 
     def get_virtual_sensor_reference(self, sensor_type: str) -> str | None:
         """Get the reference entity ID for a virtual sensor."""
