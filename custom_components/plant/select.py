@@ -33,11 +33,14 @@ from .const import (
     ATTR_IS_NEW_PLANT,
     DEVICE_TYPE_PLANT,
     DEVICE_TYPE_CYCLE,
+    DEVICE_TYPE_TENT,
     CYCLE_DOMAIN,
     SERVICE_MOVE_TO_CYCLE,
     GROWTH_PHASE_SEEDS,
     TREATMENT_OPTIONS,
     TREATMENT_NONE,
+    TENT_TREATMENT_OPTIONS,
+    TENT_TREATMENT_NONE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,22 +54,31 @@ async def async_setup_entry(
     plant = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
     entities = []
     
-    # Growth Phase Select für alle Devices
-    growth_phase_select = PlantGrowthPhaseSelect(hass, entry, plant)
-    entities.append(growth_phase_select)
-    plant.add_growth_phase_select(growth_phase_select)
+    # Only create growth phase and treatment selects for plants and cycles, not tents
+    if plant.device_type != DEVICE_TYPE_TENT:
+        # Growth Phase Select für Plants und Cycles
+        growth_phase_select = PlantGrowthPhaseSelect(hass, entry, plant)
+        entities.append(growth_phase_select)
+        plant.add_growth_phase_select(growth_phase_select)
 
-    # Treatment Select für alle Devices
-    treatment_select = PlantTreatmentSelect(hass, entry, plant)
-    entities.append(treatment_select)
-    plant.add_treatment_select(treatment_select)
+        # Treatment Select für Plants und Cycles
+        treatment_select = PlantTreatmentSelect(hass, entry, plant)
+        entities.append(treatment_select)
+        plant.add_treatment_select(treatment_select)
 
-    # Cycle Select nur für Plants, nicht für Cycles
-    if plant.device_type == DEVICE_TYPE_PLANT:
-        cycle_select = PlantCycleSelect(hass, entry, plant)
-        entities.append(cycle_select)
+        # Cycle Select nur für Plants, nicht für Cycles oder Tents
+        if plant.device_type == DEVICE_TYPE_PLANT:
+            cycle_select = PlantCycleSelect(hass, entry, plant)
+            entities.append(cycle_select)
     
-    async_add_entities(entities)
+    # Create tent-specific treatment select for tents
+    elif plant.device_type == DEVICE_TYPE_TENT:
+        tent_treatment_select = TentTreatmentSelect(hass, entry, plant)
+        entities.append(tent_treatment_select)
+        plant.add_treatment_select(tent_treatment_select)  # Use same method name for consistency
+    
+    if entities:
+        async_add_entities(entities)
 
 class PlantGrowthPhaseSelect(SelectEntity, RestoreEntity):
     """Representation of a plant growth phase selector."""
@@ -579,4 +591,78 @@ class PlantTreatmentSelect(SelectEntity, RestoreEntity):
             self.async_write_ha_state()
 
         # Starte den Reset-Timer
+        asyncio.create_task(reset_treatment())
+
+
+class TentTreatmentSelect(SelectEntity, RestoreEntity):
+    """Representation of a tent treatment selector."""
+
+    def __init__(self, hass: HomeAssistant, config: ConfigEntry, plant_device) -> None:
+        """Initialize the tent treatment select entity."""
+        self._attr_options = [""] + TENT_TREATMENT_OPTIONS  # Leere Option am Anfang
+        self._attr_current_option = ""  # Leere Option als Standard
+        self._config = config
+        self._hass = hass
+        self._plant = plant_device
+        self._attr_name = f"{plant_device.name} Maintenance"
+        self._attr_unique_id = f"{config.entry_id}-tent-treatment"
+        
+        # Initialize basic attributes
+        self._attr_extra_state_attributes = {
+            "friendly_name": self._attr_name,
+            "last_treatment": None,
+            "last_treatment_date": None,
+            "treatment_count": 0,
+        }
+        self._attr_icon = "mdi:tools"
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+        
+        # Restore last state
+        last_state = await self.async_get_last_state()
+        if last_state:
+            self._attr_current_option = last_state.state or ""
+            if last_state.attributes:
+                self._attr_extra_state_attributes.update(last_state.attributes)
+
+    async def async_select_option(self, option: str) -> None:
+        """Change the selected option."""
+        if not option:  # Wenn leere Option ausgewählt wurde
+            self._attr_current_option = ""
+            self.async_write_ha_state()
+            return
+
+        # Record the treatment
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._attr_extra_state_attributes["last_treatment"] = option
+        self._attr_extra_state_attributes["last_treatment_date"] = current_time
+        self._attr_extra_state_attributes["treatment_count"] = (
+            self._attr_extra_state_attributes.get("treatment_count", 0) + 1
+        )
+        
+        self._attr_current_option = option
+        self.async_write_ha_state()
+
+        _LOGGER.debug(
+            "Applied tent treatment %s to %s",
+            option,
+            self._plant.entity_id
+        )
+
+        # Reset after 2 seconds
+        async def reset_treatment():
+            await asyncio.sleep(2)
+            self._attr_current_option = ""
+            self.async_write_ha_state()
+
+        # Start reset timer
         asyncio.create_task(reset_treatment())

@@ -217,6 +217,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         config_entry_id=entry.entry_id,
         **plant.device_info
     )
+    
+    # If area_id was specified during tent creation, set it on the device
+    area_id = plant_data.get("area_id")
+    if area_id and device:
+        device_registry.async_update_device(device.id, area_id=area_id)
 
     hass.data[DOMAIN][entry.entry_id][ATTR_PLANT] = plant
 
