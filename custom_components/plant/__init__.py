@@ -177,7 +177,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Aktualisiere den kWh Preis in allen Plants/Cycles
         kwh_price = entry.data[FLOW_PLANT_INFO].get(ATTR_KWH_PRICE, DEFAULT_KWH_PRICE)
         for domain_entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][domain_entry_id]:
+            if isinstance(hass.data[DOMAIN][domain_entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][domain_entry_id]:
                 plant = hass.data[DOMAIN][domain_entry_id][ATTR_PLANT]
                 plant.update_kwh_price(kwh_price)
         
@@ -281,7 +281,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Wenn ein neuer Cycle erstellt wurde, aktualisiere alle Plant Cycle Selects
     if plant.device_type == DEVICE_TYPE_CYCLE:
         for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 other_plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if other_plant.device_type == DEVICE_TYPE_PLANT and other_plant.cycle_select:
                     other_plant.cycle_select._update_cycle_options()
@@ -324,7 +324,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             
             async def update_cycle_selects(_now=None):
                 for entry_id in hass.data[DOMAIN]:
-                    if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                    if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                         plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                         if plant.device_type == DEVICE_TYPE_PLANT and plant.cycle_select:
                             plant.cycle_select._update_cycle_options()
@@ -366,7 +366,8 @@ def ws_get_info(
         return
 
     for key in hass.data[DOMAIN]:
-        if not ATTR_PLANT in hass.data[DOMAIN][key]:
+        # Skip non-dict entries like virtual_sensor_manager
+        if not isinstance(hass.data[DOMAIN][key], dict) or not ATTR_PLANT in hass.data[DOMAIN][key]:
             continue
         plant_entity = hass.data[DOMAIN][key][ATTR_PLANT]
         if plant_entity.entity_id == msg["entity_id"]:
@@ -408,7 +409,7 @@ async def ws_upload_image(
     target_entity = None
     target_entry = None
     for entry_id in hass.data[DOMAIN]:
-        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+        if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
             entity = hass.data[DOMAIN][entry_id][ATTR_PLANT]
             if entity.entity_id == entity_id:
                 target_entity = entity
@@ -570,7 +571,7 @@ async def ws_delete_image(
     target_entity = None
     target_entry = None
     for entry_id in hass.data[DOMAIN]:
-        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+        if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
             entity = hass.data[DOMAIN][entry_id][ATTR_PLANT]
             if entity.entity_id == entity_id:
                 target_entity = entity
@@ -666,7 +667,7 @@ async def ws_set_main_image(
     target_entity = None
     target_entry = None
     for entry_id in hass.data[DOMAIN]:
-        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+        if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
             entity = hass.data[DOMAIN][entry_id][ATTR_PLANT]
             if entity.entity_id == entity_id:
                 target_entity = entity
