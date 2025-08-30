@@ -584,7 +584,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             
             # Aktualisiere alle Plant Cycle Selects
             for entry_id in hass.data[DOMAIN]:
-                if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                     plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                     if plant.device_type == DEVICE_TYPE_PLANT and plant.cycle_select:
                         plant.cycle_select._update_cycle_options()
@@ -680,7 +681,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             
             # Finde zuerst das Cycle Objekt
             for entry_id in hass.data[DOMAIN]:
-                if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                     if hass.data[DOMAIN][entry_id][ATTR_PLANT].entity_id == cycle_entity_id:
                         cycle = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                         break
@@ -978,7 +980,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         target_plant = None
         target_entry = None
         for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if plant.entity_id == entity_id:
                     target_plant = plant
@@ -1132,7 +1135,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find the target entity (Plant or Cycle)
         target_entity = None
         for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 entity = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if entity.entity_id == safe_entity_id:
                     target_entity = entity
@@ -1246,7 +1250,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Finde die Plant
         target_plant = None
         for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if plant.entity_id == entity_id:
                     target_plant = plant
@@ -1276,7 +1281,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find target plant/cycle
         target_plant = None
         for entry_id in hass.data.get(DOMAIN, {}):
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if plant.entity_id == entity_id:
                     target_plant = plant
@@ -1331,7 +1337,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find target plant
         target_plant = None
         for entry_id in hass.data.get(DOMAIN, {}):
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if plant.entity_id == entity_id:
                     target_plant = plant
@@ -1358,7 +1365,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find target plant
         target_plant = None
         for entry_id in hass.data.get(DOMAIN, {}):
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if plant.entity_id == entity_id:
                     target_plant = plant
@@ -1420,7 +1428,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 # Find the corresponding config entry
                 found_entry = None
                 for entry_id in hass.data[DOMAIN]:
-                    if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                    # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                    if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                         plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                         if plant.entity_id == plant_entity_id:
                             found_entry = next(
@@ -1914,7 +1923,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find plant device
         plant_device = None
         for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if device.entity_id == plant_entity_id and device.device_type == DEVICE_TYPE_PLANT:
                     plant_device = device
@@ -1951,7 +1961,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         tent_device = None
         tent_entry_id = None
         for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
                     tent_device = device
@@ -1975,7 +1986,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 for plant_entity_id in tent_device.assigned_plants.copy():
                     # Find and unassign each plant
                     for entry_id in hass.data[DOMAIN]:
-                        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                        # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                        if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                             plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                             if plant.entity_id == plant_entity_id:
                                 plant.unassign_from_tent()
