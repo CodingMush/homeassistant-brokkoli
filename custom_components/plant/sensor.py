@@ -145,6 +145,7 @@ async def async_setup_entry(
             # Create virtual sensors instead of regular sensors
             virtual_sensors = virtual_manager.create_virtual_sensors_for_plant(plant, entry)
             
+            # Always add virtual sensors to Home Assistant, even if some don't have references yet
             if virtual_sensors:
                 # Add virtual sensors to Home Assistant
                 async_add_entities(virtual_sensors.values())
@@ -2323,6 +2324,7 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         """Update the virtual sensor reference from plant device."""
         if hasattr(self._plant, 'get_virtual_sensor_reference'):
             reference_id = self._plant.get_virtual_sensor_reference(self._sensor_type)
+            
             # Handle case where reference_id is None or empty
             if not reference_id:
                 # For standalone virtual sensors, check if there's a direct external sensor mapping
@@ -2340,9 +2342,11 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
                 # Check if this sensor type has a direct external sensor mapping
                 if self._sensor_type in external_sensor_mapping:
                     flow_key = external_sensor_mapping[self._sensor_type]
-                    external_sensor = self._plant._config.data[FLOW_PLANT_INFO].get(flow_key)
-                    if external_sensor:
-                        reference_id = external_sensor
+                    # For standalone plants, check the plant's config for direct sensor assignments
+                    if hasattr(self._plant, '_config') and self._plant._config:
+                        external_sensor = self._plant._config.data.get(FLOW_PLANT_INFO, {}).get(flow_key)
+                        if external_sensor:
+                            reference_id = external_sensor
                 
                 # Clear existing reference if we had one and no new reference
                 if not reference_id and self._reference_entity_id:
@@ -2413,9 +2417,10 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
     @property
     def state(self):
         """Return the state of the sensor."""
-        # If we have no reference entity, return STATE_UNAVAILABLE
+        # If we have no reference entity, return STATE_UNKNOWN (not STATE_UNAVAILABLE)
+        # This prevents problems in plant's problem detection logic
         if not self._reference_entity_id:
-            return STATE_UNAVAILABLE
+            return STATE_UNKNOWN
         
         # Get state from parent implementation
         return super().state
@@ -2462,13 +2467,13 @@ class VirtualSensorManager:
                 'reading': READING_MOISTURE,
                 'icon': ICON_MOISTURE,
                 'unit': PERCENTAGE,
-                'device_class': SensorDeviceClass.MOISTURE
+                'device_class': ATTR_MOISTURE
             },
             'conductivity': {
                 'reading': READING_CONDUCTIVITY,
                 'icon': ICON_CONDUCTIVITY,
                 'unit': UNIT_CONDUCTIVITY,
-                'device_class': None
+                'device_class': ATTR_CONDUCTIVITY
             },
             'illuminance': {
                 'reading': READING_ILLUMINANCE,
@@ -2528,7 +2533,10 @@ class VirtualSensorManager:
         if plant_entity_id in self._virtual_sensors:
             for virtual_sensor in self._virtual_sensors[plant_entity_id].values():
                 virtual_sensor._update_virtual_reference()
-                virtual_sensor.async_write_ha_state()
+                # Only write state if the sensor has a valid reference or if it's STATE_UNKNOWN
+                # This prevents unnecessary updates when references are missing
+                if virtual_sensor._reference_entity_id or virtual_sensor.state == STATE_UNKNOWN:
+                    virtual_sensor.async_write_ha_state()
                 
     def cleanup_virtual_sensors(self, plant_entity_id: str) -> None:
         """Clean up virtual sensors when plant is unassigned from tent."""

@@ -2690,6 +2690,28 @@ class PlantDevice(Entity):
             if tent_device and sensor_type in tent_device._environmental_sensors:
                 return tent_device._environmental_sensors[sensor_type]
         
+        # For standalone virtual sensors, check if there are direct sensor assignments in plant config
+        # This fixes the issue with standalone plants using virtual sensors
+        if not self._tent_assignment and self._use_virtual_sensors:
+            # Map sensor types to config keys
+            sensor_mapping = {
+                'temperature': FLOW_SENSOR_TEMPERATURE,
+                'moisture': FLOW_SENSOR_MOISTURE,
+                'conductivity': FLOW_SENSOR_CONDUCTIVITY,
+                'illuminance': FLOW_SENSOR_ILLUMINANCE,
+                'humidity': FLOW_SENSOR_HUMIDITY,
+                'co2': FLOW_SENSOR_CO2,
+                'ph': FLOW_SENSOR_PH,
+                'power_consumption': FLOW_SENSOR_POWER_CONSUMPTION
+            }
+            
+            if sensor_type in sensor_mapping:
+                config_key = sensor_mapping[sensor_type]
+                # Check plant config for direct sensor assignment
+                direct_sensor = self._plant_info.get(config_key)
+                if direct_sensor:
+                    return direct_sensor
+        
         # For standalone virtual sensors, return None (sensor will use external sensor references)
         return None
 
