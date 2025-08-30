@@ -947,10 +947,22 @@ class PlantDevice(Entity):
                 "model": self._plant_info.get(ATTR_STRAIN, ""),
                 "model_id": self._plant_info.get(ATTR_TYPE, ""),
             })
-        else:  # DEVICE_TYPE_CYCLE
+        elif device_type == DEVICE_TYPE_CYCLE:
             info.update({
                 "manufacturer": "Home Assistant",
                 "model": "Cycle",
+                "model_id": self._plant_info.get(ATTR_TYPE, ""),
+            })
+        elif device_type == DEVICE_TYPE_TENT:
+            info.update({
+                "manufacturer": "Home Assistant",
+                "model": "Tent",
+                "model_id": "Environmental Monitor",
+            })
+        else:  # Fallback
+            info.update({
+                "manufacturer": "Home Assistant",
+                "model": "Unknown",
                 "model_id": self._plant_info.get(ATTR_TYPE, ""),
             })
         

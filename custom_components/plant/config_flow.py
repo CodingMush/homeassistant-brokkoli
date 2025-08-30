@@ -216,7 +216,14 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 tent_name = entry.data[FLOW_PLANT_INFO].get(ATTR_NAME, "Unknown Tent")
                 # Use a synthetic entity ID for selection
                 tent_entity_id = f"plant.{entry.data[FLOW_PLANT_INFO].get(ATTR_NAME, 'tent').lower().replace(' ', '_')}"
-                available_tents[tent_entity_id] = tent_name
+                
+                # Get the environmental sensors for this tent
+                env_sensors = entry.data[FLOW_PLANT_INFO].get(ATTR_ENVIRONMENTAL_SENSORS, {})
+                sensor_count = len([s for s in env_sensors.values() if s])
+                
+                # Create a descriptive label showing tent name and sensor count
+                tent_label = f"{tent_name} ({sensor_count} sensors)"
+                available_tents[tent_entity_id] = tent_label
         
         return available_tents
     
@@ -983,7 +990,34 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         
         # Add tent selector if tents are available
         if available_tents:
-            data_schema[vol.Optional(FLOW_TENT_ENTITY, description={"name": "Tent (optional - inherits sensors)"})] = vol.In(available_tents)
+            # Create description that shows available sensors in each tent
+            tent_description = "Select a tent to inherit its sensors:"
+            for tent_id, tent_label in available_tents.items():
+                tent_sensors = self._get_tent_sensors(tent_id)
+                if tent_sensors:
+                    sensor_names = []
+                    sensor_type_map = {
+                        FLOW_SENSOR_TEMPERATURE: "Temperature",
+                        FLOW_SENSOR_MOISTURE: "Moisture", 
+                        FLOW_SENSOR_CONDUCTIVITY: "Conductivity",
+                        FLOW_SENSOR_ILLUMINANCE: "Illuminance",
+                        FLOW_SENSOR_HUMIDITY: "Humidity",
+                        FLOW_SENSOR_CO2: "CO2",
+                        FLOW_SENSOR_PH: "pH",
+                        FLOW_SENSOR_POWER_CONSUMPTION: "Power"
+                    }
+                    for sensor_key in tent_sensors.keys():
+                        if sensor_key in sensor_type_map:
+                            sensor_names.append(sensor_type_map[sensor_key])
+                    
+                    if sensor_names:
+                        tent_description += f"\n• {tent_label}: {', '.join(sensor_names)}"
+                    else:
+                        tent_description += f"\n• {tent_label}: No sensors configured"
+                else:
+                    tent_description += f"\n• {tent_label}: No sensors configured"
+            
+            data_schema[vol.Optional(FLOW_TENT_ENTITY, description={"name": "Tent (inherits sensors)", "description": tent_description})] = vol.In(available_tents)
         
         # Add individual sensor selectors (used when no tent is selected)
         data_schema.update({
