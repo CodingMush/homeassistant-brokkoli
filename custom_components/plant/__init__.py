@@ -340,7 +340,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Rest der Cleanup-Logik
         for entry_id in list(hass.data[DOMAIN].keys()):
-            if len(hass.data[DOMAIN][entry_id]) == 0:
+            entry_data = hass.data[DOMAIN][entry_id]
+            # Only check length for dictionary entries, not VirtualSensorManager
+            if isinstance(entry_data, dict) and len(entry_data) == 0:
                 _LOGGER.info("Removing entry %s", entry_id)
                 del hass.data[DOMAIN][entry_id]
         if len(hass.data[DOMAIN]) == 0:
@@ -1593,6 +1595,28 @@ class PlantDevice(Entity):
         new_state = STATE_OK
         known_state = False
 
+        # Tents don't have threshold checking, just monitor sensors
+        if self.device_type == DEVICE_TYPE_TENT:
+            # For tents, just mark all sensors as OK if they have values
+            if any([
+                self.sensor_temperature and self.sensor_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_humidity and self.sensor_humidity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_CO2 and self.sensor_CO2.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_illuminance and self.sensor_illuminance.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_conductivity and self.sensor_conductivity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_moisture and self.sensor_moisture.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_ph and self.sensor_ph.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_power_consumption and self.sensor_power_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None]
+            ]):
+                known_state = True
+                new_state = STATE_OK
+            else:
+                new_state = STATE_UNKNOWN
+                
+            self._attr_state = new_state
+            self.update_registry()
+            return
+
         if self.device_type == DEVICE_TYPE_CYCLE:
             # Cycle-Update-Logik
             if self.sensor_temperature is not None:
@@ -1689,15 +1713,20 @@ class PlantDevice(Entity):
                 dli = self._median_sensors.get('dli')
                 if dli is not None:
                     known_state = True
-                    if float(dli) < float(self.min_dli.state):
-                        self.dli_status = STATE_LOW
-                        if self.dli_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(dli) > float(self.max_dli.state):
-                        self.dli_status = STATE_HIGH
-                        if self.dli_trigger:
-                            new_state = STATE_PROBLEM
+                    # Only check thresholds if they exist (not for tents)
+                    if self.min_dli is not None and self.max_dli is not None:
+                        if float(dli) < float(self.min_dli.state):
+                            self.dli_status = STATE_LOW
+                            if self.dli_trigger:
+                                new_state = STATE_PROBLEM
+                        elif float(dli) > float(self.max_dli.state):
+                            self.dli_status = STATE_HIGH
+                            if self.dli_trigger:
+                                new_state = STATE_PROBLEM
+                        else:
+                            self.dli_status = STATE_OK
                     else:
+                        # For entities without thresholds (like tents), just mark as OK
                         self.dli_status = STATE_OK
 
             # Überprüfe Wasser-Verbrauch
@@ -1845,15 +1874,20 @@ class PlantDevice(Entity):
                 dli = self.dli.state
                 if dli is not None and dli != STATE_UNAVAILABLE and dli != STATE_UNKNOWN:
                     known_state = True
-                    if float(dli) < float(self.min_dli.state):
-                        self.dli_status = STATE_LOW
-                        if self.dli_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(dli) > float(self.max_dli.state):
-                        self.dli_status = STATE_HIGH
-                        if self.dli_trigger:
-                            new_state = STATE_PROBLEM
+                    # Only check thresholds if they exist (not for tents)
+                    if self.min_dli is not None and self.max_dli is not None:
+                        if float(dli) < float(self.min_dli.state):
+                            self.dli_status = STATE_LOW
+                            if self.dli_trigger:
+                                new_state = STATE_PROBLEM
+                        elif float(dli) > float(self.max_dli.state):
+                            self.dli_status = STATE_HIGH
+                            if self.dli_trigger:
+                                new_state = STATE_PROBLEM
+                        else:
+                            self.dli_status = STATE_OK
                     else:
+                        # For entities without thresholds (like tents), just mark as OK
                         self.dli_status = STATE_OK
 
             # Überprüfe Wasser-Verbrauch
@@ -2389,15 +2423,17 @@ class PlantDevice(Entity):
         data[FLOW_PLANT_INFO][ATTR_SENSOR_OVERRIDES] = self._sensor_overrides
         self._hass.config_entries.async_update_entry(self._config, data=data)
 
-    def _get_tent_device(self, tent_entity_id: str) -> 'PlantDevice' | None:
-        """Get tent device by entity ID."""
+    def _get_tent_device(self, tent_identifier: str) -> 'PlantDevice' | None:
+        """Get tent device by entity ID or config entry ID."""
         for entry_id in self._hass.data[DOMAIN]:
             entry_data = self._hass.data[DOMAIN][entry_id]
             # Check if this is a dictionary containing plant data (not VirtualSensorManager)
             if isinstance(entry_data, dict) and ATTR_PLANT in entry_data:
                 device = entry_data[ATTR_PLANT]
-                if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
-                    return device
+                if device.device_type == DEVICE_TYPE_TENT:
+                    # Check if identifier matches entity ID or config entry ID
+                    if device.entity_id == tent_identifier or entry_id == tent_identifier:
+                        return device
         return None
 
     def get_aggregated_sensor_data(self) -> dict:
