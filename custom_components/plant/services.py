@@ -78,6 +78,7 @@ from .const import (
     SERVICE_CREATE_TENT,
     SERVICE_REMOVE_TENT,
     SERVICE_REASSIGN_TO_TENT,
+    SERVICE_MIGRATE_TO_VIRTUAL_SENSORS,
     # Tent attributes
     ATTR_TENT_ASSIGNMENT,
     ATTR_USE_VIRTUAL_SENSORS,
@@ -2429,4 +2430,6 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_ASSIGN_TO_TENT)
     hass.services.async_remove(DOMAIN, SERVICE_UNASSIGN_FROM_TENT)
     hass.services.async_remove(DOMAIN, SERVICE_REMOVE_TENT)
+    hass.services.async_remove(DOMAIN, SERVICE_REASSIGN_TO_TENT)
+    hass.services.async_remove(DOMAIN, SERVICE_MIGRATE_TO_VIRTUAL_SENSORS)
  
