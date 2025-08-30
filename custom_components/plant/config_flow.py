@@ -214,8 +214,6 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 and not entry.data.get("is_config", False)  # Exclude config entries
             ):
                 tent_name = entry.data[FLOW_PLANT_INFO].get(ATTR_NAME, "Unknown Tent")
-                # Use a synthetic entity ID for selection
-                tent_entity_id = f"plant.{entry.data[FLOW_PLANT_INFO].get(ATTR_NAME, 'tent').lower().replace(' ', '_')}"
                 
                 # Get the environmental sensors for this tent
                 env_sensors = entry.data[FLOW_PLANT_INFO].get(ATTR_ENVIRONMENTAL_SENSORS, {})
@@ -223,43 +221,43 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 
                 # Create a descriptive label showing tent name and sensor count
                 tent_label = f"{tent_name} ({sensor_count} sensors)"
-                available_tents[tent_entity_id] = tent_label
+                
+                # Use the config entry ID as identifier instead of generating entity ID
+                available_tents[entry.entry_id] = tent_label
         
         return available_tents
     
-    def _get_tent_sensors(self, tent_entity_id: str) -> dict[str, str]:
+    def _get_tent_sensors(self, tent_entry_id: str) -> dict[str, str]:
         """Get sensor assignments from a tent entity."""
         tent_sensors = {}
         
-        # Find the tent config entry based on the entity ID
+        # Find the tent config entry based on the entry ID
         for entry in self._async_current_entries():
             if (
-                entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT
+                entry.entry_id == tent_entry_id
+                and entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT
                 and not entry.data.get("is_config", False)
             ):
-                tent_name = entry.data[FLOW_PLANT_INFO].get(ATTR_NAME, "")
-                expected_entity_id = f"plant.{tent_name.lower().replace(' ', '_')}"
+                # Found the tent, extract its environmental sensors
+                env_sensors = entry.data[FLOW_PLANT_INFO].get(ATTR_ENVIRONMENTAL_SENSORS, {})
                 
-                if expected_entity_id == tent_entity_id:
-                    # Found the tent, extract its environmental sensors
-                    env_sensors = entry.data[FLOW_PLANT_INFO].get(ATTR_ENVIRONMENTAL_SENSORS, {})
-                    
-                    # Map tent environmental sensors to plant sensor fields
-                    sensor_mapping = {
-                        "temperature": FLOW_SENSOR_TEMPERATURE,
-                        "humidity": FLOW_SENSOR_HUMIDITY,
-                        "co2": FLOW_SENSOR_CO2,
-                        "illuminance": FLOW_SENSOR_ILLUMINANCE,
-                        "conductivity": FLOW_SENSOR_CONDUCTIVITY,
-                        "moisture": FLOW_SENSOR_MOISTURE,
-                        "ph": FLOW_SENSOR_PH,
-                    }
-                    
-                    for tent_sensor_key, plant_sensor_key in sensor_mapping.items():
-                        if tent_sensor_key in env_sensors and env_sensors[tent_sensor_key]:
-                            tent_sensors[plant_sensor_key] = env_sensors[tent_sensor_key]
-                    
-                    break
+                # Map tent environmental sensors to plant sensor fields
+                sensor_mapping = {
+                    "temperature": FLOW_SENSOR_TEMPERATURE,
+                    "humidity": FLOW_SENSOR_HUMIDITY,
+                    "co2": FLOW_SENSOR_CO2,
+                    "illuminance": FLOW_SENSOR_ILLUMINANCE,
+                    "conductivity": FLOW_SENSOR_CONDUCTIVITY,
+                    "moisture": FLOW_SENSOR_MOISTURE,
+                    "ph": FLOW_SENSOR_PH,
+                    "power_consumption": FLOW_SENSOR_POWER_CONSUMPTION,
+                }
+                
+                for tent_sensor_key, plant_sensor_key in sensor_mapping.items():
+                    if tent_sensor_key in env_sensors and env_sensors[tent_sensor_key]:
+                        tent_sensors[plant_sensor_key] = env_sensors[tent_sensor_key]
+                
+                break
         
         return tent_sensors
 
@@ -767,6 +765,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "conductivity": user_input.get(FLOW_SENSOR_CONDUCTIVITY),
                     "moisture": user_input.get(FLOW_SENSOR_MOISTURE),
                     "ph": user_input.get(FLOW_SENSOR_PH),
+                    "power_consumption": user_input.get(FLOW_SENSOR_POWER_CONSUMPTION),
                 },
                 # Optional area assignment
                 "area_id": user_input.get("area_id"),
@@ -840,6 +839,14 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     ATTR_ENTITY: {
                         ATTR_DEVICE_CLASS: SensorDeviceClass.PH,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }
+            ),
+            vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.ENERGY,
                         ATTR_DOMAIN: DOMAIN_SENSOR,
                     }
                 }
@@ -992,8 +999,8 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if available_tents:
             # Create description that shows available sensors in each tent
             tent_description = "Select a tent to inherit its sensors:"
-            for tent_id, tent_label in available_tents.items():
-                tent_sensors = self._get_tent_sensors(tent_id)
+            for tent_entry_id, tent_label in available_tents.items():
+                tent_sensors = self._get_tent_sensors(tent_entry_id)
                 if tent_sensors:
                     sensor_names = []
                     sensor_type_map = {

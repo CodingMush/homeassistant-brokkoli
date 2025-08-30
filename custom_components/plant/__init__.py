@@ -1050,65 +1050,80 @@ class PlantDevice(Entity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
+        # Base attributes for all device types
         attrs = {
-            "strain": self._plant_info.get(ATTR_STRAIN, ""),
-            "breeder": self._plant_info.get(ATTR_BREEDER, ""),
-            "original_flowering_duration": self._plant_info.get(ATTR_ORIGINAL_FLOWERING_DURATION),
-            "moisture_status": self.moisture_status,
-            "temperature_status": self.temperature_status,
-            "conductivity_status": self.conductivity_status,
-            "illuminance_status": self.illuminance_status,
-            "humidity_status": self.humidity_status,
-            "CO2_status": self.CO2_status,
-            "dli_status": self.dli_status,
-            "water_consumption_status": self.water_consumption_status,
-            "fertilizer_consumption_status": self.fertilizer_consumption_status,
-            "power_consumption_status": self.power_consumption_status,
-            "pid": self.pid,
-            "type": self._plant_info.get(ATTR_TYPE, ""),
-            "feminized": self._plant_info.get("feminized", ""),
-            "timestamp": self._plant_info.get("timestamp", ""),
-            "effects": self._plant_info.get("effects", ""),
-            "smell": self._plant_info.get("smell", ""),
-            "taste": self._plant_info.get("taste", ""),
-            "phenotype": self._plant_info.get(ATTR_PHENOTYPE, ""),
-            "hunger": self._plant_info.get(ATTR_HUNGER, ""),
-            "growth_stretch": self._plant_info.get(ATTR_GROWTH_STRETCH, ""),
-            "flower_stretch": self._plant_info.get(ATTR_FLOWER_STRETCH, ""),
-            "mold_resistance": self._plant_info.get(ATTR_MOLD_RESISTANCE, ""),
-            "difficulty": self._plant_info.get(ATTR_DIFFICULTY, ""),
-            "yield": self._plant_info.get(ATTR_YIELD, ""),
             "notes": self._plant_info.get(ATTR_NOTES, ""),
             "website": self._plant_info.get("website", ""),
-            "images": self._images,
         }
 
-        # Füge member_count für Cycles hinzu
-        if self.device_type == DEVICE_TYPE_CYCLE:
-            attrs = {"member_count": len(self._member_plants)} | attrs
-
-        # Füge Tent-spezifische Attribute hinzu (simplified)
-        if self.device_type == DEVICE_TYPE_TENT:
+        # Device-type specific attributes
+        if self.device_type == DEVICE_TYPE_PLANT:
+            # Plant-specific attributes
             attrs.update({
-                "assigned_plants": self._assigned_plants,
-                "plant_count": len(self._assigned_plants),
-                "environmental_sensors": self._environmental_sensors,
-            })
-        elif self.device_type == DEVICE_TYPE_PLANT:
-            # Füge Plant-spezifische Tent-Attribute hinzu
-            attrs.update({
+                "strain": self._plant_info.get(ATTR_STRAIN, ""),
+                "breeder": self._plant_info.get(ATTR_BREEDER, ""),
+                "original_flowering_duration": self._plant_info.get(ATTR_ORIGINAL_FLOWERING_DURATION),
+                "moisture_status": self.moisture_status,
+                "temperature_status": self.temperature_status,
+                "conductivity_status": self.conductivity_status,
+                "illuminance_status": self.illuminance_status,
+                "humidity_status": self.humidity_status,
+                "CO2_status": self.CO2_status,
+                "dli_status": self.dli_status,
+                "water_consumption_status": self.water_consumption_status,
+                "fertilizer_consumption_status": self.fertilizer_consumption_status,
+                "power_consumption_status": self.power_consumption_status,
+                "pid": self.pid,
+                "type": self._plant_info.get(ATTR_TYPE, ""),
+                "feminized": self._plant_info.get("feminized", ""),
+                "timestamp": self._plant_info.get("timestamp", ""),
+                "effects": self._plant_info.get("effects", ""),
+                "smell": self._plant_info.get("smell", ""),
+                "taste": self._plant_info.get("taste", ""),
+                "phenotype": self._plant_info.get(ATTR_PHENOTYPE, ""),
+                "hunger": self._plant_info.get(ATTR_HUNGER, ""),
+                "growth_stretch": self._plant_info.get(ATTR_GROWTH_STRETCH, ""),
+                "flower_stretch": self._plant_info.get(ATTR_FLOWER_STRETCH, ""),
+                "mold_resistance": self._plant_info.get(ATTR_MOLD_RESISTANCE, ""),
+                "difficulty": self._plant_info.get(ATTR_DIFFICULTY, ""),
+                "yield": self._plant_info.get(ATTR_YIELD, ""),
+                "images": self._images,
+                "infotext1": self._plant_info.get("infotext1", ""),
+                "infotext2": self._plant_info.get("infotext2", ""),
+                "lineage": self._plant_info.get("lineage", ""),
+                # Plant-specific tent attributes
                 "tent_assignment": self._tent_assignment,
                 "uses_virtual_sensors": self._use_virtual_sensors,
                 "tent_assigned_at": self._tent_assigned_at,
                 "sensor_overrides": self._sensor_overrides,
             })
-
-        # Füge Plant-spezifische Attribute nur für Plants hinzu
-        if self.device_type == DEVICE_TYPE_PLANT:
+        elif self.device_type == DEVICE_TYPE_CYCLE:
+            # Cycle-specific attributes
             attrs.update({
-                "infotext1": self._plant_info.get("infotext1", ""),
-                "infotext2": self._plant_info.get("infotext2", ""),
-                "lineage": self._plant_info.get("lineage", ""),
+                "member_count": len(self._member_plants),
+                "strain": self._plant_info.get(ATTR_STRAIN, ""),
+                "breeder": self._plant_info.get(ATTR_BREEDER, ""),
+                "moisture_status": self.moisture_status,
+                "temperature_status": self.temperature_status,
+                "conductivity_status": self.conductivity_status,
+                "illuminance_status": self.illuminance_status,
+                "humidity_status": self.humidity_status,
+                "CO2_status": self.CO2_status,
+                "dli_status": self.dli_status,
+                "water_consumption_status": self.water_consumption_status,
+                "fertilizer_consumption_status": self.fertilizer_consumption_status,
+                "power_consumption_status": self.power_consumption_status,
+                "effects": self._plant_info.get("effects", ""),
+                "smell": self._plant_info.get("smell", ""),
+                "taste": self._plant_info.get("taste", ""),
+                "images": self._images,
+            })
+        elif self.device_type == DEVICE_TYPE_TENT:
+            # Tent-specific attributes only (no plant-specific ones)
+            attrs.update({
+                "assigned_plants": self._assigned_plants,
+                "plant_count": len(self._assigned_plants),
+                "environmental_sensors": self._environmental_sensors,
             })
 
         return attrs
@@ -2034,9 +2049,10 @@ class PlantDevice(Entity):
             plant = None
             # Suche die Plant Entity
             for entry_id in self._hass.data[DOMAIN]:
-                if ATTR_PLANT in self._hass.data[DOMAIN][entry_id]:
-                    if self._hass.data[DOMAIN][entry_id][ATTR_PLANT].entity_id == plant_id:
-                        plant = self._hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                entry_data = self._hass.data[DOMAIN][entry_id]
+                if isinstance(entry_data, dict) and ATTR_PLANT in entry_data:
+                    if entry_data[ATTR_PLANT].entity_id == plant_id:
+                        plant = entry_data[ATTR_PLANT]
                         break
 
             if not plant:
@@ -2163,8 +2179,9 @@ class PlantDevice(Entity):
         for plant_id in self._member_plants:
             found = False
             for entry_id in self._hass.data[DOMAIN]:
-                if ATTR_PLANT in self._hass.data[DOMAIN][entry_id]:
-                    plant = self._hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                entry_data = self._hass.data[DOMAIN][entry_id]
+                if isinstance(entry_data, dict) and ATTR_PLANT in entry_data:
+                    plant = entry_data[ATTR_PLANT]
                     if plant.entity_id == plant_id:
                         found = True
                         # Füge die Werte zu den entsprechenden Listen hinzu
@@ -2371,8 +2388,10 @@ class PlantDevice(Entity):
     def _get_tent_device(self, tent_entity_id: str) -> 'PlantDevice' | None:
         """Get tent device by entity ID."""
         for entry_id in self._hass.data[DOMAIN]:
-            if ATTR_PLANT in self._hass.data[DOMAIN][entry_id]:
-                device = self._hass.data[DOMAIN][entry_id][ATTR_PLANT]
+            entry_data = self._hass.data[DOMAIN][entry_id]
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            if isinstance(entry_data, dict) and ATTR_PLANT in entry_data:
+                device = entry_data[ATTR_PLANT]
                 if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
                     return device
         return None
@@ -2397,8 +2416,10 @@ class PlantDevice(Entity):
         for plant_entity_id in self._assigned_plants:
             plant_device = None
             for entry_id in self._hass.data[DOMAIN]:
-                if ATTR_PLANT in self._hass.data[DOMAIN][entry_id]:
-                    device = self._hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                entry_data = self._hass.data[DOMAIN][entry_id]
+                # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                if isinstance(entry_data, dict) and ATTR_PLANT in entry_data:
+                    device = entry_data[ATTR_PLANT]
                     if device.entity_id == plant_entity_id:
                         plant_device = device
                         break
@@ -2500,8 +2521,9 @@ async def async_remove_config_entry_device(
                     cycle_device = device
                     # Finde den zugehörigen Cycle
                     for entry_id in hass.data[DOMAIN]:
-                        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                            cycle = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                        entry_data = hass.data[DOMAIN][entry_id]
+                        if isinstance(entry_data, dict) and ATTR_PLANT in entry_data:
+                            cycle = entry_data[ATTR_PLANT]
                             if (cycle.device_type == DEVICE_TYPE_CYCLE and 
                                 cycle.unique_id == next(iter(cycle_device.identifiers))[1]):
                                 # Entferne die Plant aus dem Cycle
