@@ -2349,6 +2349,82 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         # Round value for display using sensor definition
         if self._attr_native_value is not None:
             self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+
+class VirtualSensorManager:
+    """Manager for creating and managing virtual sensors efficiently."""
+    
+    def __init__(self, hass: HomeAssistant):
+        self._hass = hass
+        self._virtual_sensors: dict[str, dict[str, VirtualSensor]] = {}
+        
+    def create_virtual_sensors_for_plant(
+        self, 
+        plant_device: Entity, 
+        config: ConfigEntry
+    ) -> dict[str, VirtualSensor]:
+        """Create virtual sensors for a plant assigned to a tent."""
+        if not plant_device.uses_virtual_sensors or not plant_device.tent_assignment:
+            return {}
+            
+        virtual_sensors = {}
+        
+        # Define sensor mappings
+        sensor_mappings = {
+            'temperature': {
+                'reading': READING_TEMPERATURE,
+                'icon': ICON_TEMPERATURE,
+                'unit': UnitOfTemperature.CELSIUS,
+                'device_class': SensorDeviceClass.TEMPERATURE
+            },
+            'moisture': {
+                'reading': READING_MOISTURE,
+                'icon': ICON_MOISTURE,
+                'unit': PERCENTAGE,
+                'device_class': SensorDeviceClass.MOISTURE
+            },
+            'conductivity': {
+                'reading': READING_CONDUCTIVITY,
+                'icon': ICON_CONDUCTIVITY,
+                'unit': UNIT_CONDUCTIVITY,
+                'device_class': None
+            },
+            'illuminance': {
+                'reading': READING_ILLUMINANCE,
+                'icon': ICON_ILLUMINANCE,
+                'unit': LIGHT_LUX,
+                'device_class': SensorDeviceClass.ILLUMINANCE
+            },
+            'humidity': {
+                'reading': READING_HUMIDITY,
+                'icon': ICON_HUMIDITY,
+                'unit': PERCENTAGE,
+                'device_class': SensorDeviceClass.HUMIDITY
+            },
+            'co2': {
+                'reading': READING_CO2,
+                'icon': ICON_CO2,
+                'unit': 'ppm',
+                'device_class': SensorDeviceClass.CO2
+            },
+            'ph': {
+                'reading': READING_PH,
+                'icon': ICON_PH,
+                'unit': None,
+                'device_class': DEVICE_CLASS_PH
+            },
+            'power_consumption': {
+                'reading': READING_POWER_CONSUMPTION,
+                'icon': ICON_POWER_CONSUMPTION,
+                'unit': 'W',
+                'device_class': SensorDeviceClass.POWER
+            }
+        }
+        
+        # Create virtual sensors for each type
+        for sensor_type, mapping in sensor_mappings.items():
+            virtual_sensor = VirtualSensor(
+                self._hass,
                 config,
                 plant_device,
                 sensor_type,
