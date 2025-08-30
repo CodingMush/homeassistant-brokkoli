@@ -1641,14 +1641,24 @@ class PlantDevice(Entity):
                 temperature = self._median_sensors.get('temperature')
                 if temperature is not None:
                     known_state = True
-                    if float(temperature) < float(self.min_temperature.state):
-                        self.temperature_status = STATE_LOW
-                        if self.temperature_trigger:
-                            sensors_with_problems.append('temperature')
-                    elif float(temperature) > float(self.max_temperature.state):
-                        self.temperature_status = STATE_HIGH
-                        if self.temperature_trigger:
-                            sensors_with_problems.append('temperature')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_temperature is not None and self.max_temperature is not None and 
+                        self.min_temperature.state is not None and self.max_temperature.state is not None and
+                        self.min_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(temperature) < float(self.min_temperature.state):
+                                self.temperature_status = STATE_LOW
+                                if self.temperature_trigger:
+                                    sensors_with_problems.append('temperature')
+                            elif float(temperature) > float(self.max_temperature.state):
+                                self.temperature_status = STATE_HIGH
+                                if self.temperature_trigger:
+                                    sensors_with_problems.append('temperature')
+                            else:
+                                self.temperature_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.temperature_status = STATE_OK
                     else:
                         self.temperature_status = STATE_OK
 
@@ -1656,14 +1666,24 @@ class PlantDevice(Entity):
                 moisture = self._median_sensors.get('moisture')
                 if moisture is not None:
                     known_state = True
-                    if float(moisture) < float(self.min_moisture.state):
-                        self.moisture_status = STATE_LOW
-                        if self.moisture_trigger:
-                            sensors_with_problems.append('moisture')
-                    elif float(moisture) > float(self.max_moisture.state):
-                        self.moisture_status = STATE_HIGH
-                        if self.moisture_trigger:
-                            sensors_with_problems.append('moisture')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_moisture is not None and self.max_moisture is not None and 
+                        self.min_moisture.state is not None and self.max_moisture.state is not None and
+                        self.min_moisture.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_moisture.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(moisture) < float(self.min_moisture.state):
+                                self.moisture_status = STATE_LOW
+                                if self.moisture_trigger:
+                                    sensors_with_problems.append('moisture')
+                            elif float(moisture) > float(self.max_moisture.state):
+                                self.moisture_status = STATE_HIGH
+                                if self.moisture_trigger:
+                                    sensors_with_problems.append('moisture')
+                            else:
+                                self.moisture_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.moisture_status = STATE_OK
                     else:
                         self.moisture_status = STATE_OK
 
@@ -1671,14 +1691,24 @@ class PlantDevice(Entity):
                 conductivity = self._median_sensors.get('conductivity')
                 if conductivity is not None:
                     known_state = True
-                    if float(conductivity) < float(self.min_conductivity.state):
-                        self.conductivity_status = STATE_LOW
-                        if self.conductivity_trigger:
-                            sensors_with_problems.append('conductivity')
-                    elif float(conductivity) > float(self.max_conductivity.state):
-                        self.conductivity_status = STATE_HIGH
-                        if self.conductivity_trigger:
-                            sensors_with_problems.append('conductivity')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_conductivity is not None and self.max_conductivity is not None and 
+                        self.min_conductivity.state is not None and self.max_conductivity.state is not None and
+                        self.min_conductivity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_conductivity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(conductivity) < float(self.min_conductivity.state):
+                                self.conductivity_status = STATE_LOW
+                                if self.conductivity_trigger:
+                                    sensors_with_problems.append('conductivity')
+                            elif float(conductivity) > float(self.max_conductivity.state):
+                                self.conductivity_status = STATE_HIGH
+                                if self.conductivity_trigger:
+                                    sensors_with_problems.append('conductivity')
+                            else:
+                                self.conductivity_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.conductivity_status = STATE_OK
                     else:
                         self.conductivity_status = STATE_OK
 
@@ -1686,14 +1716,24 @@ class PlantDevice(Entity):
                 illuminance = self._median_sensors.get('illuminance')
                 if illuminance is not None:
                     known_state = True
-                    if float(illuminance) < float(self.min_illuminance.state):
-                        self.illuminance_status = STATE_LOW
-                        if self.illuminance_trigger:
-                            sensors_with_problems.append('illuminance')
-                    elif float(illuminance) > float(self.max_illuminance.state):
-                        self.illuminance_status = STATE_HIGH
-                        if self.illuminance_trigger:
-                            sensors_with_problems.append('illuminance')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_illuminance is not None and self.max_illuminance is not None and 
+                        self.min_illuminance.state is not None and self.max_illuminance.state is not None and
+                        self.min_illuminance.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_illuminance.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(illuminance) < float(self.min_illuminance.state):
+                                self.illuminance_status = STATE_LOW
+                                if self.illuminance_trigger:
+                                    sensors_with_problems.append('illuminance')
+                            elif float(illuminance) > float(self.max_illuminance.state):
+                                self.illuminance_status = STATE_HIGH
+                                if self.illuminance_trigger:
+                                    sensors_with_problems.append('illuminance')
+                            else:
+                                self.illuminance_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.illuminance_status = STATE_OK
                     else:
                         self.illuminance_status = STATE_OK
 
@@ -1701,14 +1741,24 @@ class PlantDevice(Entity):
                 humidity = self._median_sensors.get('humidity')
                 if humidity is not None:
                     known_state = True
-                    if float(humidity) < float(self.min_humidity.state):
-                        self.humidity_status = STATE_LOW
-                        if self.humidity_trigger:
-                            sensors_with_problems.append('humidity')
-                    elif float(humidity) > float(self.max_humidity.state):
-                        self.humidity_status = STATE_HIGH
-                        if self.humidity_trigger:
-                            sensors_with_problems.append('humidity')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_humidity is not None and self.max_humidity is not None and 
+                        self.min_humidity.state is not None and self.max_humidity.state is not None and
+                        self.min_humidity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_humidity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(humidity) < float(self.min_humidity.state):
+                                self.humidity_status = STATE_LOW
+                                if self.humidity_trigger:
+                                    sensors_with_problems.append('humidity')
+                            elif float(humidity) > float(self.max_humidity.state):
+                                self.humidity_status = STATE_HIGH
+                                if self.humidity_trigger:
+                                    sensors_with_problems.append('humidity')
+                            else:
+                                self.humidity_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.humidity_status = STATE_OK
                     else:
                         self.humidity_status = STATE_OK
 
@@ -1716,14 +1766,24 @@ class PlantDevice(Entity):
                 CO2 = self._median_sensors.get('CO2')
                 if CO2 is not None:
                     known_state = True
-                    if float(CO2) < float(self.min_CO2.state):
-                        self.CO2_status = STATE_LOW
-                        if self.CO2_trigger:
-                            sensors_with_problems.append('CO2')
-                    elif float(CO2) > float(self.max_CO2.state):
-                        self.CO2_status = STATE_HIGH
-                        if self.CO2_trigger:
-                            sensors_with_problems.append('CO2')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_CO2 is not None and self.max_CO2 is not None and 
+                        self.min_CO2.state is not None and self.max_CO2.state is not None and
+                        self.min_CO2.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_CO2.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(CO2) < float(self.min_CO2.state):
+                                self.CO2_status = STATE_LOW
+                                if self.CO2_trigger:
+                                    sensors_with_problems.append('CO2')
+                            elif float(CO2) > float(self.max_CO2.state):
+                                self.CO2_status = STATE_HIGH
+                                if self.CO2_trigger:
+                                    sensors_with_problems.append('CO2')
+                            else:
+                                self.CO2_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.CO2_status = STATE_OK
                     else:
                         self.CO2_status = STATE_OK
 
@@ -1731,17 +1791,23 @@ class PlantDevice(Entity):
                 dli = self._median_sensors.get('dli')
                 if dli is not None:
                     known_state = True
-                    # Only check thresholds if they exist (not for tents)
-                    if self.min_dli is not None and self.max_dli is not None:
-                        if float(dli) < float(self.min_dli.state):
-                            self.dli_status = STATE_LOW
-                            if self.dli_trigger:
-                                sensors_with_problems.append('dli')
-                        elif float(dli) > float(self.max_dli.state):
-                            self.dli_status = STATE_HIGH
-                            if self.dli_trigger:
-                                sensors_with_problems.append('dli')
-                        else:
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_dli is not None and self.max_dli is not None and 
+                        self.min_dli.state is not None and self.max_dli.state is not None and
+                        self.min_dli.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_dli.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(dli) < float(self.min_dli.state):
+                                self.dli_status = STATE_LOW
+                                if self.dli_trigger:
+                                    sensors_with_problems.append('dli')
+                            elif float(dli) > float(self.max_dli.state):
+                                self.dli_status = STATE_HIGH
+                                if self.dli_trigger:
+                                    sensors_with_problems.append('dli')
+                            else:
+                                self.dli_status = STATE_OK
+                        except (ValueError, TypeError):
                             self.dli_status = STATE_OK
                     else:
                         # For entities without thresholds (like tents), just mark as OK
@@ -1752,14 +1818,24 @@ class PlantDevice(Entity):
                 water_consumption = self.moisture_consumption.state
                 if water_consumption is not None and water_consumption != STATE_UNAVAILABLE and water_consumption != STATE_UNKNOWN:
                     known_state = True
-                    if float(water_consumption) < float(self.min_water_consumption.state):
-                        self.water_consumption_status = STATE_LOW
-                        if self.water_consumption_trigger:
-                            sensors_with_problems.append('water_consumption')
-                    elif float(water_consumption) > float(self.max_water_consumption.state):
-                        self.water_consumption_status = STATE_HIGH
-                        if self.water_consumption_trigger:
-                            sensors_with_problems.append('water_consumption')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_water_consumption is not None and self.max_water_consumption is not None and 
+                        self.min_water_consumption.state is not None and self.max_water_consumption.state is not None and
+                        self.min_water_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_water_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(water_consumption) < float(self.min_water_consumption.state):
+                                self.water_consumption_status = STATE_LOW
+                                if self.water_consumption_trigger:
+                                    sensors_with_problems.append('water_consumption')
+                            elif float(water_consumption) > float(self.max_water_consumption.state):
+                                self.water_consumption_status = STATE_HIGH
+                                if self.water_consumption_trigger:
+                                    sensors_with_problems.append('water_consumption')
+                            else:
+                                self.water_consumption_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.water_consumption_status = STATE_OK
                     else:
                         self.water_consumption_status = STATE_OK
 
@@ -1768,14 +1844,24 @@ class PlantDevice(Entity):
                 fertilizer_consumption = self.fertilizer_consumption.state
                 if fertilizer_consumption is not None and fertilizer_consumption != STATE_UNAVAILABLE and fertilizer_consumption != STATE_UNKNOWN:
                     known_state = True
-                    if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
-                        self.fertilizer_consumption_status = STATE_LOW
-                        if self.fertilizer_consumption_trigger:
-                            sensors_with_problems.append('fertilizer_consumption')
-                    elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
-                        self.fertilizer_consumption_status = STATE_HIGH
-                        if self.fertilizer_consumption_trigger:
-                            sensors_with_problems.append('fertilizer_consumption')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_fertilizer_consumption is not None and self.max_fertilizer_consumption is not None and 
+                        self.min_fertilizer_consumption.state is not None and self.max_fertilizer_consumption.state is not None and
+                        self.min_fertilizer_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_fertilizer_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
+                                self.fertilizer_consumption_status = STATE_LOW
+                                if self.fertilizer_consumption_trigger:
+                                    sensors_with_problems.append('fertilizer_consumption')
+                            elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
+                                self.fertilizer_consumption_status = STATE_HIGH
+                                if self.fertilizer_consumption_trigger:
+                                    sensors_with_problems.append('fertilizer_consumption')
+                            else:
+                                self.fertilizer_consumption_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.fertilizer_consumption_status = STATE_OK
                     else:
                         self.fertilizer_consumption_status = STATE_OK
 
@@ -1784,14 +1870,24 @@ class PlantDevice(Entity):
                 power_consumption = self.sensor_power_consumption.state
                 if power_consumption is not None and power_consumption != STATE_UNAVAILABLE and power_consumption != STATE_UNKNOWN:
                     known_state = True
-                    if float(power_consumption) < float(self.min_power_consumption.state):
-                        self.power_consumption_status = STATE_LOW
-                        if self.power_consumption_trigger:
-                            sensors_with_problems.append('power_consumption')
-                    elif float(power_consumption) > float(self.max_power_consumption.state):
-                        self.power_consumption_status = STATE_HIGH
-                        if self.power_consumption_trigger:
-                            sensors_with_problems.append('power_consumption')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_power_consumption is not None and self.max_power_consumption is not None and 
+                        self.min_power_consumption.state is not None and self.max_power_consumption.state is not None and
+                        self.min_power_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_power_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(power_consumption) < float(self.min_power_consumption.state):
+                                self.power_consumption_status = STATE_LOW
+                                if self.power_consumption_trigger:
+                                    sensors_with_problems.append('power_consumption')
+                            elif float(power_consumption) > float(self.max_power_consumption.state):
+                                self.power_consumption_status = STATE_HIGH
+                                if self.power_consumption_trigger:
+                                    sensors_with_problems.append('power_consumption')
+                            else:
+                                self.power_consumption_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.power_consumption_status = STATE_OK
                     else:
                         self.power_consumption_status = STATE_OK
 
@@ -1801,30 +1897,54 @@ class PlantDevice(Entity):
                 moisture = self.sensor_moisture.state
                 if moisture is not None and moisture != STATE_UNAVAILABLE and moisture != STATE_UNKNOWN:
                     known_state = True
-                    if float(moisture) < float(self.min_moisture.state):
-                        self.moisture_status = STATE_LOW
-                        if self.moisture_trigger:
-                            sensors_with_problems.append('moisture')
-                    elif float(moisture) > float(self.max_moisture.state):
-                        self.moisture_status = STATE_HIGH
-                        if self.moisture_trigger:
-                            sensors_with_problems.append('moisture')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_moisture is not None and self.max_moisture is not None and 
+                        self.min_moisture.state is not None and self.max_moisture.state is not None and
+                        self.min_moisture.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_moisture.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(moisture) < float(self.min_moisture.state):
+                                self.moisture_status = STATE_LOW
+                                if self.moisture_trigger:
+                                    sensors_with_problems.append('moisture')
+                            elif float(moisture) > float(self.max_moisture.state):
+                                self.moisture_status = STATE_HIGH
+                                if self.moisture_trigger:
+                                    sensors_with_problems.append('moisture')
+                            else:
+                                self.moisture_status = STATE_OK
+                        except (ValueError, TypeError):
+                            # If threshold comparison fails, mark as OK (sensor has data but thresholds are invalid)
+                            self.moisture_status = STATE_OK
                     else:
+                        # Sensor has data but no valid thresholds - mark as OK
                         self.moisture_status = STATE_OK
 
             if self.sensor_conductivity is not None:
                 conductivity = self.sensor_conductivity.state
                 if conductivity is not None and conductivity != STATE_UNAVAILABLE and conductivity != STATE_UNKNOWN:
                     known_state = True
-                    if float(conductivity) < float(self.min_conductivity.state):
-                        self.conductivity_status = STATE_LOW
-                        if self.conductivity_trigger:
-                            sensors_with_problems.append('conductivity')
-                    elif float(conductivity) > float(self.max_conductivity.state):
-                        self.conductivity_status = STATE_HIGH
-                        if self.conductivity_trigger:
-                            sensors_with_problems.append('conductivity')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_conductivity is not None and self.max_conductivity is not None and 
+                        self.min_conductivity.state is not None and self.max_conductivity.state is not None and
+                        self.min_conductivity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_conductivity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(conductivity) < float(self.min_conductivity.state):
+                                self.conductivity_status = STATE_LOW
+                                if self.conductivity_trigger:
+                                    sensors_with_problems.append('conductivity')
+                            elif float(conductivity) > float(self.max_conductivity.state):
+                                self.conductivity_status = STATE_HIGH
+                                if self.conductivity_trigger:
+                                    sensors_with_problems.append('conductivity')
+                            else:
+                                self.conductivity_status = STATE_OK
+                        except (ValueError, TypeError):
+                            # If threshold comparison fails, mark as OK
+                            self.conductivity_status = STATE_OK
                     else:
+                        # Sensor has data but no valid thresholds - mark as OK
                         self.conductivity_status = STATE_OK
 
             # Füge die fehlenden Sensor-Prüfungen hinzu
@@ -1832,14 +1952,24 @@ class PlantDevice(Entity):
                 temperature = self.sensor_temperature.state
                 if temperature is not None and temperature != STATE_UNAVAILABLE and temperature != STATE_UNKNOWN:
                     known_state = True
-                    if float(temperature) < float(self.min_temperature.state):
-                        self.temperature_status = STATE_LOW
-                        if self.temperature_trigger:
-                            sensors_with_problems.append('temperature')
-                    elif float(temperature) > float(self.max_temperature.state):
-                        self.temperature_status = STATE_HIGH
-                        if self.temperature_trigger:
-                            sensors_with_problems.append('temperature')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_temperature is not None and self.max_temperature is not None and 
+                        self.min_temperature.state is not None and self.max_temperature.state is not None and
+                        self.min_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(temperature) < float(self.min_temperature.state):
+                                self.temperature_status = STATE_LOW
+                                if self.temperature_trigger:
+                                    sensors_with_problems.append('temperature')
+                            elif float(temperature) > float(self.max_temperature.state):
+                                self.temperature_status = STATE_HIGH
+                                if self.temperature_trigger:
+                                    sensors_with_problems.append('temperature')
+                            else:
+                                self.temperature_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.temperature_status = STATE_OK
                     else:
                         self.temperature_status = STATE_OK
 
@@ -1847,14 +1977,24 @@ class PlantDevice(Entity):
                 illuminance = self.sensor_illuminance.state
                 if illuminance is not None and illuminance != STATE_UNAVAILABLE and illuminance != STATE_UNKNOWN:
                     known_state = True
-                    if float(illuminance) < float(self.min_illuminance.state):
-                        self.illuminance_status = STATE_LOW
-                        if self.illuminance_trigger:
-                            sensors_with_problems.append('illuminance')
-                    elif float(illuminance) > float(self.max_illuminance.state):
-                        self.illuminance_status = STATE_HIGH
-                        if self.illuminance_trigger:
-                            sensors_with_problems.append('illuminance')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_illuminance is not None and self.max_illuminance is not None and 
+                        self.min_illuminance.state is not None and self.max_illuminance.state is not None and
+                        self.min_illuminance.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_illuminance.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(illuminance) < float(self.min_illuminance.state):
+                                self.illuminance_status = STATE_LOW
+                                if self.illuminance_trigger:
+                                    sensors_with_problems.append('illuminance')
+                            elif float(illuminance) > float(self.max_illuminance.state):
+                                self.illuminance_status = STATE_HIGH
+                                if self.illuminance_trigger:
+                                    sensors_with_problems.append('illuminance')
+                            else:
+                                self.illuminance_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.illuminance_status = STATE_OK
                     else:
                         self.illuminance_status = STATE_OK
 
@@ -1862,14 +2002,24 @@ class PlantDevice(Entity):
                 humidity = self.sensor_humidity.state
                 if humidity is not None and humidity != STATE_UNAVAILABLE and humidity != STATE_UNKNOWN:
                     known_state = True
-                    if float(humidity) < float(self.min_humidity.state):
-                        self.humidity_status = STATE_LOW
-                        if self.humidity_trigger:
-                            sensors_with_problems.append('humidity')
-                    elif float(humidity) > float(self.max_humidity.state):
-                        self.humidity_status = STATE_HIGH
-                        if self.humidity_trigger:
-                            sensors_with_problems.append('humidity')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_humidity is not None and self.max_humidity is not None and 
+                        self.min_humidity.state is not None and self.max_humidity.state is not None and
+                        self.min_humidity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_humidity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(humidity) < float(self.min_humidity.state):
+                                self.humidity_status = STATE_LOW
+                                if self.humidity_trigger:
+                                    sensors_with_problems.append('humidity')
+                            elif float(humidity) > float(self.max_humidity.state):
+                                self.humidity_status = STATE_HIGH
+                                if self.humidity_trigger:
+                                    sensors_with_problems.append('humidity')
+                            else:
+                                self.humidity_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.humidity_status = STATE_OK
                     else:
                         self.humidity_status = STATE_OK
 
@@ -1877,14 +2027,24 @@ class PlantDevice(Entity):
                 CO2 = self.sensor_CO2.state
                 if CO2 is not None and CO2 != STATE_UNAVAILABLE and CO2 != STATE_UNKNOWN:
                     known_state = True
-                    if float(CO2) < float(self.min_CO2.state):
-                        self.CO2_status = STATE_LOW
-                        if self.CO2_trigger:
-                            sensors_with_problems.append('CO2')
-                    elif float(CO2) > float(self.max_CO2.state):
-                        self.CO2_status = STATE_HIGH
-                        if self.CO2_trigger:
-                            sensors_with_problems.append('CO2')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_CO2 is not None and self.max_CO2 is not None and 
+                        self.min_CO2.state is not None and self.max_CO2.state is not None and
+                        self.min_CO2.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_CO2.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(CO2) < float(self.min_CO2.state):
+                                self.CO2_status = STATE_LOW
+                                if self.CO2_trigger:
+                                    sensors_with_problems.append('CO2')
+                            elif float(CO2) > float(self.max_CO2.state):
+                                self.CO2_status = STATE_HIGH
+                                if self.CO2_trigger:
+                                    sensors_with_problems.append('CO2')
+                            else:
+                                self.CO2_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.CO2_status = STATE_OK
                     else:
                         self.CO2_status = STATE_OK
 
@@ -1892,17 +2052,23 @@ class PlantDevice(Entity):
                 dli = self.dli.state
                 if dli is not None and dli != STATE_UNAVAILABLE and dli != STATE_UNKNOWN:
                     known_state = True
-                    # Only check thresholds if they exist (not for tents)
-                    if self.min_dli is not None and self.max_dli is not None:
-                        if float(dli) < float(self.min_dli.state):
-                            self.dli_status = STATE_LOW
-                            if self.dli_trigger:
-                                sensors_with_problems.append('dli')
-                        elif float(dli) > float(self.max_dli.state):
-                            self.dli_status = STATE_HIGH
-                            if self.dli_trigger:
-                                sensors_with_problems.append('dli')
-                        else:
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_dli is not None and self.max_dli is not None and 
+                        self.min_dli.state is not None and self.max_dli.state is not None and
+                        self.min_dli.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_dli.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(dli) < float(self.min_dli.state):
+                                self.dli_status = STATE_LOW
+                                if self.dli_trigger:
+                                    sensors_with_problems.append('dli')
+                            elif float(dli) > float(self.max_dli.state):
+                                self.dli_status = STATE_HIGH
+                                if self.dli_trigger:
+                                    sensors_with_problems.append('dli')
+                            else:
+                                self.dli_status = STATE_OK
+                        except (ValueError, TypeError):
                             self.dli_status = STATE_OK
                     else:
                         # For entities without thresholds (like tents), just mark as OK
@@ -1913,14 +2079,24 @@ class PlantDevice(Entity):
                 water_consumption = self.moisture_consumption.state
                 if water_consumption is not None and water_consumption != STATE_UNAVAILABLE and water_consumption != STATE_UNKNOWN:
                     known_state = True
-                    if float(water_consumption) < float(self.min_water_consumption.state):
-                        self.water_consumption_status = STATE_LOW
-                        if self.water_consumption_trigger:
-                            sensors_with_problems.append('water_consumption')
-                    elif float(water_consumption) > float(self.max_water_consumption.state):
-                        self.water_consumption_status = STATE_HIGH
-                        if self.water_consumption_trigger:
-                            sensors_with_problems.append('water_consumption')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_water_consumption is not None and self.max_water_consumption is not None and 
+                        self.min_water_consumption.state is not None and self.max_water_consumption.state is not None and
+                        self.min_water_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_water_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(water_consumption) < float(self.min_water_consumption.state):
+                                self.water_consumption_status = STATE_LOW
+                                if self.water_consumption_trigger:
+                                    sensors_with_problems.append('water_consumption')
+                            elif float(water_consumption) > float(self.max_water_consumption.state):
+                                self.water_consumption_status = STATE_HIGH
+                                if self.water_consumption_trigger:
+                                    sensors_with_problems.append('water_consumption')
+                            else:
+                                self.water_consumption_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.water_consumption_status = STATE_OK
                     else:
                         self.water_consumption_status = STATE_OK
 
@@ -1929,14 +2105,24 @@ class PlantDevice(Entity):
                 fertilizer_consumption = self.fertilizer_consumption.state
                 if fertilizer_consumption is not None and fertilizer_consumption != STATE_UNAVAILABLE and fertilizer_consumption != STATE_UNKNOWN:
                     known_state = True
-                    if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
-                        self.fertilizer_consumption_status = STATE_LOW
-                        if self.fertilizer_consumption_trigger:
-                            sensors_with_problems.append('fertilizer_consumption')
-                    elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
-                        self.fertilizer_consumption_status = STATE_HIGH
-                        if self.fertilizer_consumption_trigger:
-                            sensors_with_problems.append('fertilizer_consumption')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_fertilizer_consumption is not None and self.max_fertilizer_consumption is not None and 
+                        self.min_fertilizer_consumption.state is not None and self.max_fertilizer_consumption.state is not None and
+                        self.min_fertilizer_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_fertilizer_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
+                                self.fertilizer_consumption_status = STATE_LOW
+                                if self.fertilizer_consumption_trigger:
+                                    sensors_with_problems.append('fertilizer_consumption')
+                            elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
+                                self.fertilizer_consumption_status = STATE_HIGH
+                                if self.fertilizer_consumption_trigger:
+                                    sensors_with_problems.append('fertilizer_consumption')
+                            else:
+                                self.fertilizer_consumption_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.fertilizer_consumption_status = STATE_OK
                     else:
                         self.fertilizer_consumption_status = STATE_OK
 
@@ -1945,14 +2131,24 @@ class PlantDevice(Entity):
                 power_consumption = self.sensor_power_consumption.state
                 if power_consumption is not None and power_consumption != STATE_UNAVAILABLE and power_consumption != STATE_UNKNOWN:
                     known_state = True
-                    if float(power_consumption) < float(self.min_power_consumption.state):
-                        self.power_consumption_status = STATE_LOW
-                        if self.power_consumption_trigger:
-                            sensors_with_problems.append('power_consumption')
-                    elif float(power_consumption) > float(self.max_power_consumption.state):
-                        self.power_consumption_status = STATE_HIGH
-                        if self.power_consumption_trigger:
-                            sensors_with_problems.append('power_consumption')
+                    # Only check thresholds if they exist and have valid states
+                    if (self.min_power_consumption is not None and self.max_power_consumption is not None and 
+                        self.min_power_consumption.state is not None and self.max_power_consumption.state is not None and
+                        self.min_power_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN] and
+                        self.max_power_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN]):
+                        try:
+                            if float(power_consumption) < float(self.min_power_consumption.state):
+                                self.power_consumption_status = STATE_LOW
+                                if self.power_consumption_trigger:
+                                    sensors_with_problems.append('power_consumption')
+                            elif float(power_consumption) > float(self.max_power_consumption.state):
+                                self.power_consumption_status = STATE_HIGH
+                                if self.power_consumption_trigger:
+                                    sensors_with_problems.append('power_consumption')
+                            else:
+                                self.power_consumption_status = STATE_OK
+                        except (ValueError, TypeError):
+                            self.power_consumption_status = STATE_OK
                     else:
                         self.power_consumption_status = STATE_OK
 
