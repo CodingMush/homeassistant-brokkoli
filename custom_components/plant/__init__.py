@@ -755,7 +755,11 @@ class PlantDevice(Entity):
         self.device_type = config.data[FLOW_PLANT_INFO].get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
         
         # Generiere Entity ID basierend auf Device Type
-        domain = DOMAIN if self.device_type == DEVICE_TYPE_PLANT else CYCLE_DOMAIN
+        if self.device_type == DEVICE_TYPE_CYCLE:
+            domain = CYCLE_DOMAIN
+        else:
+            # Both plants and tents use the plant domain
+            domain = DOMAIN
         self.entity_id = async_generate_entity_id(
             f"{domain}.{{}}", self.name, current_ids={}
         )

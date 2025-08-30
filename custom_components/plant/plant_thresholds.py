@@ -138,7 +138,11 @@ class PlantMinMax(RestoreNumber):
                 break
 
         # Wähle Domain basierend auf Parent Device Type
-        domain = DOMAIN if self._plant.device_type == DEVICE_TYPE_PLANT else CYCLE_DOMAIN
+        if self._plant.device_type == DEVICE_TYPE_CYCLE:
+            domain = CYCLE_DOMAIN
+        else:
+            # Both plants and tents use the plant domain
+            domain = DOMAIN
         
         self.entity_id = async_generate_entity_id(
             f"{domain}.{{}}", self.name, current_ids={}
