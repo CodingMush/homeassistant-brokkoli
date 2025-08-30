@@ -791,6 +791,7 @@ class PlantDevice(Entity):
         self.sensor_humidity = None
         self.sensor_CO2 = None
         self.sensor_power_consumption = None
+        self.sensor_ph = None  # Add pH sensor attribute
         self.total_power_consumption = None
 
         self.dli = None
@@ -844,11 +845,10 @@ class PlantDevice(Entity):
         # Median Sensoren (nur für Cycles) 
         self._median_sensors = {}
 
-        # Tent-spezifische Attribute (für alle Device Types)
+        # Tent-spezifische Attribute (simplified - no complex threshold management)
         self._tent_assignment = self._plant_info.get(ATTR_TENT_ASSIGNMENT)
         self._assigned_plants = self._plant_info.get(ATTR_ASSIGNED_PLANTS, []) if self.device_type == DEVICE_TYPE_TENT else []
         self._environmental_sensors = self._plant_info.get(ATTR_ENVIRONMENTAL_SENSORS, {}) if self.device_type == DEVICE_TYPE_TENT else {}
-        self._shared_thresholds = self._plant_info.get(ATTR_SHARED_THRESHOLDS, {}) if self.device_type == DEVICE_TYPE_TENT else {}
         self._use_virtual_sensors = self._plant_info.get(ATTR_USE_VIRTUAL_SENSORS, False)
         self._sensor_overrides = self._plant_info.get(ATTR_SENSOR_OVERRIDES, {})
         self._tent_assigned_at = self._plant_info.get(ATTR_TENT_ASSIGNED_AT)
@@ -1069,13 +1069,12 @@ class PlantDevice(Entity):
         if self.device_type == DEVICE_TYPE_CYCLE:
             attrs = {"member_count": len(self._member_plants)} | attrs
 
-        # Füge Tent-spezifische Attribute hinzu
+        # Füge Tent-spezifische Attribute hinzu (simplified)
         if self.device_type == DEVICE_TYPE_TENT:
             attrs.update({
                 "assigned_plants": self._assigned_plants,
                 "plant_count": len(self._assigned_plants),
                 "environmental_sensors": self._environmental_sensors,
-                "shared_thresholds": self._shared_thresholds,
             })
         elif self.device_type == DEVICE_TYPE_PLANT:
             # Füge Plant-spezifische Tent-Attribute hinzu

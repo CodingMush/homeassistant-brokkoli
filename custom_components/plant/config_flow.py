@@ -200,6 +200,59 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Create the options flow."""
         return OptionsFlowHandler(config_entry)
 
+    def _get_available_tents(self) -> dict[str, str]:
+        """Get available tent entities for selection."""
+        available_tents = {}
+        
+        # Get all existing plant integration entries that are tents
+        for entry in self._async_current_entries():
+            if (
+                entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT
+                and not entry.data.get("is_config", False)  # Exclude config entries
+            ):
+                tent_name = entry.data[FLOW_PLANT_INFO].get(ATTR_NAME, "Unknown Tent")
+                # Use a synthetic entity ID for selection
+                tent_entity_id = f"plant.{entry.data[FLOW_PLANT_INFO].get(ATTR_NAME, 'tent').lower().replace(' ', '_')}"
+                available_tents[tent_entity_id] = tent_name
+        
+        return available_tents
+    
+    def _get_tent_sensors(self, tent_entity_id: str) -> dict[str, str]:
+        """Get sensor assignments from a tent entity."""
+        tent_sensors = {}
+        
+        # Find the tent config entry based on the entity ID
+        for entry in self._async_current_entries():
+            if (
+                entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT
+                and not entry.data.get("is_config", False)
+            ):
+                tent_name = entry.data[FLOW_PLANT_INFO].get(ATTR_NAME, "")
+                expected_entity_id = f"plant.{tent_name.lower().replace(' ', '_')}"
+                
+                if expected_entity_id == tent_entity_id:
+                    # Found the tent, extract its environmental sensors
+                    env_sensors = entry.data[FLOW_PLANT_INFO].get(ATTR_ENVIRONMENTAL_SENSORS, {})
+                    
+                    # Map tent environmental sensors to plant sensor fields
+                    sensor_mapping = {
+                        "temperature": FLOW_SENSOR_TEMPERATURE,
+                        "humidity": FLOW_SENSOR_HUMIDITY,
+                        "co2": FLOW_SENSOR_CO2,
+                        "illuminance": FLOW_SENSOR_ILLUMINANCE,
+                        "conductivity": FLOW_SENSOR_CONDUCTIVITY,
+                        "moisture": FLOW_SENSOR_MOISTURE,
+                        "ph": FLOW_SENSOR_PH,
+                    }
+                    
+                    for tent_sensor_key, plant_sensor_key in sensor_mapping.items():
+                        if tent_sensor_key in env_sensors and env_sensors[tent_sensor_key]:
+                            tent_sensors[plant_sensor_key] = env_sensors[tent_sensor_key]
+                    
+                    break
+        
+        return tent_sensors
+
     async def async_step_import(self, import_input):
         """Importing config from configuration.yaml"""
         _LOGGER.debug(import_input)
@@ -682,20 +735,8 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_tent(self, user_input=None):
-        """Handle tent configuration."""
+        """Handle simplified tent configuration."""
         errors = {}
-
-        # Hole die Default-Werte aus dem Konfigurationsknoten
-        config_entry = None
-        for entry in self._async_current_entries():
-            if entry.data.get("is_config", False):
-                config_entry = entry
-                break
-
-        if config_entry:
-            config_data = config_entry.data[FLOW_PLANT_INFO]
-        else:
-            config_data = {}
 
         if user_input is not None:
             self.plant_info = {
@@ -705,10 +746,8 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ATTR_STRAIN: "",
                 ATTR_BREEDER: "",
                 "growth_phase": DEFAULT_GROWTH_PHASE,
-                "plant_emoji": user_input.get(
-                    "tent_icon", "🏠"
-                ),
-                # Tent-specific attributes
+                "plant_emoji": user_input.get("tent_icon", "🏠"),
+                # Simplified tent attributes - just sensor assignments
                 ATTR_ASSIGNED_PLANTS: [],
                 ATTR_ENVIRONMENTAL_SENSORS: {
                     "temperature": user_input.get(FLOW_SENSOR_TEMPERATURE),
@@ -718,22 +757,6 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "conductivity": user_input.get(FLOW_SENSOR_CONDUCTIVITY),
                     "moisture": user_input.get(FLOW_SENSOR_MOISTURE),
                     "ph": user_input.get(FLOW_SENSOR_PH),
-                },
-                ATTR_SHARED_THRESHOLDS: {
-                    CONF_MIN_TEMPERATURE: user_input.get(CONF_MIN_TEMPERATURE, config_data.get(CONF_DEFAULT_MIN_TEMPERATURE, 10)),
-                    CONF_MAX_TEMPERATURE: user_input.get(CONF_MAX_TEMPERATURE, config_data.get(CONF_DEFAULT_MAX_TEMPERATURE, 30)),
-                    CONF_MIN_HUMIDITY: user_input.get(CONF_MIN_HUMIDITY, config_data.get(CONF_DEFAULT_MIN_HUMIDITY, 20)),
-                    CONF_MAX_HUMIDITY: user_input.get(CONF_MAX_HUMIDITY, config_data.get(CONF_DEFAULT_MAX_HUMIDITY, 60)),
-                    CONF_MIN_CO2: user_input.get(CONF_MIN_CO2, config_data.get(CONF_DEFAULT_MIN_CO2, 300)),
-                    CONF_MAX_CO2: user_input.get(CONF_MAX_CO2, config_data.get(CONF_DEFAULT_MAX_CO2, 4000)),
-                    CONF_MIN_ILLUMINANCE: user_input.get(CONF_MIN_ILLUMINANCE, config_data.get(CONF_DEFAULT_MIN_ILLUMINANCE, 1500)),
-                    CONF_MAX_ILLUMINANCE: user_input.get(CONF_MAX_ILLUMINANCE, config_data.get(CONF_DEFAULT_MAX_ILLUMINANCE, 30000)),
-                    CONF_MIN_MOISTURE: user_input.get(CONF_MIN_MOISTURE, config_data.get(CONF_DEFAULT_MIN_MOISTURE, 20)),
-                    CONF_MAX_MOISTURE: user_input.get(CONF_MAX_MOISTURE, config_data.get(CONF_DEFAULT_MAX_MOISTURE, 60)),
-                    CONF_MIN_CONDUCTIVITY: user_input.get(CONF_MIN_CONDUCTIVITY, config_data.get(CONF_DEFAULT_MIN_CONDUCTIVITY, 500)),
-                    CONF_MAX_CONDUCTIVITY: user_input.get(CONF_MAX_CONDUCTIVITY, config_data.get(CONF_DEFAULT_MAX_CONDUCTIVITY, 2000)),
-                    CONF_MIN_PH: user_input.get(CONF_MIN_PH, config_data.get(CONF_DEFAULT_MIN_PH, 5.5)),
-                    CONF_MAX_PH: user_input.get(CONF_MAX_PH, config_data.get(CONF_DEFAULT_MAX_PH, 7.5)),
                 },
                 # Optional area assignment
                 "area_id": user_input.get("area_id"),
@@ -754,7 +777,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }),
             vol.Optional("notes"): cv.string,
             
-            # Environmental sensor selectors
+            # Environmental sensor selectors - simplified, no thresholds
             vol.Optional(FLOW_SENSOR_TEMPERATURE): selector(
                 {
                     ATTR_ENTITY: {
@@ -811,22 +834,6 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     }
                 }
             ),
-            
-            # Shared threshold configuration
-            vol.Optional(CONF_MIN_TEMPERATURE, default=config_data.get(CONF_DEFAULT_MIN_TEMPERATURE, 10)): vol.Coerce(float),
-            vol.Optional(CONF_MAX_TEMPERATURE, default=config_data.get(CONF_DEFAULT_MAX_TEMPERATURE, 30)): vol.Coerce(float),
-            vol.Optional(CONF_MIN_HUMIDITY, default=config_data.get(CONF_DEFAULT_MIN_HUMIDITY, 20)): vol.Coerce(float),
-            vol.Optional(CONF_MAX_HUMIDITY, default=config_data.get(CONF_DEFAULT_MAX_HUMIDITY, 60)): vol.Coerce(float),
-            vol.Optional(CONF_MIN_CO2, default=config_data.get(CONF_DEFAULT_MIN_CO2, 300)): vol.Coerce(float),
-            vol.Optional(CONF_MAX_CO2, default=config_data.get(CONF_DEFAULT_MAX_CO2, 4000)): vol.Coerce(float),
-            vol.Optional(CONF_MIN_ILLUMINANCE, default=config_data.get(CONF_DEFAULT_MIN_ILLUMINANCE, 1500)): vol.Coerce(float),
-            vol.Optional(CONF_MAX_ILLUMINANCE, default=config_data.get(CONF_DEFAULT_MAX_ILLUMINANCE, 30000)): vol.Coerce(float),
-            vol.Optional(CONF_MIN_MOISTURE, default=config_data.get(CONF_DEFAULT_MIN_MOISTURE, 20)): vol.Coerce(float),
-            vol.Optional(CONF_MAX_MOISTURE, default=config_data.get(CONF_DEFAULT_MAX_MOISTURE, 60)): vol.Coerce(float),
-            vol.Optional(CONF_MIN_CONDUCTIVITY, default=config_data.get(CONF_DEFAULT_MIN_CONDUCTIVITY, 500)): vol.Coerce(float),
-            vol.Optional(CONF_MAX_CONDUCTIVITY, default=config_data.get(CONF_DEFAULT_MAX_CONDUCTIVITY, 2000)): vol.Coerce(float),
-            vol.Optional(CONF_MIN_PH, default=config_data.get(CONF_DEFAULT_MIN_PH, 5.5)): vol.Coerce(float),
-            vol.Optional(CONF_MAX_PH, default=config_data.get(CONF_DEFAULT_MAX_PH, 7.5)): vol.Coerce(float),
         }
 
         return self.async_show_form(
@@ -851,6 +858,9 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             config_data = {}
 
+        # Get available tents for selection
+        available_tents = self._get_available_tents()
+
         if user_input is not None:
             self.plant_info = {
                 ATTR_NAME: user_input[ATTR_NAME],
@@ -871,18 +881,30 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ATTR_NORMALIZE_PERCENTILE: user_input.get(
                     ATTR_NORMALIZE_PERCENTILE, DEFAULT_NORMALIZE_PERCENTILE
                 ),
-                # Füge die Sensorzuweisungen hinzu
-                FLOW_SENSOR_TEMPERATURE: user_input.get(FLOW_SENSOR_TEMPERATURE),
-                FLOW_SENSOR_MOISTURE: user_input.get(FLOW_SENSOR_MOISTURE),
-                FLOW_SENSOR_CONDUCTIVITY: user_input.get(FLOW_SENSOR_CONDUCTIVITY),
-                FLOW_SENSOR_ILLUMINANCE: user_input.get(FLOW_SENSOR_ILLUMINANCE),
-                FLOW_SENSOR_HUMIDITY: user_input.get(FLOW_SENSOR_HUMIDITY),
-                FLOW_SENSOR_CO2: user_input.get(FLOW_SENSOR_CO2),
-                FLOW_SENSOR_POWER_CONSUMPTION: user_input.get(
-                    FLOW_SENSOR_POWER_CONSUMPTION
-                ),
-                FLOW_SENSOR_PH: user_input.get(FLOW_SENSOR_PH),
+                # Add tent assignment if selected
+                ATTR_TENT_ASSIGNMENT: user_input.get(FLOW_TENT_ENTITY),
+                ATTR_USE_VIRTUAL_SENSORS: bool(user_input.get(FLOW_TENT_ENTITY)),
             }
+            
+            # If tent is selected, inherit tent sensors instead of individual sensor assignments
+            if user_input.get(FLOW_TENT_ENTITY):
+                # Get tent sensors from the selected tent entity
+                tent_sensors = self._get_tent_sensors(user_input[FLOW_TENT_ENTITY])
+                self.plant_info.update(tent_sensors)
+            else:
+                # Use individual sensor assignments
+                self.plant_info.update({
+                    FLOW_SENSOR_TEMPERATURE: user_input.get(FLOW_SENSOR_TEMPERATURE),
+                    FLOW_SENSOR_MOISTURE: user_input.get(FLOW_SENSOR_MOISTURE),
+                    FLOW_SENSOR_CONDUCTIVITY: user_input.get(FLOW_SENSOR_CONDUCTIVITY),
+                    FLOW_SENSOR_ILLUMINANCE: user_input.get(FLOW_SENSOR_ILLUMINANCE),
+                    FLOW_SENSOR_HUMIDITY: user_input.get(FLOW_SENSOR_HUMIDITY),
+                    FLOW_SENSOR_CO2: user_input.get(FLOW_SENSOR_CO2),
+                    FLOW_SENSOR_POWER_CONSUMPTION: user_input.get(
+                        FLOW_SENSOR_POWER_CONSUMPTION
+                    ),
+                    FLOW_SENSOR_PH: user_input.get(FLOW_SENSOR_PH),
+                })
 
             plant_helper = PlantHelper(hass=self.hass)
             plant_config = await plant_helper.get_plantbook_data(
@@ -936,6 +958,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             return await self.async_step_limits()
 
+        # Build form schema
         data_schema = {
             # Basis-Informationen
             vol.Required(ATTR_NAME): cv.string,
@@ -953,7 +976,14 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(
                 ATTR_WATER_CAPACITY, default=config_data.get("default_water_capacity")
             ): vol.Coerce(int),
-            # Sensor Selektoren
+        }
+        
+        # Add tent selector if tents are available
+        if available_tents:
+            data_schema[vol.Optional(FLOW_TENT_ENTITY, description={"name": "Tent (optional - inherits sensors)"})] = vol.In(available_tents)
+        
+        # Add individual sensor selectors (used when no tent is selected)
+        data_schema.update({
             vol.Optional(FLOW_SENSOR_TEMPERATURE): selector(
                 {
                     ATTR_ENTITY: {
@@ -1035,7 +1065,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ATTR_NORMALIZE_PERCENTILE,
                 default=config_data.get("default_normalize_percentile"),
             ): cv.positive_int,
-        }
+        })
 
         return self.async_show_form(
             step_id="plant",

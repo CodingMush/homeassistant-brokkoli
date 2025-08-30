@@ -223,7 +223,9 @@ class PlantMinMax(RestoreNumber):
                 default_key = f"default_{self.limit_key}"
                 self._attr_native_value = self._global_config.get(default_key, self.default_value)
             else:
-                self._attr_native_value = self._config.data[FLOW_PLANT_INFO][ATTR_LIMITS].get(
+                # Try to get limits from config, fallback to default if not found
+                plant_limits = self._config.data[FLOW_PLANT_INFO].get(ATTR_LIMITS, {})
+                self._attr_native_value = plant_limits.get(
                     self.limit_key, self.default_value
                 )
         else:
