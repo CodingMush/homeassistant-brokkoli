@@ -2313,6 +2313,9 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         # Initialize with sensor definition (automatically sets precision, device class, etc.)
         super().__init__(sensor_type, hass, config, plantdevice)
         
+        # Virtual sensors should show STATE_UNKNOWN when reference is missing, not 0
+        self._default_state = STATE_UNKNOWN
+        
         # Update reference entity from plant configuration
         self._update_virtual_reference()
 
@@ -2320,7 +2323,14 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         """Update the virtual sensor reference from plant device."""
         if hasattr(self._plant, 'get_virtual_sensor_reference'):
             reference_id = self._plant.get_virtual_sensor_reference(self._sensor_type)
-            if reference_id and reference_id != self._reference_entity_id:
+            # Handle case where reference_id is None or empty
+            if not reference_id:
+                # Clear existing reference if we had one
+                if self._reference_entity_id:
+                    _LOGGER.debug("Clearing virtual sensor %s reference", self._sensor_type)
+                    self._reference_entity_id = None
+                    self._external_sensor = None
+            elif reference_id != self._reference_entity_id:
                 _LOGGER.debug("Updating virtual sensor %s reference from %s to %s", 
                              self._sensor_type, self._reference_entity_id, reference_id)
                 self._reference_entity_id = reference_id
@@ -2335,6 +2345,10 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
 
     def state_changed(self, entity_id, new_state):
         """Run on every update to allow for changes from the GUI and service call"""
+        # If reference entity is missing, don't update the state
+        if not self._reference_entity_id:
+            return
+            
         super().state_changed(entity_id, new_state)
         # Round value for display using sensor definition
         if self._attr_native_value is not None:
@@ -2364,6 +2378,16 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
                 # Handle case where _round_value_for_display returns None or invalid value
                 pass
 
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        # If we have no reference entity, return STATE_UNAVAILABLE
+        if not self._reference_entity_id:
+            return STATE_UNAVAILABLE
+        
+        # Get state from parent implementation
+        return super().state
+    
     @property
     def extra_state_attributes(self) -> dict:
         """Return extra attributes including virtual sensor info."""
