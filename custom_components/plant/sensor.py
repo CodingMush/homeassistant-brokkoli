@@ -2316,6 +2316,21 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         # Update reference entity from plant configuration
         self._update_virtual_reference()
 
+    def _update_virtual_reference(self) -> None:
+        """Update the virtual sensor reference from plant device."""
+        if hasattr(self._plant, 'get_virtual_sensor_reference'):
+            reference_id = self._plant.get_virtual_sensor_reference(self._sensor_type)
+            if reference_id and reference_id != self._reference_entity_id:
+                self._reference_entity_id = reference_id
+                self._external_sensor = reference_id
+                # Set up tracking for the reference entity
+                if self._reference_entity_id:
+                    async_track_state_change_event(
+                        self._hass,
+                        [self._reference_entity_id],
+                        self._state_changed_event,
+                    )
+
     def state_changed(self, entity_id, new_state):
         """Run on every update to allow for changes from the GUI and service call"""
         super().state_changed(entity_id, new_state)
@@ -2334,81 +2349,6 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         # Round value for display using sensor definition
         if self._attr_native_value is not None:
             self._attr_native_value = self._round_value_for_display(self._attr_native_value)
-
-class VirtualSensorManager:
-    """Manager for creating and managing virtual sensors efficiently."""
-    
-    def __init__(self, hass: HomeAssistant):
-        self._hass = hass
-        self._virtual_sensors: dict[str, dict[str, VirtualSensor]] = {}
-        
-    def create_virtual_sensors_for_plant(
-        self, 
-        plant_device: Entity, 
-        config: ConfigEntry
-    ) -> dict[str, VirtualSensor]:
-        """Create virtual sensors for a plant assigned to a tent."""
-        if not plant_device.uses_virtual_sensors or not plant_device.tent_assignment:
-            return {}
-            
-        virtual_sensors = {}
-        
-        # Define sensor mappings
-        sensor_mappings = {
-            'temperature': {
-                'reading': READING_TEMPERATURE,
-                'icon': ICON_TEMPERATURE,
-                'unit': UnitOfTemperature.CELSIUS,
-                'device_class': SensorDeviceClass.TEMPERATURE
-            },
-            'moisture': {
-                'reading': READING_MOISTURE,
-                'icon': ICON_MOISTURE,
-                'unit': PERCENTAGE,
-                'device_class': SensorDeviceClass.MOISTURE
-            },
-            'conductivity': {
-                'reading': READING_CONDUCTIVITY,
-                'icon': ICON_CONDUCTIVITY,
-                'unit': UNIT_CONDUCTIVITY,
-                'device_class': None
-            },
-            'illuminance': {
-                'reading': READING_ILLUMINANCE,
-                'icon': ICON_ILLUMINANCE,
-                'unit': LIGHT_LUX,
-                'device_class': SensorDeviceClass.ILLUMINANCE
-            },
-            'humidity': {
-                'reading': READING_HUMIDITY,
-                'icon': ICON_HUMIDITY,
-                'unit': PERCENTAGE,
-                'device_class': SensorDeviceClass.HUMIDITY
-            },
-            'co2': {
-                'reading': READING_CO2,
-                'icon': ICON_CO2,
-                'unit': 'ppm',
-                'device_class': SensorDeviceClass.CO2
-            },
-            'ph': {
-                'reading': READING_PH,
-                'icon': ICON_PH,
-                'unit': None,
-                'device_class': DEVICE_CLASS_PH
-            },
-            'power_consumption': {
-                'reading': READING_POWER_CONSUMPTION,
-                'icon': ICON_POWER_CONSUMPTION,
-                'unit': 'W',
-                'device_class': SensorDeviceClass.POWER
-            }
-        }
-        
-        # Create virtual sensors for each type
-        for sensor_type, mapping in sensor_mappings.items():
-            virtual_sensor = VirtualSensor(
-                self._hass,
                 config,
                 plant_device,
                 sensor_type,
