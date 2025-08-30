@@ -1147,7 +1147,7 @@ class PlantDailyLightIntegral(RestoreSensor):
                     dli = (current_value - self._history[0][1]) * (
                         24 * 3600 / time_diff
                     )
-                    self._attr_native_value = round(max(0, dli), 2)
+                    self._attr_native_value = round(max(0, dli), 1)
                     self._last_update = current_time.isoformat()
                     self.async_write_ha_state()
 
@@ -2321,6 +2321,8 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         if hasattr(self._plant, 'get_virtual_sensor_reference'):
             reference_id = self._plant.get_virtual_sensor_reference(self._sensor_type)
             if reference_id and reference_id != self._reference_entity_id:
+                _LOGGER.debug("Updating virtual sensor %s reference from %s to %s", 
+                             self._sensor_type, self._reference_entity_id, reference_id)
                 self._reference_entity_id = reference_id
                 self._external_sensor = reference_id
                 # Set up tracking for the reference entity
@@ -2336,7 +2338,13 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         super().state_changed(entity_id, new_state)
         # Round value for display using sensor definition
         if self._attr_native_value is not None:
-            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+            try:
+                rounded_value = self._round_value_for_display(self._attr_native_value)
+                if rounded_value is not None:
+                    self._attr_native_value = rounded_value
+            except (TypeError, ValueError):
+                # Handle case where _round_value_for_display returns None or invalid value
+                pass
 
     async def async_update(self) -> None:
         """Update the virtual sensor by checking reference changes."""
@@ -2348,7 +2356,24 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         
         # Round value for display using sensor definition
         if self._attr_native_value is not None:
-            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+            try:
+                rounded_value = self._round_value_for_display(self._attr_native_value)
+                if rounded_value is not None:
+                    self._attr_native_value = rounded_value
+            except (TypeError, ValueError):
+                # Handle case where _round_value_for_display returns None or invalid value
+                pass
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return extra attributes including virtual sensor info."""
+        attrs = super().extra_state_attributes or {}
+        attrs.update({
+            "is_virtual_sensor": True,
+            "virtual_sensor_reference": self._reference_entity_id,
+            "sensor_type": self._sensor_type,
+        })
+        return attrs
 
 
 class VirtualSensorManager:
