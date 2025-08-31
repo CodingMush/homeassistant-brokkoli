@@ -547,7 +547,8 @@ class PlantCurrentIlluminance(SensorDefinitionMixin, PlantCurrentStatus):
 
     async def async_update(self) -> None:
         """Update the sensor with proper rounding."""
-        await super().async_update()
+        # Note: Parent class PlantCurrentStatus doesn't have async_update method
+        # so we skip calling super().async_update()
         # Round illuminance values using sensor definition
         if self._attr_native_value is not None:
             self._attr_native_value = self._round_value_for_display(self._attr_native_value)
@@ -821,7 +822,8 @@ class PlantCurrentTemperature(SensorDefinitionMixin, PlantCurrentStatus):
 
     async def async_update(self) -> None:
         """Update the sensor with proper rounding."""
-        await super().async_update()
+        # Note: Parent class PlantCurrentStatus doesn't have async_update method
+        # so we skip calling super().async_update()
         # Round temperature values using sensor definition
         if self._attr_native_value is not None:
             self._attr_native_value = self._round_value_for_display(self._attr_native_value)
@@ -855,7 +857,8 @@ class PlantCurrentHumidity(SensorDefinitionMixin, PlantCurrentStatus):
 
     async def async_update(self) -> None:
         """Update the sensor with proper rounding."""
-        await super().async_update()
+        # Note: Parent class PlantCurrentStatus doesn't have async_update method
+        # so we skip calling super().async_update()
         # Round humidity values using sensor definition
         if self._attr_native_value is not None:
             self._attr_native_value = self._round_value_for_display(self._attr_native_value)
