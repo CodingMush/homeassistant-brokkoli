@@ -607,7 +607,9 @@ class PlantCurrentConductivity(PlantCurrentStatus):
 
     async def async_update(self) -> None:
         """Update the sensor."""
-        await super().async_update()
+        # Note: Parent class PlantCurrentStatus doesn't have async_update method
+        # so we skip calling super().async_update()
+        # Original update logic continues below
 
         # Speichere den Rohwert vor der Normalisierung
         if self._attr_native_value is not None:
@@ -768,7 +770,9 @@ class PlantCurrentMoisture(PlantCurrentStatus):
 
     async def async_update(self) -> None:
         """Update the sensor."""
-        await super().async_update()
+        # Note: Parent class PlantCurrentStatus doesn't have async_update method
+        # so we skip calling super().async_update()
+        # Original update logic continues below
 
         # Speichere den Rohwert vor der Normalisierung
         if self._attr_native_value is not None:
