@@ -28,10 +28,10 @@ The [VirtualSensor](file://d:\Python\git\homeassistant-brokkoli\custom_component
 Key features:
 - References other entities instead of storing independent state
 - Automatically updates when referenced entities change
-- Returns `STATE_UNKNOWN` when references are missing (instead of `STATE_UNAVAILABLE`)
+- Returns default state (0) when references are missing (instead of STATE_UNKNOWN) to maintain compatibility with Home Assistant's sensor validation
 
 ### VirtualSensorManager Class
-The [VirtualSensorManager](file://d:\Python\git\homeassistant-brokkoli\custom_components\plant\sensor.py#L2433-L2540) handles creation and management of virtual sensors.
+The [VirtualSensorManager](file://d:\Python\git\homeassistant-brokkoli\custom_components\plant\sensor.py#L2434-L2547) handles creation and management of virtual sensors.
 
 Key features:
 - Creates virtual sensors for plants that use them
@@ -74,7 +74,7 @@ When assigning a plant to a tent:
 ## Troubleshooting
 
 ### Missing Sensor References
-If virtual sensors show `STATE_UNKNOWN`:
+If virtual sensors show 0 as their value:
 1. Check that sensor references are properly configured
 2. Verify that referenced entities exist and are available
 3. For tent-assigned plants, ensure the tent has the required sensors configured
@@ -89,5 +89,5 @@ If experiencing performance issues with virtual sensors:
 
 1. **Use virtual sensors for tent-assigned plants**: This is the primary use case and provides the most benefit
 2. **Enable virtual sensors for standalone plants only when needed**: They add complexity that may not be necessary
-3. **Always handle `STATE_UNKNOWN` in plant logic**: Virtual sensors return `STATE_UNKNOWN` when references are missing
+3. **Always handle default state (0) in plant logic**: Virtual sensors return default state (0) when references are missing
 4. **Test reference resolution thoroughly**: Ensure all sensor types properly resolve references in both tent-assigned and standalone scenarios

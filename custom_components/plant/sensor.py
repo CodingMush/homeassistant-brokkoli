@@ -2314,8 +2314,9 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         # Initialize with sensor definition (automatically sets precision, device class, etc.)
         super().__init__(sensor_type, hass, config, plantdevice)
         
-        # Virtual sensors should show STATE_UNKNOWN when reference is missing, not 0
-        self._default_state = STATE_UNKNOWN
+        # Virtual sensors should show default state (0) when reference is missing, not STATE_UNKNOWN
+        # This is consistent with regular sensors and prevents issues with Home Assistant's sensor validation
+        self._default_state = 0
         
         # Update reference entity from plant configuration
         self._update_virtual_reference()
@@ -2417,10 +2418,10 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
     @property
     def state(self):
         """Return the state of the sensor."""
-        # If we have no reference entity, return STATE_UNKNOWN (not STATE_UNAVAILABLE)
-        # This prevents problems in plant's problem detection logic
+        # If we have no reference entity, return the default state (0) instead of STATE_UNKNOWN
+        # This prevents problems with Home Assistant's sensor validation for sensors with device classes
         if not self._reference_entity_id:
-            return STATE_UNKNOWN
+            return self._default_state
         
         # Get state from parent implementation
         return super().state
