@@ -519,7 +519,6 @@ class PlantCurrentStatus(RestoreSensor):
                 self._attr_native_value = self._default_state
         else:
             self._attr_native_value = self._default_state
-            )
             self._attr_native_value = self._default_state
 
 
