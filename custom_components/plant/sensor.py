@@ -796,7 +796,7 @@ class PlantCurrentMoisture(PlantCurrentStatus):
         return ATTR_MOISTURE
 
 
-class PlantCurrentTemperature(PlantCurrentStatus):
+class PlantCurrentTemperature(SensorDefinitionMixin, PlantCurrentStatus):
     """Entity class for the current temperature meter"""
 
     def __init__(
@@ -809,9 +809,22 @@ class PlantCurrentTemperature(PlantCurrentStatus):
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(
             FLOW_SENSOR_TEMPERATURE
         )
-        self._attr_icon = ICON_TEMPERATURE
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        super().__init__(hass, config, plantdevice)
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("temperature", hass, config, plantdevice)
+
+    def state_changed(self, entity_id, new_state):
+        """Override to apply rounding to temperature values."""
+        super().state_changed(entity_id, new_state)
+        # Round temperature values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+    async def async_update(self) -> None:
+        """Update the sensor with proper rounding."""
+        await super().async_update()
+        # Round temperature values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
     @property
     def device_class(self) -> str:
