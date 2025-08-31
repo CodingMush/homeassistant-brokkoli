@@ -915,7 +915,7 @@ assign_to_tent:
           integration: plant
     tent_entity:
       name: Tent Entity
-      description: Das Ziel-Zelt für die Zuordnung
+      description: Das Ziel-Zelt für die Zuordnung (Nur Zelt-Entitäten auswählen)
       required: true
       selector:
         entity:
@@ -955,7 +955,7 @@ remove_tent:
   fields:
     tent_entity:
       name: Tent Entity
-      description: Das zu entfernende Zelt
+      description: Das zu entfernende Zelt (Nur Zelt-Entitäten auswählen)
       required: true
       selector:
         entity:
@@ -983,7 +983,7 @@ reassign_to_tent:
           integration: plant
     tent_entity:
       name: Tent Entity
-      description: Das neue Zielt-Zelt
+      description: Das neue Zielt-Zelt (Nur Zelt-Entitäten auswählen)
       required: true
       selector:
         entity:
@@ -1067,7 +1067,7 @@ migrate_to_virtual_sensors:
           integration: plant
     tent_entity:
       name: Tent Entity
-      description: Das Zelt, dem die Pflanze zugeordnet werden soll
+      description: Das Zelt, dem die Pflanze zugeordnet werden soll (Nur Zelt-Entitäten auswählen)
       required: true
       selector:
         entity:

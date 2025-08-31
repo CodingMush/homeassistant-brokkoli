@@ -1905,7 +1905,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
                     
         if not tent_device:
-            raise HomeAssistantError(f"Tent entity {tent_entity_id} not found")
+            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
         
         try:
             # Assign plant to tent
@@ -1977,7 +1977,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not tent_device:
-            raise HomeAssistantError(f"Tent entity {tent_entity_id} not found")
+            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
         
         # Check if tent has assigned plants
         if tent_device.assigned_plants and not force_removal:
@@ -2048,8 +2048,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not tent_device:
-            _LOGGER.error(f"Tent {tent_entity_id} not found")
-            raise HomeAssistantError(f"Tent {tent_entity_id} not found")
+            _LOGGER.error(f"Entity {tent_entity_id} not found or is not a tent")
+            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
         
         try:
             # Get current plant config entry
@@ -2142,7 +2142,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not tent_device:
-            raise HomeAssistantError(f"Tent entity {tent_entity_id} not found")
+            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
         
         try:
             # Get current plant config entry
