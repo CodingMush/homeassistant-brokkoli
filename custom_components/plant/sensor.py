@@ -497,50 +497,28 @@ class PlantCurrentStatus(RestoreSensor):
             and new_state.state != STATE_UNKNOWN
             and new_state.state != STATE_UNAVAILABLE
         ):
-            self._attr_native_value = new_state.state
-            if ATTR_UNIT_OF_MEASUREMENT in new_state.attributes:
-                self._attr_native_unit_of_measurement = new_state.attributes[
-                    ATTR_UNIT_OF_MEASUREMENT
-                ]
+            try:
+                self._attr_native_value = float(new_state.state)
+                if ATTR_UNIT_OF_MEASUREMENT in new_state.attributes:
+                    self._attr_native_unit_of_measurement = new_state.attributes[
+                        ATTR_UNIT_OF_MEASUREMENT
+                    ]
+                # Round value for display using sensor definition if available
+                if self._attr_native_value is not None and hasattr(self, '_round_value_for_display'):
+                    rounded_value = self._round_value_for_display(self._attr_native_value)
+                    if rounded_value is not None:
+                        self._attr_native_value = rounded_value
+            except (ValueError, TypeError):
+                _LOGGER.debug(
+                    "Invalid value for %s from external sensor %s: %s, setting to default: %s",
+                    self.entity_id,
+                    self.external_sensor,
+                    new_state.state,
+                    self._default_state,
+                )
+                self._attr_native_value = self._default_state
         else:
             self._attr_native_value = self._default_state
-
-    async def async_update(self) -> None:
-        """Set state and unit to the parent sensor state and unit"""
-        if self.external_sensor:
-            try:
-                state = self._hass.states.get(self.external_sensor)
-                if state:
-                    self._attr_native_value = float(state.state)
-                    if ATTR_UNIT_OF_MEASUREMENT in state.attributes:
-                        self._attr_native_unit_of_measurement = state.attributes[
-                            ATTR_UNIT_OF_MEASUREMENT
-                        ]
-                    # Round value for display using sensor definition
-                    if self._attr_native_value is not None:
-                        self._attr_native_value = self._round_value_for_display(self._attr_native_value)
-            except AttributeError:
-                _LOGGER.debug(
-                    "Unknown external sensor for %s: %s, setting to default: %s",
-                    self.entity_id,
-                    self.external_sensor,
-                    self._default_state,
-                )
-                self._attr_native_value = self._default_state
-            except ValueError:
-                _LOGGER.debug(
-                    "Unknown external value for %s: %s = %s, setting to default: %s",
-                    self.entity_id,
-                    self.external_sensor,
-                    self._hass.states.get(self.external_sensor).state,
-                    self._default_state,
-                )
-                self._attr_native_value = self._default_state
-        else:
-            _LOGGER.debug(
-                "External sensor not set for %s, setting to default: %s",
-                self.entity_id,
-                self._default_state,
             )
             self._attr_native_value = self._default_state
 
