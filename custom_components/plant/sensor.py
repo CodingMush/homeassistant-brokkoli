@@ -2379,8 +2379,8 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
         # Check if virtual reference has changed
         self._update_virtual_reference()
         
-        # Call parent update to get the actual sensor data
-        await super().async_update()
+        # Note: Parent class PlantCurrentStatus doesn't have async_update method
+        # so we skip calling super().async_update()
         
         # Round value for display using sensor definition
         if self._attr_native_value is not None:

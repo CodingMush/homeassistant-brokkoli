@@ -113,7 +113,7 @@ UNIT_PPFD = "mol/s⋅m²s"
 UNIT_MICRO_PPFD = "μmol/s⋅m²"
 UNIT_DLI = "mol/d⋅m²"
 UNIT_MICRO_DLI = "μmol/d⋅m²"
-UNIT_CONDUCTIVITY = "µS/cm"
+UNIT_CONDUCTIVITY = "μS/cm"
 UNIT_VOLUME = "L"
 
 FLOW_WRONG_PLANT = "wrong_plant"
