@@ -501,6 +501,7 @@ ATTR_TENT_ID = "tent_id"
 ATTR_ASSIGNED_PLANTS = "assigned_plants"
 ATTR_ENVIRONMENTAL_SENSORS = "environmental_sensors"
 ATTR_SHARED_THRESHOLDS = "shared_thresholds"
+ATTR_TENT_ASSIGNED_AT = "tent_assigned_at"
 
 # Neue Konstanten für Tent-Migration
 FLOW_MIGRATE_SENSORS = "migrate_sensors"

@@ -80,8 +80,10 @@ from .const import (
     SERVICE_CREATE_TENT,
     SERVICE_REMOVE_TENT,
     SERVICE_REASSIGN_TO_TENT,
+    SERVICE_MIGRATE_TO_VIRTUAL_SENSORS,
     # Tent attributes
     ATTR_TENT_ASSIGNMENT,
+    ATTR_USE_VIRTUAL_SENSORS,
     ATTR_ENVIRONMENTAL_SENSORS,
     ATTR_ASSIGNED_PLANTS,
     FLOW_TENT_INFO,
@@ -240,7 +242,6 @@ MIGRATE_TO_VIRTUAL_SENSORS_SCHEMA = vol.Schema({
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for plant integration."""
-    # Removed migrate_to_virtual_sensors service as virtual sensors are no longer supported
 
     async def replace_sensor(call: ServiceCall) -> None:
         """Replace a sensor entity within a plant device.
@@ -1322,7 +1323,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find plant device
         plant_device = None
         for entry_id in hass.data[DOMAIN]:
-            # Check if this is a dictionary containing plant data
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
             if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if device.entity_id == plant_entity_id and device.device_type == DEVICE_TYPE_PLANT:
@@ -1344,6 +1345,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             # Unassign plant from tent
             plant_device.unassign_from_tent()
             
+            # Clean up virtual sensors if manager exists
+            if "virtual_sensor_manager" in hass.data[DOMAIN]:
+                virtual_manager = hass.data[DOMAIN]["virtual_sensor_manager"]
+                virtual_manager.cleanup_virtual_sensors(plant_entity_id)
+            
             _LOGGER.info(f"Successfully unassigned {plant_entity_id} from tent")
             
         except Exception as e:
@@ -1359,7 +1365,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         tent_device = None
         tent_entry_id = None
         for entry_id in hass.data[DOMAIN]:
-            # Check if this is a dictionary containing plant data
+            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
             if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
@@ -1388,7 +1394,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 for plant_entity_id in tent_device.assigned_plants.copy():
                     # Find and unassign each plant
                     for entry_id in hass.data[DOMAIN]:
-                        # Check if this is a dictionary containing plant data
+                        # Check if this is a dictionary containing plant data (not VirtualSensorManager)
                         if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                             plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                             if plant.entity_id == plant_entity_id:
@@ -2161,15 +2167,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         reassign_to_tent,
         schema=REASSIGN_TO_TENT_SCHEMA
     )
-
-    # Remove registration of migrate_to_virtual_sensors service
-    # hass.services.async_register(
-    #     DOMAIN,
-    #     SERVICE_MIGRATE_TO_VIRTUAL_SENSORS,
-    #     migrate_to_virtual_sensors,
-    #     schema=MIGRATE_TO_VIRTUAL_SENSORS_SCHEMA
-    # )
-
+    
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_MIGRATE_TO_VIRTUAL_SENSORS,
+        migrate_to_virtual_sensors,
+        schema=MIGRATE_TO_VIRTUAL_SENSORS_SCHEMA
+    )
+    
     # Schema für change_position
     CHANGE_POSITION_SCHEMA = vol.Schema({
         vol.Required("entity_id"): cv.entity_id,
@@ -2293,6 +2298,5 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_UNASSIGN_FROM_TENT)
     hass.services.async_remove(DOMAIN, SERVICE_REMOVE_TENT)
     hass.services.async_remove(DOMAIN, SERVICE_REASSIGN_TO_TENT)
-    # Remove unload of migrate_to_virtual_sensors service
-    # hass.services.async_remove(DOMAIN, SERVICE_MIGRATE_TO_VIRTUAL_SENSORS)
+    hass.services.async_remove(DOMAIN, SERVICE_MIGRATE_TO_VIRTUAL_SENSORS)
     hass.services.async_remove(DOMAIN, SERVICE_MIGRATE_TO_VIRTUAL_SENSORS)

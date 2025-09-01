@@ -32,7 +32,6 @@ class MockPlantDevice:
         self.entity_id = entity_id
         self.device_type = device_type
         self.tent_assignment = None
-        self._virtual_sensors = {}
         self.min_temperature = None
         self.max_temperature = None
         self.min_humidity = None
@@ -45,18 +44,10 @@ class MockPlantDevice:
     async def migrate_to_tent(self, tent_entity_id, migrate_sensors=True):
         """Migrate plant to tent with optional sensor migration."""
         self.tent_assignment = tent_entity_id
-        
-        if migrate_sensors:
-            # Mock virtual sensor creation
-            self._virtual_sensors = {
-                "temperature": f"virtual_temp_{self.entity_id}",
-                "humidity": f"virtual_humid_{self.entity_id}"
-            }
     
     async def unassign_from_tent(self):
         """Unassign plant from tent."""
         self.tent_assignment = None
-        self._virtual_sensors = {}
     
     def get_effective_threshold(self, threshold_type, threshold_entity):
         """Get effective threshold including shared thresholds fallback."""
@@ -199,7 +190,6 @@ class TestTentIntegrationWorkflows(unittest.TestCase):
         # 3. Verify assignment
         self.assertEqual(self.plant1.tent_assignment, "plant.grow_tent_1")
         self.assertIn("plant.tomato", self.tent1._assigned_plants)
-        self.assertIn("temperature", self.plant1._virtual_sensors)
         
         # 4. Verify tent attributes updated
         tent_attrs = self.tent1.extra_state_attributes
@@ -293,7 +283,6 @@ class TestTentIntegrationWorkflows(unittest.TestCase):
         # Verify unassignment
         self.assertIsNone(self.plant1.tent_assignment)
         self.assertNotIn("plant.tomato", self.tent1._assigned_plants)
-        self.assertEqual(self.plant1._virtual_sensors, {})
         
         # Verify tent analytics cleared
         tent_attrs = self.tent1.extra_state_attributes
@@ -324,31 +313,6 @@ class TestTentIntegrationWorkflows(unittest.TestCase):
         self.assertEqual(len(tent_attrs[ATTR_ASSIGNED_PLANTS]), 2)
         
         print("✓ Sensor data workflow test passed")
-
-    async def test_virtual_sensor_workflow(self):
-        """Test virtual sensor creation and management."""
-        # Assign plant with sensor migration
-        call = MockServiceCall({
-            "plant_entity": "plant.tomato",
-            "tent_entity": "plant.grow_tent_1",
-            "migrate_sensors": True
-        })
-        await mock_assign_to_tent(self.hass, call)
-        
-        # Verify virtual sensors created
-        self.assertIn("temperature", self.plant1._virtual_sensors)
-        self.assertIn("humidity", self.plant1._virtual_sensors)
-        
-        # Unassign and verify cleanup
-        call2 = MockServiceCall({
-            "plant_entity": "plant.tomato"
-        })
-        await mock_unassign_from_tent(self.hass, call2)
-        
-        # Verify virtual sensors cleaned up
-        self.assertEqual(self.plant1._virtual_sensors, {})
-        
-        print("✓ Virtual sensor workflow test passed")
 
     async def test_error_handling_workflow(self):
         """Test error handling in tent workflows."""
@@ -391,7 +355,6 @@ class TestTentIntegrationWorkflows(unittest.TestCase):
             self.test_plant_reassignment_workflow,
             self.test_tent_unassignment_workflow,
             self.test_sensor_data_workflow,
-            self.test_virtual_sensor_workflow,
             self.test_error_handling_workflow
         ]
         

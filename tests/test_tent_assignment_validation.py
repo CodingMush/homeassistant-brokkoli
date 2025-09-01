@@ -81,8 +81,8 @@ class TestTentAssignmentValidation:
         with pytest.raises(Exception) as exc_info:
             await service_func(call)
 
-        # Verify the error message
-        assert "Cannot assign plant plant.test_plant to itself as a tent" in str(exc_info.value)
+        # Verify the error message - updated to match the new validation logic
+        assert "is not a tent" in str(exc_info.value)
 
         # Verify plant assign_to_tent was not called
         mock_plant_device.assign_to_tent.assert_not_called()

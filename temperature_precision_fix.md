@@ -21,7 +21,7 @@ Modified the [PlantCurrentTemperature](file:///d:/Python/git/homeassistant-brokk
 4. **Add async_update method**: Override to apply rounding during async updates
 
 ## Result
-Both regular temperature sensors (for plants without tents) and virtual temperature sensors (for plants with tents) now:
+Temperature sensors now:
 - Use the same precision settings from sensor definitions
 - Display temperature values with consistent formatting (1 decimal place)
 - Maintain consistent behavior across all plant types

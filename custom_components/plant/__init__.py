@@ -131,11 +131,7 @@ from .const import (
     ATTR_ASSIGNED_PLANTS,
     ATTR_ENVIRONMENTAL_SENSORS,
     ATTR_SHARED_THRESHOLDS,
-    ATTR_USE_VIRTUAL_SENSORS,
-    ATTR_SENSOR_OVERRIDES,
     ATTR_TENT_ASSIGNED_AT,
-    ATTR_VIRTUAL_SENSOR_REFERENCE,
-    ATTR_IS_VIRTUAL_SENSOR,
 )
 from .plant_helpers import PlantHelper
 from .services import async_setup_services, async_unload_services
@@ -2599,58 +2595,13 @@ class PlantDevice(Entity):
         """Return list of assigned plants for this tent."""
         return self._assigned_plants.copy() if self.device_type == DEVICE_TYPE_TENT else []
 
-async def async_remove_config_entry_device(
-            plant_device = None
-            for entry_id in self._hass.data[DOMAIN]:
-                entry_data = self._hass.data[DOMAIN][entry_id]
-                # Check if this is a dictionary containing plant data
-                if isinstance(entry_data, dict) and ATTR_PLANT in entry_data:
-                    device = entry_data[ATTR_PLANT]
-                    if device.entity_id == plant_entity_id:
-                        plant_device = device
-                        break
-                'moisture': plant_device.sensor_moisture,
-                'conductivity': plant_device.sensor_conductivity,
-                'illuminance': plant_device.sensor_illuminance,
-                'humidity': plant_device.sensor_humidity,
-                'co2': plant_device.sensor_CO2,
-                'ph': plant_device.sensor_ph,
-                'power_consumption': plant_device.sensor_power_consumption
-            }
-            
-            for sensor_type, sensor in sensors_to_check.items():
-                if sensor and hasattr(sensor, 'state') and sensor.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None):
-                    try:
-                        sensor_values[sensor_type].append(float(sensor.state))
-                    except (TypeError, ValueError):
-                        continue
-        
-        # Calculate aggregated values
-        for sensor_type, values in sensor_values.items():
-            if values:
-                aggregated_data[sensor_type] = {
-                    'mean': sum(values) / len(values),
-                    'min': min(values),
-                    'max': max(values),
-                    'count': len(values)
-                }
-                
-        return aggregated_data
+# Removed malformed code that was causing syntax errors
 
-    @property
-    def tent_assignment(self) -> str | None:
-        """Return the tent assignment for this plant."""
-        return self._tent_assignment
-
-    @property
-    def assigned_plants(self) -> list[str]:
-        """Return list of assigned plants for this tent."""
-        return self._assigned_plants.copy() if self.device_type == DEVICE_TYPE_TENT else []
 
 async def async_remove_config_entry_device(
     hass: HomeAssistant,
     config_entry: ConfigEntry, 
-    device_entry: dr.DeviceEntry,) -> bool:
+    device_entry: dr.DeviceEntry) -> bool:
     """Delete device entry from device registry."""
     _LOGGER.debug(
         "async_remove_config_entry_device called for device %s (config: %s)", 
@@ -2709,5 +2660,3 @@ async def async_remove_config_entry_device(
     await hass.config_entries.async_remove(config_entry.entry_id)
     
     return True
-
-

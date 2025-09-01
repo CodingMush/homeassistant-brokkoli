@@ -7,17 +7,20 @@ import homeassistant.helpers.entity_registry as er
 
 from custom_components.plant.services import async_setup_services
 from custom_components.plant.const import (
-    DEVICE_TYPE_TENT,
-    DEVICE_TYPE_PLANT,
-    FLOW_TENT_ENTITY,
-    FLOW_MIGRATE_SENSORS,
+    DOMAIN,
+    SERVICE_CREATE_TENT,
     SERVICE_ASSIGN_TO_TENT,
     SERVICE_UNASSIGN_FROM_TENT,
-    SERVICE_REASSIGN_TO_TENT,
-    SERVICE_CREATE_TENT,
     SERVICE_REMOVE_TENT,
-    SERVICE_MIGRATE_TO_VIRTUAL_SENSORS,
-    DOMAIN,
+    SERVICE_REASSIGN_TO_TENT,
+    # SERVICE_MIGRATE_TO_VIRTUAL_SENSORS,
+    ATTR_TENT_ASSIGNMENT,
+    ATTR_ASSIGNED_PLANTS,
+    FLOW_TENT_INFO,
+    FLOW_TENT_ENTITY,
+    FLOW_MIGRATE_SENSORS,
+    DEVICE_TYPE_PLANT,
+    DEVICE_TYPE_TENT,
 )
 
 
@@ -244,4 +247,3 @@ class TestTentAssignmentServices:
         assert SERVICE_REASSIGN_TO_TENT in registered_services
         assert SERVICE_CREATE_TENT in registered_services
         assert SERVICE_REMOVE_TENT in registered_services
-        assert SERVICE_MIGRATE_TO_VIRTUAL_SENSORS in registered_services

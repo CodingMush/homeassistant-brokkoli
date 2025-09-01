@@ -229,8 +229,9 @@ if definition.virtual:
 ### Batch Operations
 ```python
 # Get all calculated sensors for optimization
-from .sensor_definitions import get_virtual_sensors
-calculated_sensors = get_virtual_sensors()
+# Note: Virtual sensors that reference external entities have been removed
+# Calculated sensors are defined with virtual=True in SENSOR_DEFINITIONS
+calculated_sensor_types = [sensor_type for sensor_type, definition in SENSOR_DEFINITIONS.items() if definition.virtual]
 # ['ppfd', 'dli', 'total_integral', ...]
 ```
 

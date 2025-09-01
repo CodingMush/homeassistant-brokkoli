@@ -42,27 +42,27 @@ def verify_conductivity_fix():
         print("✗ FAIL: UNIT_CONDUCTIVITY definition not found")
         return False
 
-def verify_virtual_sensor_mapping():
-    """Verify that virtual sensor mappings use the correct units."""
-    print("Verifying virtual sensor mappings...")
+def verify_sensor_mapping():
+    """Verify that sensor mappings use the correct units."""
+    print("Verifying sensor mappings...")
     
     with open('custom_components/plant/sensor.py', 'r', encoding='utf-8') as f:
         content = f.read()
     
     # Check that conductivity mapping uses UNIT_CONDUCTIVITY
     if "'conductivity': {" in content and "UNIT_CONDUCTIVITY" in content:
-        print("✓ PASS: Virtual sensor conductivity mapping uses UNIT_CONDUCTIVITY")
+        print("✓ PASS: Sensor conductivity mapping uses UNIT_CONDUCTIVITY")
         conductivity_mapping_ok = True
     else:
-        print("✗ FAIL: Virtual sensor conductivity mapping issue")
+        print("✗ FAIL: Sensor conductivity mapping issue")
         conductivity_mapping_ok = False
     
     # Check that pH mapping uses None
     if "'ph': {" in content and "'unit': None" in content:
-        print("✓ PASS: Virtual sensor pH mapping uses unit=None")
+        print("✓ PASS: Sensor pH mapping uses unit=None")
         ph_mapping_ok = True
     else:
-        print("✗ FAIL: Virtual sensor pH mapping issue")
+        print("✗ FAIL: Sensor pH mapping issue")
         ph_mapping_ok = False
     
     return conductivity_mapping_ok and ph_mapping_ok
@@ -77,15 +77,15 @@ if __name__ == "__main__":
     conductivity_ok = verify_conductivity_fix()
     print()
     
-    virtual_sensors_ok = verify_virtual_sensor_mapping()
+    sensors_ok = verify_sensor_mapping()
     print()
     
-    if ph_ok and conductivity_ok and virtual_sensors_ok:
+    if ph_ok and conductivity_ok and sensors_ok:
         print("✓ ALL FIXES VERIFIED SUCCESSFULLY!")
         print("\nSummary of fixes:")
         print("1. pH sensor definition now uses unit=None instead of unit='pH'")
         print("2. UNIT_CONDUCTIVITY now uses micro sign (µ) instead of Greek mu (μ)")
-        print("3. Virtual sensor mappings correctly reference the fixed units")
+        print("3. Sensor mappings correctly reference the fixed units")
         print("\nThese changes should resolve the long-term statistics generation issues.")
     else:
         print("✗ SOME VERIFICATIONS FAILED!")
