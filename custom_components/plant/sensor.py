@@ -35,6 +35,7 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import (
     Entity,
@@ -479,7 +480,9 @@ class PlantCurrentStatus(RestoreSensor):
                     self._state_changed_event,
                 )
 
-            self.async_write_ha_state()
+            # Only write state if hass is available
+            if self.hass is not None:
+                self.async_write_ha_state()
         except Exception as e:
             _LOGGER.error("Error replacing external sensor for %s: %s", self.entity_id, str(e))
             raise HomeAssistantError(f"Error replacing external sensor: {str(e)}")
