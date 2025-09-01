@@ -1282,6 +1282,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if not tent_device:
             raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
         
+        # Prevent a plant from being assigned to itself
+        if plant_entity_id == tent_entity_id:
+            raise HomeAssistantError(f"Cannot assign plant {plant_entity_id} to itself as a tent.")
+        
         try:
             # Assign plant to tent
             plant_device.assign_to_tent(tent_entity_id, migrate_sensors)

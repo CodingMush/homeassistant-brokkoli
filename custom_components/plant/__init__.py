@@ -253,7 +253,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_setup_services(hass)
     
     # Registriere WebSocket Commands
-    websocket_api.async_register_command(hass, ws_get_info)
     websocket_api.async_register_command(hass, ws_upload_image)
     websocket_api.async_register_command(hass, ws_delete_image)
     websocket_api.async_register_command(hass, ws_set_main_image)
