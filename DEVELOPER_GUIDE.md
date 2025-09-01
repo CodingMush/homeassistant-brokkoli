@@ -10,7 +10,7 @@
 7. [Services](#services)
 8. [Entities](#entities)
 9. [Configuration Flow](#configuration-flow)
-10. [Virtual Sensors](#virtual-sensors)
+
 11. [Data Models](#data-models)
 12. [API Reference](#api-reference)
 13. [Contributing](#contributing)
@@ -35,7 +35,7 @@ plant/
 ├── __init__.py              # Main integration setup and entry point
 ├── config_flow.py           # Configuration flow implementation
 ├── const.py                 # Constants and configuration
-├── sensor.py                # Sensor entities and virtual sensors
+├── sensor.py                # Sensor entities
 ├── plant_thresholds.py      # Threshold entities (min/max values)
 ├── number.py                # Number entities (threshold configuration)
 ├── select.py                # Select entities (growth phase, treatment)
@@ -200,12 +200,9 @@ def example_method(param1: str, param2: int = 0) -> bool:
 - Test edge cases and error conditions
 
 ### Running Tests
-```bash
+``bash
 # Run all tests
 pytest tests/
-
-# Run specific test file
-pytest tests/test_virtual_sensors.py
 
 # Run tests with coverage
 pytest --cov=custom_components.plant tests/
@@ -260,7 +257,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 ```
 
 ### Service Implementation
-```python
+``python
 async def create_plant(call: ServiceCall) -> ServiceResponse:
     """Create a new plant.
     
@@ -291,7 +288,6 @@ async def create_plant(call: ServiceCall) -> ServiceResponse:
 - `plant.create_tent` - Create a new tent
 - `plant.assign_to_tent` - Assign plant to tent
 - `plant.unassign_from_tent` - Unassign plant from tent
-- `plant.migrate_to_virtual_sensors` - Migrate to virtual sensors
 - `plant.move_to_area` - Move plant to area
 - `plant.add_image` - Add image to plant
 - `plant.change_position` - Change plant position
@@ -305,7 +301,6 @@ async def create_plant(call: ServiceCall) -> ServiceResponse:
 2. **Number Entities** - Configurable threshold values
 3. **Select Entities** - Selection options (growth phase, treatment)
 4. **Text Entities** - Notes and descriptions
-5. **Virtual Sensors** - Reference-based sensors for tents
 
 ### Entity Registration
 Entities are registered through Home Assistant's entity platform:
@@ -355,54 +350,6 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 4. `async_step_tent` - Tent configuration
 5. `async_step_sensor` - Sensor assignment
 6. `async_step_thresholds` - Threshold configuration
-
-## Virtual Sensors
-
-### Concept
-Virtual sensors reference other entities instead of maintaining independent state storage. They are used for:
-- Tent-assigned plants
-- Memory optimization
-- Consistent behavior across plant types
-
-### Implementation
-```python
-class VirtualSensorEntity(PlantCurrentStatus):
-    """Virtual sensor that references another entity."""
-    
-    def __init__(
-        self, 
-        hass: HomeAssistant, 
-        plant_entity_id: str, 
-        sensor_type: str, 
-        reference_entity_id: str,
-        tent_entity_id: str
-    ):
-        self._reference_entity_id = reference_entity_id
-        self._tent_entity_id = tent_entity_id
-        # ... initialization
-        
-    @property
-    def state(self) -> str:
-        """Get state from reference entity."""
-        if not self._reference_entity_id:
-            return STATE_UNKNOWN
-            
-        state = self.hass.states.get(self._reference_entity_id)
-        if state is None:
-            return STATE_UNKNOWN
-            
-        return state.state
-```
-
-### Manager
-```python
-class VirtualSensorManager:
-    """Manager for virtual sensors."""
-    
-    def create_virtual_sensors_for_plant(self, plant, entry):
-        """Create virtual sensors for a plant assigned to a tent."""
-        # Implementation
-```
 
 ## Data Models
 

@@ -210,27 +210,27 @@ class NewSensor(SensorDefinitionMixin, SensorEntity):
 
 ## 🚀 Performance Benefits
 
-### Virtual Sensor Support
+### Calculated Sensor Support
 ```python
-# Mark sensors as virtual for performance optimization
+# Mark sensors as calculated for performance optimization
 "calculated_sensor": SensorDefinition(
     sensor_type="calculated_sensor",
-    virtual=True,  # Won't create persistent entities
+    virtual=True,  # Calculated sensors
     # ... other properties
 )
 
-# Check if sensor is virtual
+# Check if sensor is calculated
 definition = get_sensor_definition("ppfd")
 if definition.virtual:
-    # Use virtual sensor architecture
+    # Use calculated sensor architecture
     pass
 ```
 
 ### Batch Operations
 ```python
-# Get all virtual sensors for optimization
+# Get all calculated sensors for optimization
 from .sensor_definitions import get_virtual_sensors
-virtual_sensors = get_virtual_sensors()
+calculated_sensors = get_virtual_sensors()
 # ['ppfd', 'dli', 'total_integral', ...]
 ```
 

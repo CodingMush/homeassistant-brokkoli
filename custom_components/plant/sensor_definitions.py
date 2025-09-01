@@ -473,14 +473,6 @@ def get_sensors_by_category(category: Optional[EntityCategory]) -> list[str]:
     ]
 
 
-def get_virtual_sensors() -> list[str]:
-    """Get list of virtual/calculated sensor types."""
-    return [
-        sensor_type for sensor_type, definition in SENSOR_DEFINITIONS.items()
-        if definition.virtual
-    ]
-
-
 def apply_sensor_definition(entity, sensor_type: str) -> None:
     """Apply sensor definition to an entity."""
     definition = get_sensor_definition(sensor_type)

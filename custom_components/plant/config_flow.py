@@ -173,8 +173,6 @@ from .const import (
     ATTR_ASSIGNED_PLANTS,
     ATTR_ENVIRONMENTAL_SENSORS,
     ATTR_SHARED_THRESHOLDS,
-    ATTR_USE_VIRTUAL_SENSORS,
-    ATTR_TENT_ASSIGNED_AT,
     FLOW_TENT_ENTITY,
     FLOW_TENT_INFO,
     FLOW_TENT_NAME,
@@ -916,7 +914,6 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
                 # Add tent assignment if selected
                 ATTR_TENT_ASSIGNMENT: user_input.get(FLOW_TENT_ENTITY),
-                ATTR_USE_VIRTUAL_SENSORS: bool(user_input.get(FLOW_TENT_ENTITY)),
             }
             
             # If tent is selected, inherit tent sensors instead of individual sensor assignments

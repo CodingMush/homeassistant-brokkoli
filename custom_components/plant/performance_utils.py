@@ -141,7 +141,7 @@ class MemoryManager:
         return self._history_limits.get(entity_id, MAX_HISTORY_ENTRIES)
     
     async def cleanup_tent_assignments(self) -> int:
-        """Clean up orphaned tent assignments and virtual sensor references."""
+        """Clean up orphaned tent assignments."""
         cleaned_count = 0
         
         try:
@@ -164,9 +164,7 @@ class MemoryManager:
                             )
                             plant._tent_assignment = None
                             
-                            # Clean up virtual sensor references
-                            if hasattr(plant, '_virtual_sensors'):
-                                plant._virtual_sensors.clear()
+
                             
                             cleaned_count += 1
             
@@ -185,44 +183,8 @@ class OptimizedSensorManager:
     
     def __init__(self, hass: HomeAssistant):
         self.hass = hass
-        self._virtual_sensors: Dict[str, Any] = {}
         self._update_batches: Dict[str, List[Any]] = {}
         
-    def register_virtual_sensor(self, sensor_id: str, sensor) -> None:
-        """Register a virtual sensor that doesn't persist to database."""
-        self._virtual_sensors[sensor_id] = sensor
-        _LOGGER.debug("Registered virtual sensor: %s", sensor_id)
-    
-    def unregister_virtual_sensor(self, sensor_id: str) -> bool:
-        """Unregister a virtual sensor and clean up references."""
-        if sensor_id in self._virtual_sensors:
-            del self._virtual_sensors[sensor_id]
-            _LOGGER.debug("Unregistered virtual sensor: %s", sensor_id)
-            return True
-        return False
-    
-    def get_virtual_sensors_for_tent(self, tent_entity_id: str) -> List[str]:
-        """Get all virtual sensors referencing a specific tent."""
-        tent_sensors = []
-        for sensor_id, sensor in self._virtual_sensors.items():
-            if hasattr(sensor, '_tent_reference') and sensor._tent_reference == tent_entity_id:
-                tent_sensors.append(sensor_id)
-        return tent_sensors
-    
-    async def cleanup_virtual_sensors_for_tent(self, tent_entity_id: str) -> int:
-        """Clean up all virtual sensors for a specific tent."""
-        tent_sensors = self.get_virtual_sensors_for_tent(tent_entity_id)
-        cleaned_count = 0
-        
-        for sensor_id in tent_sensors:
-            if self.unregister_virtual_sensor(sensor_id):
-                cleaned_count += 1
-        
-        if cleaned_count > 0:
-            _LOGGER.info("Cleaned up %d virtual sensors for tent %s", cleaned_count, tent_entity_id)
-        
-        return cleaned_count
-    
     async def batch_update_sensors(self, sensors: List[Any]) -> None:
         """Batch update multiple sensors to reduce database writes."""
         if not sensors:
@@ -284,16 +246,8 @@ class DatabaseOptimizer:
     
     def should_persist_sensor(self, sensor) -> bool:
         """Determine if sensor data should be persisted to database."""
-        # Check if sensor is marked as virtual or reference-only
-        if hasattr(sensor, '_virtual') and sensor._virtual:
-            return False
-            
         # Check if sensor references external data
         if hasattr(sensor, '_external_reference') and sensor._external_reference:
-            return False
-        
-        # Check if sensor is a tent virtual sensor
-        if hasattr(sensor, '_tent_reference') and sensor._tent_reference:
             return False
             
         return True
@@ -306,7 +260,6 @@ class TentPerformanceManager:
     def __init__(self, hass: HomeAssistant):
         self.hass = hass
         self._tent_sensors_cache: Dict[str, Dict[str, Any]] = {}
-        self._virtual_sensor_refs: Dict[str, List[str]] = {}
     
     def cache_tent_sensors(self, tent_entity_id: str, sensors: Dict[str, Any]) -> None:
         """Cache tent sensor references for quick access."""
@@ -317,27 +270,14 @@ class TentPerformanceManager:
         """Get cached sensor references for a tent."""
         return self._tent_sensors_cache.get(tent_entity_id, {})
     
-    def register_virtual_sensor_reference(self, tent_entity_id: str, virtual_sensor_id: str) -> None:
-        """Register a virtual sensor reference for a tent."""
-        if tent_entity_id not in self._virtual_sensor_refs:
-            self._virtual_sensor_refs[tent_entity_id] = []
-        
-        if virtual_sensor_id not in self._virtual_sensor_refs[tent_entity_id]:
-            self._virtual_sensor_refs[tent_entity_id].append(virtual_sensor_id)
-    
-    def unregister_virtual_sensor_reference(self, tent_entity_id: str, virtual_sensor_id: str) -> None:
-        """Unregister a virtual sensor reference for a tent."""
-        if tent_entity_id in self._virtual_sensor_refs:
-            if virtual_sensor_id in self._virtual_sensor_refs[tent_entity_id]:
-                self._virtual_sensor_refs[tent_entity_id].remove(virtual_sensor_id)
+
     
     def cleanup_tent_cache(self, tent_entity_id: str) -> None:
         """Clean up cached data for a removed tent."""
         if tent_entity_id in self._tent_sensors_cache:
             del self._tent_sensors_cache[tent_entity_id]
         
-        if tent_entity_id in self._virtual_sensor_refs:
-            del self._virtual_sensor_refs[tent_entity_id]
+
         
         _LOGGER.debug("Cleaned up cache for tent %s", tent_entity_id)
 

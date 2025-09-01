@@ -80,10 +80,8 @@ from .const import (
     SERVICE_CREATE_TENT,
     SERVICE_REMOVE_TENT,
     SERVICE_REASSIGN_TO_TENT,
-    SERVICE_MIGRATE_TO_VIRTUAL_SENSORS,
     # Tent attributes
     ATTR_TENT_ASSIGNMENT,
-    ATTR_USE_VIRTUAL_SENSORS,
     ATTR_ENVIRONMENTAL_SENSORS,
     ATTR_ASSIGNED_PLANTS,
     FLOW_TENT_INFO,
@@ -242,16 +240,9 @@ MIGRATE_TO_VIRTUAL_SENSORS_SCHEMA = vol.Schema({
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for plant integration."""
+    # Removed migrate_to_virtual_sensors service as virtual sensors are no longer supported
 
-    async def replace_sensor(call: ServiceCall) -> None:
-        """Replace a sensor entity within a plant device.
-        
-        This service allows replacing the external sensor entity associated with a plant meter.
-        It's useful when you need to change which physical sensor is being used to monitor
-        a specific parameter (temperature, moisture, etc.) for a plant.
-        
-        Args:
-            call: ServiceCall object containing:
+async def remove_tent(call: ServiceCall) -> None:
                 - meter_entity (str): The entity ID of the meter to update
                 - new_sensor (str, optional): The entity ID of the new sensor to use
         
@@ -639,7 +630,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             
             # Aktualisiere alle Plant Cycle Selects
             for entry_id in hass.data[DOMAIN]:
-                # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                # Check if this is a dictionary containing plant data
                 if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                     plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                     if plant.device_type == DEVICE_TYPE_PLANT and plant.cycle_select:
@@ -736,7 +727,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             
             # Finde zuerst das Cycle Objekt
             for entry_id in hass.data[DOMAIN]:
-                # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                # Check if this is a dictionary containing plant data
                 if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                     if hass.data[DOMAIN][entry_id][ATTR_PLANT].entity_id == cycle_entity_id:
                         cycle = hass.data[DOMAIN][entry_id][ATTR_PLANT]
@@ -897,7 +888,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find target plant
         target_plant = None
         for entry_id in hass.data.get(DOMAIN, {}):
-            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            # Check if this is a dictionary containing plant data
             if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if plant.entity_id == entity_id:
@@ -942,7 +933,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find target plant
         target_plant = None
         for entry_id in hass.data.get(DOMAIN, {}):
-            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            # Check if this is a dictionary containing plant data
             if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if plant.entity_id == entity_id:
@@ -984,7 +975,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find target plant
         target_plant = None
         for entry_id in hass.data.get(DOMAIN, {}):
-            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            # Check if this is a dictionary containing plant data
             if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if plant.entity_id == entity_id:
@@ -1015,7 +1006,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Finde die Plant
         target_plant = None
         for entry_id in hass.data[DOMAIN]:
-            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            # Check if this is a dictionary containing plant data
             if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if plant.entity_id == entity_id:
@@ -1056,7 +1047,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find target entity (plant or cycle)
         target_entity = None
         for entry_id in hass.data.get(DOMAIN, {}):
-            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            # Check if this is a dictionary containing plant data
             if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 entity = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if entity.entity_id == entity_id:
@@ -1323,7 +1314,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Find plant device
         plant_device = None
         for entry_id in hass.data[DOMAIN]:
-            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            # Check if this is a dictionary containing plant data
             if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if device.entity_id == plant_entity_id and device.device_type == DEVICE_TYPE_PLANT:
@@ -1365,7 +1356,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         tent_device = None
         tent_entry_id = None
         for entry_id in hass.data[DOMAIN]:
-            # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+            # Check if this is a dictionary containing plant data
             if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                 if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
@@ -1394,7 +1385,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 for plant_entity_id in tent_device.assigned_plants.copy():
                     # Find and unassign each plant
                     for entry_id in hass.data[DOMAIN]:
-                        # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                        # Check if this is a dictionary containing plant data
                         if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                             plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                             if plant.entity_id == plant_entity_id:
@@ -1404,122 +1395,18 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             # Remove tent config entry
             await hass.config_entries.async_remove(tent_entry_id)
             _LOGGER.info(f"Successfully removed tent {tent_entity_id}")
-            
-        except Exception as e:
-            _LOGGER.error(f"Error removing tent: {e}")
-            raise HomeAssistantError(f"Error removing tent: {e}")
+MIGRATE_TO_VIRTUAL_SENSORS_SCHEMA = vol.Schema({
+    vol.Required("plant_entity"): cv.entity_id,
+    vol.Required(FLOW_TENT_ENTITY): cv.entity_id,
+    vol.Optional(FLOW_MIGRATE_SENSORS, default=True): cv.boolean,
+})
 
-    async def migrate_to_virtual_sensors(call: ServiceCall) -> None:
-        """Migrate an existing plant to use virtual sensors with a tent."""
-        plant_entity_id = call.data["plant_entity"]
-        tent_entity_id = call.data[FLOW_TENT_ENTITY]
-        migrate_sensors = call.data.get(FLOW_MIGRATE_SENSORS, True)
-        
-        # Find plant device
-        plant_device = None
-        plant_entry_id = None
-        for entry_id in hass.data[DOMAIN]:
-            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if device.entity_id == plant_entity_id and device.device_type == DEVICE_TYPE_PLANT:
-                    plant_device = device
-                    plant_entry_id = entry_id
-                    break
-        
-        if not plant_device:
-            raise HomeAssistantError(
-                f"Plant entity {plant_entity_id} not found or is not a plant device. "
-                f"Please make sure you've selected a plant entity. "
-                f"Plant entities have device_type '{DEVICE_TYPE_PLANT}'."
-            )
-            
-        # Find tent device  
-        tent_device = None
-        tent_entry = None
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            if (
-                entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT
-                and not entry.data.get("is_config", False)
-            ):
-                # Check if this tent has the matching entity_id  
-                for inner_entry_id in hass.data[DOMAIN]:
-                    if isinstance(hass.data[DOMAIN][inner_entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][inner_entry_id]:
-                        device = hass.data[DOMAIN][inner_entry_id][ATTR_PLANT]
-                        if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
-                            tent_device = device
-                            tent_entry = entry
-                            break
-                if tent_device:
-                    break
-        
-        if not tent_device:
-            raise HomeAssistantError(
-                f"Entity {tent_entity_id} not found or is not a tent. "
-                f"Please make sure you've selected a tent entity. "
-                f"Tent entities have device_type '{DEVICE_TYPE_TENT}'."
-            )
-        
-        try:
-            # Get current plant config entry
-            plant_entry = hass.config_entries.async_get_entry(plant_entry_id)
-            plant_data = dict(plant_entry.data)
-            plant_info = dict(plant_data[FLOW_PLANT_INFO])
-            
-            # Update tent assignment
-            plant_info[ATTR_TENT_ASSIGNMENT] = tent_entity_id
-            plant_info[ATTR_USE_VIRTUAL_SENSORS] = True
-            
-            # If migrating sensors, clear existing sensor assignments and use tent sensors
-            if migrate_sensors:
-                # Clear existing sensor assignments
-                sensor_keys = [
-                    FLOW_SENSOR_TEMPERATURE,
-                    FLOW_SENSOR_MOISTURE,
-                    FLOW_SENSOR_CONDUCTIVITY,
-                    FLOW_SENSOR_ILLUMINANCE,
-                    FLOW_SENSOR_HUMIDITY,
-                    FLOW_SENSOR_CO2,
-                    FLOW_SENSOR_POWER_CONSUMPTION,
-                    FLOW_SENSOR_PH
-                ]
-                for key in sensor_keys:
-                    plant_info.pop(key, None)
-                
-                # Inherit sensors from tent
-                tent_env_sensors = tent_entry.data[FLOW_PLANT_INFO].get(ATTR_ENVIRONMENTAL_SENSORS, {})
-                
-                sensor_mapping = {
-                    "temperature": (FLOW_SENSOR_TEMPERATURE, "temperature"),
-                    "moisture": (FLOW_SENSOR_MOISTURE, "moisture"),
-                    "conductivity": (FLOW_SENSOR_CONDUCTIVITY, "conductivity"),
-                    "illuminance": (FLOW_SENSOR_ILLUMINANCE, "illuminance"),
-                    "humidity": (FLOW_SENSOR_HUMIDITY, "humidity"),
-                    "co2": (FLOW_SENSOR_CO2, "co2"),
-                    "power_consumption": (FLOW_SENSOR_POWER_CONSUMPTION, "power_consumption"),
-                    "ph": (FLOW_SENSOR_PH, "ph"),
-                }
-                
-                for sensor_type, (plant_sensor_key, tent_sensor_key) in sensor_mapping.items():
-                    if tent_sensor_key in tent_env_sensors and tent_env_sensors[tent_sensor_key]:
-                        plant_info[plant_sensor_key] = tent_env_sensors[tent_sensor_key]
-                        _LOGGER.debug(f"Inherited {sensor_type} sensor: {tent_env_sensors[tent_sensor_key]}")
-            
-            # Update plant config entry
-            plant_data[FLOW_PLANT_INFO] = plant_info
-            hass.config_entries.async_update_entry(plant_entry, data=plant_data)
-            
-            # Update the plant device
-            plant_device._tent_assignment = tent_entity_id
-            plant_device._use_virtual_sensors = True
-            
-            _LOGGER.info(f"Successfully migrated plant {plant_entity_id} to use virtual sensors with tent {tent_entity_id}")
-            
-        except Exception as e:
-            _LOGGER.error(f"Error migrating plant to virtual sensors: {e}")
-            raise HomeAssistantError(f"Error migrating plant to virtual sensors: {e}")
+async def async_setup_services(hass: HomeAssistant) -> None:
+    """Set up services for plant integration."""
+    # Removed migrate_to_virtual_sensors service as virtual sensors are no longer supported
 
-    async def remove_tent(call: ServiceCall) -> None:
-        """Remove a tent and unassign it from all plants."""
+async def remove_tent(call: ServiceCall) -> None:
+    """Remove a tent and unassign it from all plants."""
         tent_entity_id = call.data[FLOW_TENT_ENTITY]
 
         # Find tent config entry
@@ -1547,7 +1434,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         try:
             # Unassign tent from all plants
             for entry_id in hass.data[DOMAIN]:
-                # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                # Check if this is a dictionary containing plant data
                 if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                     plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                     if plant.entity_id == plant_entity_id:
@@ -1561,115 +1448,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         except Exception as e:
             _LOGGER.error(f"Error removing tent: {e}")
             raise HomeAssistantError(f"Error removing tent: {e}")
-
-    async def reassign_to_tent(call: ServiceCall) -> None:
-        """Reassign a plant to a different tent with selective sensor inheritance."""
-        plant_entity_id = call.data.get("plant_entity")
-        tent_entity_id = call.data.get("tent_entity")
-        
-        # Find the plant
-        plant_device = None
-        plant_entry_id = None
-        for entry_id in hass.data[DOMAIN]:
-            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if device.entity_id == plant_entity_id and device.device_type == DEVICE_TYPE_PLANT:
-                    plant_device = device
-                    plant_entry_id = entry_id
-                    break
-        
-        if not plant_device:
-            raise HomeAssistantError(
-                f"Plant entity {plant_entity_id} not found or is not a plant device. "
-                f"Please make sure you've selected a plant entity. "
-                f"Plant entities have device_type '{DEVICE_TYPE_PLANT}'."
-            )
-        
-        # Find the tent
-        tent_device = None
-        tent_entry = None
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            if (
-                entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT
-                and not entry.data.get("is_config", False)
-            ):
-                # Check if this tent has the matching entity_id  
-                for inner_entry_id in hass.data[DOMAIN]:
-                    if isinstance(hass.data[DOMAIN][inner_entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][inner_entry_id]:
-                        device = hass.data[DOMAIN][inner_entry_id][ATTR_PLANT]
-                        if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
-                            tent_device = device
-                            tent_entry = entry
-                            break
-                if tent_device:
-                    break
-        
-        if not tent_device:
-            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
-        
-        try:
-            # Get current plant config entry
-            plant_entry = hass.config_entries.async_get_entry(plant_entry_id)
-            plant_data = dict(plant_entry.data)
-            plant_info = dict(plant_data[FLOW_PLANT_INFO])
-            
-            # Update tent assignment
-            plant_info[ATTR_TENT_ASSIGNMENT] = tent_entity_id
-            plant_info[ATTR_USE_VIRTUAL_SENSORS] = True
-            
-            # If migrating sensors, clear existing sensor assignments and use tent sensors
-            if migrate_sensors:
-                # Clear existing sensor assignments
-                sensor_keys = [
-                    FLOW_SENSOR_TEMPERATURE,
-                    FLOW_SENSOR_MOISTURE,
-                    FLOW_SENSOR_CONDUCTIVITY,
-                    FLOW_SENSOR_ILLUMINANCE,
-                    FLOW_SENSOR_HUMIDITY,
-                    FLOW_SENSOR_CO2,
-                    FLOW_SENSOR_POWER_CONSUMPTION,
-                    FLOW_SENSOR_PH
-                ]
-                for key in sensor_keys:
-                    plant_info.pop(key, None)
-                
-                # Inherit sensors from tent
-                tent_env_sensors = tent_entry.data[FLOW_PLANT_INFO].get(ATTR_ENVIRONMENTAL_SENSORS, {})
-                
-                sensor_mapping = {
-                    "temperature": (FLOW_SENSOR_TEMPERATURE, "temperature"),
-                    "moisture": (FLOW_SENSOR_MOISTURE, "moisture"),
-                    "conductivity": (FLOW_SENSOR_CONDUCTIVITY, "conductivity"),
-                    "illuminance": (FLOW_SENSOR_ILLUMINANCE, "illuminance"),
-                    "humidity": (FLOW_SENSOR_HUMIDITY, "humidity"),
-                    "co2": (FLOW_SENSOR_CO2, "co2"),
-                    "power_consumption": (FLOW_SENSOR_POWER_CONSUMPTION, "power_consumption"),
-                    "ph": (FLOW_SENSOR_PH, "ph"),
-                }
-                
-                for sensor_type, (plant_sensor_key, tent_sensor_key) in sensor_mapping.items():
-                    if tent_sensor_key in tent_env_sensors and tent_env_sensors[tent_sensor_key]:
-                        plant_info[plant_sensor_key] = tent_env_sensors[tent_sensor_key]
-                        _LOGGER.debug(f"Inherited {sensor_type} sensor: {tent_env_sensors[tent_sensor_key]}")
-            
-            # Update plant config entry
-            plant_data[FLOW_PLANT_INFO] = plant_info
-            hass.config_entries.async_update_entry(plant_entry, data=plant_data)
-            
-            # Update the plant device
-            plant_device._tent_assignment = tent_entity_id
-            plant_device._use_virtual_sensors = True
-            
-            # If virtual sensor manager exists, update virtual sensors
-            if "virtual_sensor_manager" in hass.data[DOMAIN]:
-                virtual_manager = hass.data[DOMAIN]["virtual_sensor_manager"]
-                virtual_manager.update_virtual_sensor_references(plant_entity_id)
-            
-            _LOGGER.info(f"Successfully migrated plant {plant_entity_id} to use virtual sensors with tent {tent_entity_id}")
-            
-        except Exception as e:
-            _LOGGER.error(f"Error migrating plant to virtual sensors: {e}")
-            raise HomeAssistantError(f"Error migrating plant to virtual sensors: {e}")
 
     async def clone_plant(call: ServiceCall) -> ServiceResponse:
         """Clone a plant from an existing plant."""
@@ -2167,14 +1945,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         reassign_to_tent,
         schema=REASSIGN_TO_TENT_SCHEMA
     )
-    
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_MIGRATE_TO_VIRTUAL_SENSORS,
-        migrate_to_virtual_sensors,
-        schema=MIGRATE_TO_VIRTUAL_SENSORS_SCHEMA
-    )
-    
+
     # Schema für change_position
     CHANGE_POSITION_SCHEMA = vol.Schema({
         vol.Required("entity_id"): cv.entity_id,
