@@ -7,7 +7,6 @@ on:
     - cron:  '0 0 15 * *'
 
 jobs:
-
   black:
     name: Python Code Format Check
     runs-on: ubuntu-latest
@@ -15,9 +14,42 @@ jobs:
       - name: Check out code from GitHub
         uses: "actions/checkout@main"
       - name: Black Code Format Check
-        uses: lgeiger/black-action@master
+        uses: psf/black@stable
         with:
-          args: ". --check --fast --diff"
+          options: "--check --diff"
+          src: "."
+
+  flake8:
+    name: Python Code Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: "actions/checkout@main"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Install flake8
+        run: pip install flake8
+      - name: Flake8 Code Style Check
+        run: flake8 .
+
+  pylint:
+    name: Python Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: "actions/checkout@main"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Install pylint and dependencies
+        run: |
+          pip install pylint
+          pip install homeassistant
+      - name: Pylint Code Quality Check
+        run: pylint custom_components/plant/
 
   validate:
     name: Check hassfest
@@ -27,3 +59,22 @@ jobs:
         uses: "actions/checkout@main"
       - name: Run hassfest
         uses: home-assistant/actions/hassfest@master
+
+  tests:
+    name: Run Tests
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Check out code from GitHub
+        uses: "actions/checkout@main"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        run: |
+          pip install pytest
+          pip install homeassistant
+          pip install pytest-asyncio
+          pip install pytest-cov
+      - name: Run tests
+        run: pytest tests/ -v

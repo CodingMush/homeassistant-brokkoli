@@ -120,87 +120,152 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class PlantMinMax(RestoreNumber):
-    """Parent class for the min/max classes below"""
+    """Parent class for plant min/max threshold entities.
+    
+    This class provides the foundation for all plant threshold entities. It handles
+    initialization, state management, and provides common functionality for all
+    threshold sensors (min/max values for various parameters).
+    """
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
-        """Initialize the Plant component."""
-        self._config = config
-        self._hass = hass
-        self._plant = plantdevice
-        self._attr_mode = NumberMode.BOX
-
-        # Hole globale Standardwerte
-        self._global_config = None
-        for entry in self._hass.config_entries.async_entries(DOMAIN):
-            if entry.data.get("is_global_config", False):
-                self._global_config = entry.data
-                break
-
-        # Wähle Domain basierend auf Parent Device Type
-        if self._plant.device_type == DEVICE_TYPE_CYCLE:
-            domain = CYCLE_DOMAIN
-        else:
-            # Both plants and tents use the plant domain
-            domain = DOMAIN
+        """Initialize the Plant threshold component.
         
-        self.entity_id = async_generate_entity_id(
-            f"{domain}.{{}}", self.name, current_ids={}
-        )
-        # Werte aus Config übernehmen
-        if hasattr(self, '_attr_native_value') and self._attr_native_value is not None:
-            _LOGGER.debug("Using configured value: %s", self._attr_native_value)
-        # Icon basierend auf dem Entity-Typ setzen
-        if "temperature" in self.entity_id:
-            self._attr_icon = ICON_TEMPERATURE
-        elif "moisture" in self.entity_id:
-            self._attr_icon = ICON_MOISTURE
-        elif "conductivity" in self.entity_id:
-            self._attr_icon = ICON_CONDUCTIVITY
-        elif "humidity" in self.entity_id:
-            self._attr_icon = ICON_HUMIDITY
-        elif "CO2" in self.entity_id:
-            self._attr_icon = ICON_CO2
-        elif "illuminance" in self.entity_id:
-            self._attr_icon = ICON_ILLUMINANCE
-        elif "dli" in self.entity_id:
-            self._attr_icon = ICON_DLI
+        Args:
+            hass: Home Assistant instance
+            config: Configuration entry for this plant
+            plantdevice: The plant device this threshold belongs to
+        
+        Raises:
+            ValueError: If any required parameters are missing
+            Exception: If there is an error during initialization
+        """
+        try:
+            # Validate inputs
+            if not hass:
+                raise ValueError("Home Assistant instance is required")
+            if not config:
+                raise ValueError("Config entry is required")
+            if not plantdevice:
+                raise ValueError("Plant device is required")
+                
+            self._config = config
+            self._hass = hass
+            self._plant = plantdevice
+            self._attr_mode = NumberMode.BOX
+
+            # Get global default values
+            self._global_config = None
+            try:
+                for entry in self._hass.config_entries.async_entries(DOMAIN):
+                    if entry.data.get("is_global_config", False):
+                        self._global_config = entry.data
+                        break
+            except Exception as e:
+                _LOGGER.warning("Error getting global config: %s", str(e))
+                self._global_config = None
+
+            # Choose domain based on parent device type
+            try:
+                if self._plant.device_type == DEVICE_TYPE_CYCLE:
+                    domain = CYCLE_DOMAIN
+                else:
+                    # Both plants and tents use the plant domain
+                    domain = DOMAIN
+            except Exception as e:
+                _LOGGER.warning("Error determining domain, using default: %s", str(e))
+                domain = DOMAIN
+            
+            try:
+                self.entity_id = async_generate_entity_id(
+                    f"{domain}.{{}}", self.name, current_ids={}
+                )
+            except Exception as e:
+                _LOGGER.error("Error generating entity ID: %s", str(e))
+                raise
+                
+            # Use values from config
+            if hasattr(self, '_attr_native_value') and self._attr_native_value is not None:
+                _LOGGER.debug("Using configured value: %s", self._attr_native_value)
+                
+            # Set icon based on entity type
+            try:
+                if hasattr(self, 'entity_id') and self.entity_id:
+                    if "temperature" in self.entity_id:
+                        self._attr_icon = ICON_TEMPERATURE
+                    elif "moisture" in self.entity_id:
+                        self._attr_icon = ICON_MOISTURE
+                    elif "conductivity" in self.entity_id:
+                        self._attr_icon = ICON_CONDUCTIVITY
+                    elif "humidity" in self.entity_id:
+                        self._attr_icon = ICON_HUMIDITY
+                    elif "CO2" in self.entity_id:
+                        self._attr_icon = ICON_CO2
+                    elif "illuminance" in self.entity_id:
+                        self._attr_icon = ICON_ILLUMINANCE
+                    elif "dli" in self.entity_id:
+                        self._attr_icon = ICON_DLI
+                    elif "ph" in self.entity_id:
+                        self._attr_icon = ICON_PH
+                    elif "power" in self.entity_id:
+                        self._attr_icon = ICON_POWER_CONSUMPTION
+                    elif "water" in self.entity_id:
+                        self._attr_icon = ICON_WATER_CONSUMPTION
+                    elif "fertilizer" in self.entity_id:
+                        self._attr_icon = ICON_FERTILIZER_CONSUMPTION
+            except Exception as e:
+                _LOGGER.warning("Error setting icon: %s", str(e))
+                
+        except Exception as e:
+            _LOGGER.error("Error initializing PlantMinMax: %s", str(e))
+            raise
 
     @property
     def entity_category(self) -> str:
         """The entity category"""
-        return EntityCategory.CONFIG
-
-    # @property
-    # def unit_of_measurement(self) -> str | None:
-    #     """The unit of measurement"""
-    #     return self._attr_unit_of_measurement
+        try:
+            return EntityCategory.CONFIG
+        except Exception as e:
+            _LOGGER.warning("Error getting entity category: %s", str(e))
+            return None
 
     def _state_changed_event(self, event: Event) -> None:
-        if event.data.get("old_state") is None or event.data.get("new_state") is None:
-            return
-        if event.data.get("old_state").state == event.data.get("new_state").state:
-            self.state_attributes_changed(
-                old_attributes=event.data.get("old_state").attributes,
-                new_attributes=event.data.get("new_state").attributes,
-            )
-            return
-        self.state_changed(
-            old_state=event.data.get("old_state").state,
-            new_state=event.data.get("new_state").state,
-        )
+        try:
+            if event.data.get("old_state") is None or event.data.get("new_state") is None:
+                return
+            if event.data.get("old_state").state == event.data.get("new_state").state:
+                try:
+                    self.state_attributes_changed(
+                        old_attributes=event.data.get("old_state").attributes,
+                        new_attributes=event.data.get("new_state").attributes,
+                    )
+                except Exception as e:
+                    _LOGGER.warning("Error in state_attributes_changed: %s", str(e))
+                return
+            try:
+                self.state_changed(
+                    old_state=event.data.get("old_state").state,
+                    new_state=event.data.get("new_state").state,
+                )
+            except Exception as e:
+                _LOGGER.warning("Error in state_changed: %s", str(e))
+        except Exception as e:
+            _LOGGER.warning("Error in _state_changed_event: %s", str(e))
 
     def state_changed(self, old_state, new_state):
         """Ensure that we store the state if changed from the UI"""
-        _LOGGER.debug(
-            "State of %s changed from %s to %s, attr_state = %s",
-            self.entity_id,
-            old_state,
-            new_state,
-            self._attr_state,
-        )
-        self._attr_state = new_state
+        try:
+            _LOGGER.debug(
+                "State of %s changed from %s to %s, attr_state = %s",
+                self.entity_id,
+                old_state,
+                new_state,
+            )
+            # Call self_updated to save the state
+            self.self_updated()
+        except Exception as e:
+            _LOGGER.error("Error in state_changed for %s: %s", self.entity_id, str(e))
 
     def state_attributes_changed(self, old_attributes, new_attributes):
         """Placeholder"""
@@ -255,18 +320,35 @@ class PlantMinMax(RestoreNumber):
         self.async_schedule_update_ha_state(True)
 
     async def async_set_native_value(self, value: float) -> None:
-        """Update the current value."""
+        """Update the current threshold value.
+        
+        This method is called when the threshold value is changed via the UI.
+        
+        Args:
+            value: The new threshold value to set
+        """
         self._attr_native_value = value
         self.async_write_ha_state()
 
 
 class PlantMaxMoisture(PlantMinMax):
-    """Entity class for max moisture threshold"""
+    """Entity class for maximum moisture threshold.
+    
+    This threshold entity represents the maximum acceptable soil moisture level
+    for a plant. If the current moisture level exceeds this threshold, it may
+    indicate overwatering.
+    """
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
-        """Initialize the component."""
+        """Initialize the maximum moisture threshold component.
+        
+        Args:
+            hass: Home Assistant instance
+            config: Configuration entry for this plant
+            plantdevice: The plant device this threshold belongs to
+        """
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_MOISTURE}"
         self._attr_native_value = config.data[FLOW_PLANT_INFO].get(FLOW_PLANT_LIMITS, {}).get(
             CONF_MAX_MOISTURE, DEFAULT_MAX_MOISTURE
@@ -289,12 +371,23 @@ class PlantMaxMoisture(PlantMinMax):
 
 
 class PlantMinMoisture(PlantMinMax):
-    """Entity class for min moisture threshold"""
+    """Entity class for minimum moisture threshold.
+    
+    This threshold entity represents the minimum acceptable soil moisture level
+    for a plant. If the current moisture level falls below this threshold, it may
+    indicate underwatering.
+    """
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
-        """Initialize the Plant component."""
+        """Initialize the minimum moisture threshold component.
+        
+        Args:
+            hass: Home Assistant instance
+            config: Configuration entry for this plant
+            plantdevice: The plant device this threshold belongs to
+        """
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_MOISTURE}"
         self._attr_native_value = config.data[FLOW_PLANT_INFO].get(FLOW_PLANT_LIMITS, {}).get(
             CONF_MIN_MOISTURE, DEFAULT_MIN_MOISTURE

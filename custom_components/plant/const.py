@@ -131,6 +131,9 @@ FLOW_TENT_NAME = "tent_name"
 FLOW_TENT_ENTITY = "tent_entity"
 FLOW_MIGRATE_SENSORS = "migrate_sensors"
 
+# Configuration keys for sensors
+CONF_SENSORS = "sensors"
+
 FLOW_SENSOR_TEMPERATURE = "temperature_sensor"
 FLOW_SENSOR_MOISTURE = "moisture_sensor"
 FLOW_SENSOR_CONDUCTIVITY = "conductivity_sensor"
@@ -505,6 +508,10 @@ ATTR_SENSOR_OVERRIDES = "sensor_overrides"
 ATTR_TENT_ASSIGNED_AT = "tent_assigned_at"
 ATTR_VIRTUAL_SENSOR_REFERENCE = "virtual_sensor_reference"
 ATTR_IS_VIRTUAL_SENSOR = "is_virtual_sensor"
+
+# Neue Konstanten für Tent-Migration
+FLOW_MIGRATE_SENSORS = "migrate_sensors"
+ATTR_MIGRATE_SENSORS = "migrate_sensors"
 
 # Neue Konstanten für die Positionierung von Pflanzen
 ATTR_POSITION_X = "position_x"

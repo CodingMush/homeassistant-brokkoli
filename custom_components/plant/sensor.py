@@ -384,23 +384,52 @@ def _setup_calculated_sensors(hass: HomeAssistant, entry: ConfigEntry, plant: En
 
 
 class PlantCurrentStatus(RestoreSensor):
-    """Base device for plants"""
+    """Base class for plant sensor entities.
+    
+    This class provides the foundation for all plant sensor entities. It handles
+    tracking external sensors, managing state updates, and providing common
+    functionality for all plant sensors.
+    """
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
-        """Initialize the Plant component."""
-        super().__init__()
-        self._hass = hass
-        self._config = config
-        self._default_state = 0
-        self._plant = plantdevice
-        self._external_sensor = None  # Initialize external sensor
-        self.entity_id = async_generate_entity_id(
-            f"{DOMAIN}.{{}}", self.name, current_ids={}
-        )
-        if not self._attr_native_value or self._attr_native_value == STATE_UNKNOWN:
-            self._attr_native_value = self._default_state
+        """Initialize the Plant sensor component.
+        
+        Args:
+            hass: Home Assistant instance
+            config: Configuration entry for this plant
+            plantdevice: The plant device this sensor belongs to
+        
+        Raises:
+            ValueError: If any required parameters are missing
+            Exception: If there is an error during initialization
+        """
+        try:
+            super().__init__()
+            self._hass = hass
+            self._config = config
+            self._default_state = 0
+            self._plant = plantdevice
+            self._external_sensor = None  # Initialize external sensor
+            
+            # Validate inputs
+            if not hass:
+                raise ValueError("Home Assistant instance is required")
+            if not config:
+                raise ValueError("Config entry is required")
+            if not plantdevice:
+                raise ValueError("Plant device is required")
+                
+            self.entity_id = async_generate_entity_id(
+                f"{DOMAIN}.{{}}", self.name, current_ids={}
+            )
+            if not self._attr_native_value or self._attr_native_value == STATE_UNKNOWN:
+                self._attr_native_value = self._default_state
+                
+        except Exception as e:
+            _LOGGER.error("Error initializing PlantCurrentStatus: %s", str(e))
+            raise
 
     @property
     def state_class(self):
@@ -419,18 +448,28 @@ class PlantCurrentStatus(RestoreSensor):
     @property
     def device_info(self) -> dict:
         """Device info for devices"""
-        return {
-            "identifiers": {(DOMAIN, self._plant.unique_id)},
-        }
+        try:
+            if not hasattr(self, '_plant') or not self._plant:
+                return {}
+            return {
+                "identifiers": {(DOMAIN, self._plant.unique_id)},
+            }
+        except Exception as e:
+            _LOGGER.warning("Error getting device info: %s", str(e))
+            return {}
 
     @property
     def extra_state_attributes(self) -> dict:
-        if hasattr(self, '_external_sensor') and self._external_sensor:
-            attributes = {
-                "external_sensor": self.external_sensor,
-            }
-            return attributes
-        return {}
+        try:
+            if hasattr(self, '_external_sensor') and self._external_sensor:
+                attributes = {
+                    "external_sensor": self.external_sensor,
+                }
+                return attributes
+            return {}
+        except Exception as e:
+            _LOGGER.warning("Error getting extra state attributes: %s", str(e))
+            return {}
 
     @property
     def external_sensor(self) -> str:
@@ -439,86 +478,129 @@ class PlantCurrentStatus(RestoreSensor):
 
     def replace_external_sensor(self, new_sensor: str | None) -> None:
         """Modify the external sensor"""
-        _LOGGER.info("Setting %s external sensor to %s", self.entity_id, new_sensor)
-        self._external_sensor = new_sensor
-        async_track_state_change_event(
-            self._hass,
-            [self._external_sensor],
-            self._state_changed_event,
-        )
+        try:
+            _LOGGER.info("Setting %s external sensor to %s", self.entity_id, new_sensor)
+            self._external_sensor = new_sensor
+            
+            # Remove existing listeners if any
+            if hasattr(self, '_external_sensor_listener'):
+                self._external_sensor_listener()
+                
+            # Add new listener if sensor is provided
+            if self._external_sensor:
+                self._external_sensor_listener = async_track_state_change_event(
+                    self._hass,
+                    [self._external_sensor],
+                    self._state_changed_event,
+                )
 
-        self.async_write_ha_state()
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.error("Error replacing external sensor for %s: %s", self.entity_id, str(e))
+            raise HomeAssistantError(f"Error replacing external sensor: {str(e)}")
 
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
-        await super().async_added_to_hass()
-        state = await self.async_get_last_state()
+        try:
+            await super().async_added_to_hass()
+            state = await self.async_get_last_state()
 
-        # We do not restore the state for these.
-        # They are read from the external sensor anyway
-        self._attr_native_value = None
-        if state:
-            if "external_sensor" in state.attributes:
-                self.replace_external_sensor(state.attributes["external_sensor"])
+            # We do not restore the state for these.
+            # They are read from the external sensor anyway
+            self._attr_native_value = None
+            if state:
+                if "external_sensor" in state.attributes:
+                    try:
+                        self.replace_external_sensor(state.attributes["external_sensor"])
+                    except Exception as e:
+                        _LOGGER.warning("Error restoring external sensor: %s", str(e))
 
-        async_dispatcher_connect(
-            self._hass, DATA_UPDATED, self._schedule_immediate_update
-        )
+            async_dispatcher_connect(
+                self._hass, DATA_UPDATED, self._schedule_immediate_update
+            )
+        except Exception as e:
+            _LOGGER.error("Error in async_added_to_hass for %s: %s", self.entity_id, str(e))
+            raise
 
     @callback
     def _schedule_immediate_update(self):
         """Schedule an immediate update."""
-        self.async_schedule_update_ha_state(True)
+        try:
+            self.async_schedule_update_ha_state(True)
+        except Exception as e:
+            _LOGGER.warning("Error scheduling immediate update for %s: %s", self.entity_id, str(e))
 
     @callback
     def _state_changed_event(self, event):
         """Sensor state change event."""
-        self.state_changed(event.data.get("entity_id"), event.data.get("new_state"))
+        try:
+            self.state_changed(event.data.get("entity_id"), event.data.get("new_state"))
+        except Exception as e:
+            _LOGGER.error("Error handling state change event for %s: %s", self.entity_id, str(e))
 
     @callback
     def state_changed(self, entity_id, new_state):
         """Run on every update to allow for changes from the GUI and service call"""
-        if not self.hass.states.get(self.entity_id):
-            return
-        if entity_id == self.entity_id:
-            current_attrs = self.hass.states.get(self.entity_id).attributes
-            if current_attrs.get("external_sensor") != self.external_sensor:
-                self.replace_external_sensor(current_attrs.get("external_sensor"))
+        try:
+            if not self.hass or not self.hass.states.get(self.entity_id):
+                return
+                
+            if entity_id == self.entity_id:
+                current_attrs = self.hass.states.get(self.entity_id).attributes
+                if current_attrs.get("external_sensor") != self.external_sensor:
+                    try:
+                        self.replace_external_sensor(current_attrs.get("external_sensor"))
+                    except Exception as e:
+                        _LOGGER.warning("Error replacing external sensor from state change: %s", str(e))
+
+                if (
+                    new_state 
+                    and ATTR_ICON in new_state.attributes
+                    and hasattr(self, '_attr_icon')
+                    and self.icon != new_state.attributes[ATTR_ICON]
+                ):
+                    self._attr_icon = new_state.attributes[ATTR_ICON]
 
             if (
-                ATTR_ICON in new_state.attributes
-                and self.icon != new_state.attributes[ATTR_ICON]
+                self.external_sensor
+                and new_state
+                and new_state.state != STATE_UNKNOWN
+                and new_state.state != STATE_UNAVAILABLE
             ):
-                self._attr_icon = new_state.attributes[ATTR_ICON]
-
-        if (
-            self.external_sensor
-            and new_state
-            and new_state.state != STATE_UNKNOWN
-            and new_state.state != STATE_UNAVAILABLE
-        ):
-            try:
-                self._attr_native_value = float(new_state.state)
-                if ATTR_UNIT_OF_MEASUREMENT in new_state.attributes:
-                    self._attr_native_unit_of_measurement = new_state.attributes[
-                        ATTR_UNIT_OF_MEASUREMENT
-                    ]
-                # Round value for display using sensor definition if available
-                if self._attr_native_value is not None and hasattr(self, '_round_value_for_display'):
-                    rounded_value = self._round_value_for_display(self._attr_native_value)
-                    if rounded_value is not None:
-                        self._attr_native_value = rounded_value
-            except (ValueError, TypeError):
-                _LOGGER.debug(
-                    "Invalid value for %s from external sensor %s: %s, setting to default: %s",
-                    self.entity_id,
-                    self.external_sensor,
-                    new_state.state,
-                    self._default_state,
-                )
+                try:
+                    self._attr_native_value = float(new_state.state)
+                    if ATTR_UNIT_OF_MEASUREMENT in new_state.attributes:
+                        self._attr_native_unit_of_measurement = new_state.attributes[
+                            ATTR_UNIT_OF_MEASUREMENT
+                        ]
+                    # Round value for display using sensor definition if available
+                    if self._attr_native_value is not None and hasattr(self, '_round_value_for_display'):
+                        try:
+                            rounded_value = self._round_value_for_display(self._attr_native_value)
+                            if rounded_value is not None:
+                                self._attr_native_value = rounded_value
+                        except Exception as e:
+                            _LOGGER.debug("Error rounding value for display: %s", str(e))
+                except (ValueError, TypeError) as e:
+                    _LOGGER.debug(
+                        "Invalid value for %s from external sensor %s: %s, setting to default: %s",
+                        self.entity_id,
+                        self.external_sensor,
+                        new_state.state,
+                        self._default_state,
+                    )
+                    self._attr_native_value = self._default_state
+                except Exception as e:
+                    _LOGGER.warning(
+                        "Unexpected error processing state change for %s: %s",
+                        self.entity_id,
+                        str(e)
+                    )
+                    self._attr_native_value = self._default_state
+            else:
                 self._attr_native_value = self._default_state
-        else:
-            self._attr_native_value = self._default_state
+        except Exception as e:
+            _LOGGER.error("Error in state_changed for %s: %s", self.entity_id, str(e))
             self._attr_native_value = self._default_state
 
 

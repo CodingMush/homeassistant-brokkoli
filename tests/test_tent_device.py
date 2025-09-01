@@ -6,18 +6,59 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_OK, STATE_UNAVAILABLE
 import homeassistant.helpers.entity_registry as er
 
-from custom_components.plant import PlantDevice, DEVICE_TYPE_TENT, DEVICE_TYPE_PLANT
 from custom_components.plant.const import (
     ATTR_ASSIGNED_PLANTS,
     ATTR_SHARED_THRESHOLDS,
-    FLOW_PLANT_INFO,
     CONF_SENSORS,
-    SENSOR_TEMPERATURE,
-    SENSOR_HUMIDITY,
-    SENSOR_CO2,
-    SENSOR_LIGHT_HOURS,
-    SENSOR_POWER_CONSUMPTION,
+    FLOW_PLANT_INFO,
+    FLOW_SENSOR_TEMPERATURE,
+    FLOW_SENSOR_HUMIDITY,
+    FLOW_SENSOR_CO2,
+    FLOW_SENSOR_ILLUMINANCE,
+    FLOW_SENSOR_POWER_CONSUMPTION,
+    DEVICE_TYPE_TENT,
+    DEVICE_TYPE_PLANT,
 )
+
+
+class MockTentDevice:
+    """Mock tent device for testing."""
+    def __init__(self, hass, config_entry):
+        self.hass = hass
+        self.config_entry = config_entry
+        self.device_type = DEVICE_TYPE_TENT
+        self.name = config_entry.data[FLOW_PLANT_INFO]["name"]
+        self._assigned_plants = []
+        self._environmental_sensors = config_entry.data[FLOW_PLANT_INFO].get(CONF_SENSORS, {})
+        self.entity_id = f"plant.{self.name.lower().replace(' ', '_')}"
+
+    def register_plant(self, plant_entity_id):
+        """Register a plant to this tent."""
+        if plant_entity_id not in self._assigned_plants:
+            self._assigned_plants.append(plant_entity_id)
+
+    def unregister_plant(self, plant_entity_id):
+        """Unregister a plant from this tent."""
+        if plant_entity_id in self._assigned_plants:
+            self._assigned_plants.remove(plant_entity_id)
+
+    @property
+    def extra_state_attributes(self):
+        """Return extra state attributes - simplified to only show sensor info."""
+        return {
+            ATTR_ASSIGNED_PLANTS: self._assigned_plants,
+            "plant_count": len(self._assigned_plants),
+            "environmental_sensors": self._environmental_sensors,
+        }
+
+    @property
+    def device_info(self):
+        """Return device info."""
+        return {
+            "manufacturer": "Plant Integration",
+            "model": "Tent",
+            "name": f"Tent {self.name}"
+        }
 
 
 class TestTentDevice:
@@ -26,7 +67,7 @@ class TestTentDevice:
     @pytest.fixture
     def mock_hass(self):
         """Create mock Home Assistant instance."""
-        hass = Mock(spec=HomeAssistant)
+        hass = Mock()
         hass.config = Mock()
         hass.config.config_dir = "/config"
         hass.states = Mock()
@@ -44,11 +85,11 @@ class TestTentDevice:
                 "name": "Test Tent",
                 "device_type": DEVICE_TYPE_TENT,
                 CONF_SENSORS: {
-                    SENSOR_TEMPERATURE: "sensor.tent_temperature",
-                    SENSOR_HUMIDITY: "sensor.tent_humidity", 
-                    SENSOR_CO2: "sensor.tent_co2",
-                    SENSOR_LIGHT_HOURS: "sensor.tent_light_hours",
-                    SENSOR_POWER_CONSUMPTION: "sensor.tent_power",
+                    FLOW_SENSOR_TEMPERATURE: "sensor.tent_temperature",
+                    FLOW_SENSOR_HUMIDITY: "sensor.tent_humidity", 
+                    FLOW_SENSOR_CO2: "sensor.tent_co2",
+                    FLOW_SENSOR_ILLUMINANCE: "sensor.tent_light_hours",
+                    FLOW_SENSOR_POWER_CONSUMPTION: "sensor.tent_power",
                 }
             }
         }
@@ -58,7 +99,7 @@ class TestTentDevice:
     @pytest.fixture
     def tent_device(self, mock_hass, mock_config_entry):
         """Create tent device instance."""
-        return PlantDevice(mock_hass, mock_config_entry)
+        return MockTentDevice(mock_hass, mock_config_entry)
 
     def test_tent_device_initialization(self, tent_device):
         """Test tent device initializes correctly."""

@@ -163,7 +163,7 @@ async def _get_next_id(hass: HomeAssistant, device_type: str) -> str:
     next_id = data["counter"] + 1
     await store.async_save({"counter": next_id})
     
-    return f"{next_id:04d}"  # Formatiert als 4-stellige Nummer mit führenden Nullen
+    return f"{next_id:04d}"  # Formatted as 4-digit number with leading zeros
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Plant from a config entry."""
@@ -196,7 +196,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Erstelle PlantDevice und hole oder generiere ID
     plant = PlantDevice(hass, entry)
     
-    # Prüfe ob bereits eine ID existiert
+    # Check if an ID already exists
     device_type = entry.data[FLOW_PLANT_INFO].get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
     id_key = f"{device_type}_id"
     
@@ -277,7 +277,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     limit=30,
                 )
 
-    # Setze das Flag zurück nach vollständigem Setup
+    # Reset the flag after complete setup
     if entry.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
         data = dict(entry.data)
         data[FLOW_PLANT_INFO][ATTR_IS_NEW_PLANT] = False
@@ -309,21 +309,22 @@ async def _plant_add_to_device_registry(
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
+    """Unload a config entry and clean up all resources."""
     
-    # Wenn dies ein Konfigurationsknoten ist, einfach die Daten entfernen
+    # If this is a config entry, simply remove the data
     if entry.data.get("is_config", False):
         hass.data[DOMAIN].pop(entry.entry_id, None)
         return True
 
+    # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        # Entferne zuerst die Daten
-        hass.data[DOMAIN].pop(entry.entry_id)
-        hass.data[DATA_UTILITY].pop(entry.entry_id)
+        # Clean up data associated with this entry
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+        hass.data[DATA_UTILITY].pop(entry.entry_id, None)
         
-        # Wenn ein Cycle entfernt wird, aktualisiere alle Plant Cycle Selects
+        # If a Cycle is being removed, update all Plant Cycle Selects
         if FLOW_PLANT_INFO in entry.data and entry.data[FLOW_PLANT_INFO].get("device_type") == DEVICE_TYPE_CYCLE:
             _LOGGER.debug("Unloading cycle entry, updating cycle selects")
             
@@ -335,61 +336,33 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                             plant.cycle_select._update_cycle_options()
                             plant.cycle_select.async_write_ha_state()
             
-            # Verzögere die Aktualisierung um 1 Sekunde
+            # Delay the update by 1 second
             async_call_later(hass, 1, update_cycle_selects)
 
-        # Rest der Cleanup-Logik
+        # Clean up any remaining empty entries
         for entry_id in list(hass.data[DOMAIN].keys()):
             entry_data = hass.data[DOMAIN][entry_id]
             # Only check length for dictionary entries, not VirtualSensorManager
             if isinstance(entry_data, dict) and len(entry_data) == 0:
                 _LOGGER.info("Removing entry %s", entry_id)
                 del hass.data[DOMAIN][entry_id]
+        
+        # If no more entries, clean up domain-level resources
         if len(hass.data[DOMAIN]) == 0:
             _LOGGER.info("Removing domain %s", DOMAIN)
             await async_unload_services(hass)
-            del hass.data[DOMAIN]
+            # Clean up any domain-level data
+            hass.data.pop(DOMAIN, None)
+            hass.data.pop(DATA_UTILITY, None)
             
+            # Clean up any upload data
+            if "uploads" in hass.data.get(DOMAIN, {}):
+                hass.data[DOMAIN].pop("uploads", None)
+                
+    # Clean up any WebSocket command handlers if needed
+    # Note: WebSocket commands are typically registered at startup and don't need cleanup per entry
+    
     return unload_ok
-
-
-@websocket_api.websocket_command(
-    {
-        vol.Required("type"): "plant/get_info",
-        vol.Required("entity_id"): str,
-    }
-)
-@callback
-def ws_get_info(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict
-) -> None:
-    """Handle the websocket command."""
-    # _LOGGER.debug("Got websocket request: %s", msg)
-
-    if DOMAIN not in hass.data:
-        connection.send_error(
-            msg["id"], "domain_not_found", f"Domain {DOMAIN} not found"
-        )
-        return
-
-    for key in hass.data[DOMAIN]:
-        # Skip non-dict entries like virtual_sensor_manager
-        if not isinstance(hass.data[DOMAIN][key], dict) or not ATTR_PLANT in hass.data[DOMAIN][key]:
-            continue
-        plant_entity = hass.data[DOMAIN][key][ATTR_PLANT]
-        if plant_entity.entity_id == msg["entity_id"]:
-            # _LOGGER.debug("Sending websocket response: %s", plant_entity.websocket_info)
-            try:
-                connection.send_result(
-                    msg["id"], {"result": plant_entity.websocket_info}
-                )
-            except ValueError as e:
-                _LOGGER.warning(e)
-            return
-    connection.send_error(
-        msg["id"], "entity_not_found", f"Entity {msg['entity_id']} not found"
-    )
-    return
 
 @websocket_api.websocket_command(
     {
@@ -440,7 +413,7 @@ async def ws_upload_image(
         # Erstelle den Download-Pfad falls er nicht existiert
         await hass.async_add_executor_job(lambda: os.makedirs(download_path, exist_ok=True))
 
-        # Generiere Dateinamen nur für den ersten Chunk
+        # Generate filename only for the first chunk
         if chunk_index == 0:
             # Wenn kein entity_picture existiert, verwende Breeder_Strain Format
             if not target_entity._attr_entity_picture:
@@ -460,7 +433,7 @@ async def ws_upload_image(
                 data[FLOW_PLANT_INFO] = plant_info
                 hass.config_entries.async_update_entry(target_entry, data=data)
             else:
-                # Für alle weiteren Bilder verwende den Timestamp
+                # For all other images, use the timestamp
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 _, ext = os.path.splitext(filename)
                 final_filename = f"{entity_id}_{timestamp}{ext}"
@@ -468,7 +441,7 @@ async def ws_upload_image(
             filepath = os.path.join(download_path, final_filename)
             temp_filepath = f"{filepath}.part"
             
-            # Speichere die Pfade in hass.data für nachfolgende Chunks
+            # Store the paths in hass.data for subsequent chunks
             if DOMAIN not in hass.data:
                 hass.data[DOMAIN] = {}
             if "uploads" not in hass.data[DOMAIN]:
@@ -479,7 +452,7 @@ async def ws_upload_image(
                 "final_filename": final_filename
             }
         else:
-            # Hole die gespeicherten Pfade für nachfolgende Chunks
+            # Get the stored paths for subsequent chunks
             upload_info = hass.data[DOMAIN]["uploads"].get(entity_id)
             if not upload_info:
                 connection.send_error(msg["id"], "upload_error", "Upload session not found")
@@ -521,7 +494,7 @@ async def ws_upload_image(
                 target_entity._attr_entity_picture = f"/local/images/plants/{final_filename}"
                 plant_info[ATTR_ENTITY_PICTURE] = f"/local/images/plants/{final_filename}"
             else:
-                # Füge das Bild zur Bilderliste hinzu, wenn es nicht das Entity Picture ist
+                # Add the image to the image list if it is not the entity picture
                 entity_picture_filename = target_entity._attr_entity_picture.split("/")[-1]
                 if final_filename != entity_picture_filename:
                     if final_filename not in current_images:
@@ -545,7 +518,7 @@ async def ws_upload_image(
 
     except Exception as e:
         _LOGGER.error("Error processing image chunk: %s", e)
-        # Bei einem Fehler lösche die temporäre Datei
+        # In case of an error, delete the temporary file
         if "uploads" in hass.data.get(DOMAIN, {}) and entity_id in hass.data[DOMAIN]["uploads"]:
             temp_filepath = hass.data[DOMAIN]["uploads"][entity_id]["temp_filepath"]
             async def cleanup():
@@ -599,14 +572,14 @@ async def ws_delete_image(
     download_path = config_entry.data[FLOW_PLANT_INFO].get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH) if config_entry else DEFAULT_IMAGE_PATH
 
     try:
-        # Prüfe ob es sich um das Hauptbild handelt
+        # Check if this is the main image
         is_main_image = False
         if target_entity._attr_entity_picture:
             main_image_filename = target_entity._attr_entity_picture.split("/")[-1]
             if filename == main_image_filename:
                 is_main_image = True
                 
-                # Lösche den entity_picture Pfad
+                # Delete the entity_picture path
                 target_entity._attr_entity_picture = None
                 
                 # Aktualisiere die Config Entry
@@ -620,7 +593,7 @@ async def ws_delete_image(
                 target_entity._plant_info = plant_info
                 target_entity.async_write_ha_state()
 
-        # Lösche die Datei
+        # Delete the file
         filepath = os.path.join(download_path, filename)
         
         def delete_file():
@@ -695,7 +668,7 @@ async def ws_set_main_image(
     download_path = config_entry.data[FLOW_PLANT_INFO].get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH) if config_entry else DEFAULT_IMAGE_PATH
 
     try:
-        # Prüfe ob das Bild existiert
+        # Check if the image exists
         filepath = os.path.join(download_path, filename)
         if not os.path.exists(filepath):
             connection.send_error(msg["id"], "file_not_found", f"Image {filename} not found")
@@ -733,7 +706,7 @@ class PlantDevice(Entity):
         self._attr_name = config.data[FLOW_PLANT_INFO][ATTR_NAME]
         self._config_entries = []
         self._data_source = config.data[FLOW_PLANT_INFO].get(DATA_SOURCE)
-        self._plant_id = None  # Neue Property für die ID
+        self._plant_id = None  # New property for the ID
         
         # Get data from config - nur einmal initialisieren
         self._plant_info = config.data.get(FLOW_PLANT_INFO, {})
@@ -811,9 +784,9 @@ class PlantDevice(Entity):
         self.ppfd = None
         self.total_integral = None
         self.moisture_consumption = None
-        self.total_water_consumption = None  # Füge Total Water Consumption hinzu
+        self.total_water_consumption = None  # Add Total Water Consumption
         self.fertilizer_consumption = None
-        self.total_fertilizer_consumption = None  # Füge Total Fertilizer Consumption hinzu
+        self.total_fertilizer_consumption = None  # Add Total Fertilizer Consumption
         self.power_consumption = None
 
         # Initialize sensor status attributes
@@ -830,14 +803,14 @@ class PlantDevice(Entity):
 
         self.flowering_duration = None
 
-        # Neue Attribute hinzufügen
+        # Add new attributes
         self.website = self._plant_info.get("website", "")
         self.effects = self._plant_info.get("effects", "")
         self.smell = self._plant_info.get("smell", "")
         self.taste = self._plant_info.get("taste", "")
         self.lineage = self._plant_info.get("lineage", "")
 
-        # Diese Attribute nur für Plants setzen
+        # Set these attributes only for Plants
         if self.device_type == DEVICE_TYPE_PLANT:
             self.infotext1 = self._plant_info.get("infotext1", "")
             self.infotext2 = self._plant_info.get("infotext2", "")
@@ -852,10 +825,10 @@ class PlantDevice(Entity):
         self.yield_info = self._plant_info.get(ATTR_YIELD, "")  # yield ist ein Python keyword
         self.notes = self._plant_info.get(ATTR_NOTES, "")
 
-        # Liste der zugehörigen Plants (nur für Cycles)
+        # List of associated Plants (only for Cycles)
         self._member_plants = []
         
-        # Median Sensoren (nur für Cycles) 
+        # Median Sensors (only for Cycles)
         self._median_sensors = {}
 
         # Tent-spezifische Attribute (simplified - no complex threshold management)
@@ -868,28 +841,28 @@ class PlantDevice(Entity):
 
         self.cycle_select = None  # Neue Property
 
-        # Aggregationsmethode für flowering_duration
+        # Aggregation method for flowering_duration
         self.flowering_duration_aggregation = (
             self._config.options.get("flowering_duration_aggregation") or
             self._plant_info.get("flowering_duration_aggregation", "mean")
         )
         
-        # Aggregationsmethode für pot_size
+        # Aggregation method for pot_size
         self.pot_size_aggregation = (
             self._config.options.get("pot_size_aggregation") or
             self._plant_info.get("pot_size_aggregation", "mean")
         )
 
-        # Aggregationsmethode für water_capacity
+        # Aggregation method for water_capacity
         self.water_capacity_aggregation = (
             self._config.options.get("water_capacity_aggregation") or
             self._plant_info.get("water_capacity_aggregation", "mean")
         )
 
-        # Neue Property für pot_size
+        # New property for pot_size
         self.pot_size = None
 
-        # Neue Property für water_capacity
+        # New property for water_capacity
         self.water_capacity = None
 
         # Hole den kWh Preis aus dem Konfigurationsknoten
@@ -899,22 +872,22 @@ class PlantDevice(Entity):
                 self._kwh_price = entry.data[FLOW_PLANT_INFO].get(ATTR_KWH_PRICE, DEFAULT_KWH_PRICE)
                 break
 
-        # Neue Property für Treatment Select
+        # New property for Treatment Select
         self.treatment_select = None
 
-        # Neue Property für Health Number
+        # New property for Health Number
         self.health_number = None
 
-        # Neue Property für Journal
+        # New property for Journal
         self.journal = None
         
-        # Neue Property für Location History
+        # New property for Location History
         self.location_history = None
 
         # Initialisiere die Bilderliste
         self._images = self._plant_info.get("images", [])
 
-        # Aggregationsmethode für health
+        # Aggregation method for health
         self.health_aggregation = (
             self._config.options.get("health_aggregation") or
             self._plant_info.get("health_aggregation", "mean")
@@ -973,7 +946,7 @@ class PlantDevice(Entity):
                 "model_id": self._plant_info.get(ATTR_TYPE, ""),
             })
         
-        # Optional website hinzufügen wenn vorhanden
+        # Add optional website if available
         if self.website:
             info["configuration_url"] = self.website
         
@@ -1200,13 +1173,13 @@ class PlantDevice(Entity):
         # Basis-Response mit Hauptsensoren
         response = {
             "path": web_path,  # Der konvertierte Pfad
-            "device_type": self.device_type,  # Füge device_type hinzu (plant oder cycle)
-            "entity_id": self.entity_id,  # Füge die Haupt-Entity-ID hinzu
-            "name": self.name,  # Füge den Namen hinzu
-            "icon": self.icon,  # Füge das Icon hinzu
-            "state": self.state,  # Füge den Zustand hinzu
+            "device_type": self.device_type,  # Add device_type (plant or cycle)
+            "entity_id": self.entity_id,  # Add the main entity ID
+            "name": self.name,  # Add the name
+            "icon": self.icon,  # Add the icon
+            "state": self.state,  # Add the state
             
-            # Ursprüngliche Sensor-Info beibehalten
+            # Keep original sensor info
             ATTR_TEMPERATURE: {
                 ATTR_MAX: self.max_temperature.state,
                 ATTR_MIN: self.min_temperature.state,
@@ -1296,14 +1269,14 @@ class PlantDevice(Entity):
                 ATTR_SENSOR: self.sensor_ph.entity_id,
             },
             
-            # Neue Struktur: Separater Bereich für Diagnosesensoren
+            # New structure: Separate section for diagnostic sensors
             "diagnostic_sensors": {},
             
             # Helper-Entities bleiben in eigener Kategorie
             "helpers": {}
         }
 
-        # Diagnosesensoren hinzufügen
+        # Add diagnostic sensors
         diagnostics = response["diagnostic_sensors"]
         
         if hasattr(self, 'energy_cost') and self.energy_cost:
@@ -1326,7 +1299,7 @@ class PlantDevice(Entity):
             # Der Wert kommt als decimal.Decimal vom Sensor
             current_value = self.total_integral.state
             
-            # Konvertiere zu float für JSON-Serialisierung
+            # Convert to float for JSON serialization
             if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
                 try:
                     # Explizite Konvertierung zu float
@@ -1341,7 +1314,7 @@ class PlantDevice(Entity):
                 "unit_of_measurement": self.total_integral.native_unit_of_measurement,
             }
         
-        # Füge total_water_consumption hinzu
+        # Add total_water_consumption
         if self.total_water_consumption:
             current_value = self.total_water_consumption.state
             if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
@@ -1357,7 +1330,7 @@ class PlantDevice(Entity):
                 "unit_of_measurement": self.total_water_consumption.native_unit_of_measurement,
             }
         
-        # Füge total_fertilizer_consumption hinzu
+        # Add total_fertilizer_consumption
         if self.total_fertilizer_consumption:
             current_value = self.total_fertilizer_consumption.state
             if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):

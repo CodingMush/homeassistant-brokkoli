@@ -1,3 +1,7 @@
 {
-    "svn.ignoreMissingSvnWarning": true
+    "svn.ignoreMissingSvnWarning": true,
+    "cSpell.words": [
+        "Brokkoli",
+        "seedfinder"
+    ]
 }
