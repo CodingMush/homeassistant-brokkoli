@@ -1268,19 +1268,33 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not plant_device:
-            raise HomeAssistantError(f"Plant entity {plant_entity_id} not found")
+            raise HomeAssistantError(f"Plant entity {plant_entity_id} not found or is not a plant device.")
             
         # Find tent device  
         tent_device = None
+        tent_entry_id = None
         for entry_id in hass.data[DOMAIN]:
             if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
-                    tent_device = device
-                    break
+                if device.entity_id == tent_entity_id:
+                    if device.device_type == DEVICE_TYPE_TENT:
+                        tent_device = device
+                        tent_entry_id = entry_id
+                        break
+                    else:
+                        # Found entity but it's not a tent
+                        raise HomeAssistantError(
+                            f"Entity {tent_entity_id} is not a tent. "
+                            f"Please select a tent entity (device_type: {DEVICE_TYPE_TENT}). "
+                            f"Current device_type is '{device.device_type}'."
+                        )
                     
         if not tent_device:
-            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
+            raise HomeAssistantError(
+                f"Entity {tent_entity_id} not found or is not a tent. "
+                f"Please make sure you've selected a tent entity. "
+                f"Tent entities have device_type '{DEVICE_TYPE_TENT}'."
+            )
         
         # Prevent a plant from being assigned to itself
         if plant_entity_id == tent_entity_id:
@@ -1317,7 +1331,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not plant_device:
-            raise HomeAssistantError(f"Plant entity {plant_entity_id} not found")
+            raise HomeAssistantError(
+                f"Plant entity {plant_entity_id} not found or is not a plant device. "
+                f"Please make sure you've selected a plant entity. "
+                f"Plant entities have device_type '{DEVICE_TYPE_PLANT}'."
+            )
             
         if not plant_device.tent_assignment:
             _LOGGER.warning(f"Plant {plant_entity_id} is not assigned to any tent")
@@ -1356,7 +1374,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not tent_device:
-            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
+            raise HomeAssistantError(
+                f"Entity {tent_entity_id} not found or is not a tent. "
+                f"Please make sure you've selected a tent entity. "
+                f"Tent entities have device_type '{DEVICE_TYPE_TENT}'."
+            )
         
         # Check if tent has assigned plants
         if tent_device.assigned_plants and not force_removal:
@@ -1404,8 +1426,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not plant_device:
-            _LOGGER.error(f"Plant {plant_entity_id} not found")
-            raise HomeAssistantError(f"Plant {plant_entity_id} not found")
+            raise HomeAssistantError(
+                f"Plant entity {plant_entity_id} not found or is not a plant device. "
+                f"Please make sure you've selected a plant entity. "
+                f"Plant entities have device_type '{DEVICE_TYPE_PLANT}'."
+            )
         
         # Find the tent
         tent_device = None
@@ -1427,8 +1452,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not tent_device:
-            _LOGGER.error(f"Entity {tent_entity_id} not found or is not a tent")
-            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
+            raise HomeAssistantError(
+                f"Entity {tent_entity_id} not found or is not a tent. "
+                f"Please make sure you've selected a tent entity. "
+                f"Tent entities have device_type '{DEVICE_TYPE_TENT}'."
+            )
         
         try:
             # Get current plant config entry
@@ -1499,9 +1527,165 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not plant_device:
-            raise HomeAssistantError(f"Plant entity {plant_entity_id} not found")
+            raise HomeAssistantError(
+                f"Plant entity {plant_entity_id} not found or is not a plant device. "
+                f"Please make sure you've selected a plant entity. "
+                f"Plant entities have device_type '{DEVICE_TYPE_PLANT}'."
+            )
             
         # Find tent device  
+        tent_device = None
+        tent_entry = None
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if (
+                entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT
+                and not entry.data.get("is_config", False)
+            ):
+                # Check if this tent has the matching entity_id  
+                for inner_entry_id in hass.data[DOMAIN]:
+                    if isinstance(hass.data[DOMAIN][inner_entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][inner_entry_id]:
+                        device = hass.data[DOMAIN][inner_entry_id][ATTR_PLANT]
+                        if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
+                            tent_device = device
+                            tent_entry = entry
+                            break
+                if tent_device:
+                    break
+        
+        if not tent_device:
+            raise HomeAssistantError(
+                f"Entity {tent_entity_id} not found or is not a tent. "
+                f"Please make sure you've selected a tent entity. "
+                f"Tent entities have device_type '{DEVICE_TYPE_TENT}'."
+            )
+        
+        try:
+            # Get current plant config entry
+            plant_entry = hass.config_entries.async_get_entry(plant_entry_id)
+            plant_data = dict(plant_entry.data)
+            plant_info = dict(plant_data[FLOW_PLANT_INFO])
+            
+            # Update tent assignment
+            plant_info[ATTR_TENT_ASSIGNMENT] = tent_entity_id
+            plant_info[ATTR_USE_VIRTUAL_SENSORS] = True
+            
+            # If migrating sensors, clear existing sensor assignments and use tent sensors
+            if migrate_sensors:
+                # Clear existing sensor assignments
+                sensor_keys = [
+                    FLOW_SENSOR_TEMPERATURE,
+                    FLOW_SENSOR_MOISTURE,
+                    FLOW_SENSOR_CONDUCTIVITY,
+                    FLOW_SENSOR_ILLUMINANCE,
+                    FLOW_SENSOR_HUMIDITY,
+                    FLOW_SENSOR_CO2,
+                    FLOW_SENSOR_POWER_CONSUMPTION,
+                    FLOW_SENSOR_PH
+                ]
+                for key in sensor_keys:
+                    plant_info.pop(key, None)
+                
+                # Inherit sensors from tent
+                tent_env_sensors = tent_entry.data[FLOW_PLANT_INFO].get(ATTR_ENVIRONMENTAL_SENSORS, {})
+                
+                sensor_mapping = {
+                    "temperature": (FLOW_SENSOR_TEMPERATURE, "temperature"),
+                    "moisture": (FLOW_SENSOR_MOISTURE, "moisture"),
+                    "conductivity": (FLOW_SENSOR_CONDUCTIVITY, "conductivity"),
+                    "illuminance": (FLOW_SENSOR_ILLUMINANCE, "illuminance"),
+                    "humidity": (FLOW_SENSOR_HUMIDITY, "humidity"),
+                    "co2": (FLOW_SENSOR_CO2, "co2"),
+                    "power_consumption": (FLOW_SENSOR_POWER_CONSUMPTION, "power_consumption"),
+                    "ph": (FLOW_SENSOR_PH, "ph"),
+                }
+                
+                for sensor_type, (plant_sensor_key, tent_sensor_key) in sensor_mapping.items():
+                    if tent_sensor_key in tent_env_sensors and tent_env_sensors[tent_sensor_key]:
+                        plant_info[plant_sensor_key] = tent_env_sensors[tent_sensor_key]
+                        _LOGGER.debug(f"Inherited {sensor_type} sensor: {tent_env_sensors[tent_sensor_key]}")
+            
+            # Update plant config entry
+            plant_data[FLOW_PLANT_INFO] = plant_info
+            hass.config_entries.async_update_entry(plant_entry, data=plant_data)
+            
+            # Update the plant device
+            plant_device._tent_assignment = tent_entity_id
+            plant_device._use_virtual_sensors = True
+            
+            _LOGGER.info(f"Successfully migrated plant {plant_entity_id} to use virtual sensors with tent {tent_entity_id}")
+            
+        except Exception as e:
+            _LOGGER.error(f"Error migrating plant to virtual sensors: {e}")
+            raise HomeAssistantError(f"Error migrating plant to virtual sensors: {e}")
+
+    async def remove_tent(call: ServiceCall) -> None:
+        """Remove a tent and unassign it from all plants."""
+        tent_entity_id = call.data[FLOW_TENT_ENTITY]
+
+        # Find tent config entry
+        tent_entry = None
+        tent_entry_id = None
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if (
+                entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT
+                and not entry.data.get("is_config", False)
+            ):
+                # Check if this tent has the matching entity_id
+                for inner_entry_id in hass.data[DOMAIN]:
+                    if isinstance(hass.data[DOMAIN][inner_entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][inner_entry_id]:
+                        plant = hass.data[DOMAIN][inner_entry_id][ATTR_PLANT]
+                        if plant.entity_id == tent_entity_id:
+                            tent_entry = entry
+                            tent_entry_id = entry.entry_id
+                            break
+                if tent_entry:
+                    break
+
+        if not tent_entry:
+            raise HomeAssistantError(f"Tent entity {tent_entity_id} not found")
+
+        try:
+            # Unassign tent from all plants
+            for entry_id in hass.data[DOMAIN]:
+                # Check if this is a dictionary containing plant data (not VirtualSensorManager)
+                if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                    plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                    if plant.entity_id == plant_entity_id:
+                        plant.unassign_from_tent()
+                        break
+            
+            # Remove tent config entry
+            await hass.config_entries.async_remove(tent_entry_id)
+            _LOGGER.info(f"Successfully removed tent {tent_entity_id}")
+            
+        except Exception as e:
+            _LOGGER.error(f"Error removing tent: {e}")
+            raise HomeAssistantError(f"Error removing tent: {e}")
+
+    async def reassign_to_tent(call: ServiceCall) -> None:
+        """Reassign a plant to a different tent with selective sensor inheritance."""
+        plant_entity_id = call.data.get("plant_entity")
+        tent_entity_id = call.data.get("tent_entity")
+        
+        # Find the plant
+        plant_device = None
+        plant_entry_id = None
+        for entry_id in hass.data[DOMAIN]:
+            if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if device.entity_id == plant_entity_id and device.device_type == DEVICE_TYPE_PLANT:
+                    plant_device = device
+                    plant_entry_id = entry_id
+                    break
+        
+        if not plant_device:
+            raise HomeAssistantError(
+                f"Plant entity {plant_entity_id} not found or is not a plant device. "
+                f"Please make sure you've selected a plant entity. "
+                f"Plant entities have device_type '{DEVICE_TYPE_PLANT}'."
+            )
+        
+        # Find the tent
         tent_device = None
         tent_entry = None
         for entry in hass.config_entries.async_entries(DOMAIN):

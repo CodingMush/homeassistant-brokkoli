@@ -1820,19 +1820,41 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not plant_device:
-            raise HomeAssistantError(f"Plant entity {plant_entity_id} not found")
+            raise HomeAssistantError(
+                f"Plant entity {plant_entity_id} not found or is not a plant device. "
+                f"Please make sure you've selected a plant entity. "
+                f"Plant entities have device_type '{DEVICE_TYPE_PLANT}'."
+            )
             
         # Find tent device  
         tent_device = None
+        tent_entry_id = None
         for entry_id in hass.data[DOMAIN]:
             if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if device.entity_id == tent_entity_id and device.device_type == DEVICE_TYPE_TENT:
-                    tent_device = device
-                    break
+                if device.entity_id == tent_entity_id:
+                    if device.device_type == DEVICE_TYPE_TENT:
+                        tent_device = device
+                        tent_entry_id = entry_id
+                        break
+                    else:
+                        # Found entity but it's not a tent
+                        raise HomeAssistantError(
+                            f"Entity {tent_entity_id} is not a tent. "
+                            f"Please select a tent entity (device_type: {DEVICE_TYPE_TENT}). "
+                            f"Current device_type is '{device.device_type}'."
+                        )
                     
         if not tent_device:
-            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
+            raise HomeAssistantError(
+                f"Entity {tent_entity_id} not found or is not a tent. "
+                f"Please make sure you've selected a tent entity. "
+                f"Tent entities have device_type '{DEVICE_TYPE_TENT}'."
+            )
+        
+        # Prevent a plant from being assigned to itself
+        if plant_entity_id == tent_entity_id:
+            raise HomeAssistantError(f"Cannot assign plant {plant_entity_id} to itself as a tent.")
         
         try:
             # Assign plant to tent
@@ -1865,7 +1887,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not plant_device:
-            raise HomeAssistantError(f"Plant entity {plant_entity_id} not found")
+            raise HomeAssistantError(
+                f"Plant entity {plant_entity_id} not found or is not a plant device. "
+                f"Please make sure you've selected a plant entity. "
+                f"Plant entities have device_type '{DEVICE_TYPE_PLANT}'."
+            )
             
         if not plant_device.tent_assignment:
             _LOGGER.warning(f"Plant {plant_entity_id} is not assigned to any tent")
@@ -1904,7 +1930,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not tent_device:
-            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
+            raise HomeAssistantError(
+                f"Entity {tent_entity_id} not found or is not a tent. "
+                f"Please make sure you've selected a tent entity. "
+                f"Tent entities have device_type '{DEVICE_TYPE_TENT}'."
+            )
         
         # Check if tent has assigned plants
         if tent_device.assigned_plants and not force_removal:
@@ -1952,8 +1982,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not plant_device:
-            _LOGGER.error(f"Plant {plant_entity_id} not found")
-            raise HomeAssistantError(f"Plant {plant_entity_id} not found")
+            raise HomeAssistantError(
+                f"Plant entity {plant_entity_id} not found or is not a plant device. "
+                f"Please make sure you've selected a plant entity. "
+                f"Plant entities have device_type '{DEVICE_TYPE_PLANT}'."
+            )
         
         # Find the tent
         tent_device = None
@@ -1975,8 +2008,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not tent_device:
-            _LOGGER.error(f"Entity {tent_entity_id} not found or is not a tent")
-            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
+            raise HomeAssistantError(
+                f"Entity {tent_entity_id} not found or is not a tent. "
+                f"Please make sure you've selected a tent entity. "
+                f"Tent entities have device_type '{DEVICE_TYPE_TENT}'."
+            )
         
         try:
             # Get current plant config entry
@@ -2069,7 +2105,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     break
         
         if not tent_device:
-            raise HomeAssistantError(f"Entity {tent_entity_id} not found or is not a tent. Please select a tent entity.")
+            raise HomeAssistantError(
+                f"Entity {tent_entity_id} not found or is not a tent. "
+                f"Please make sure you've selected a tent entity. "
+                f"Tent entities have device_type '{DEVICE_TYPE_TENT}'."
+            )
         
         try:
             # Get current plant config entry
