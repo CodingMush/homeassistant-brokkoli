@@ -115,7 +115,7 @@ from .const import (
     READING_ENERGY_COST,
     ICON_ENERGY_COST,
     DEVICE_CLASS_PH,  # Importiere unsere eigene Device Class
-    # Virtual sensor imports
+    # Tent-specific imports
     ATTR_TENT_ASSIGNMENT,
     ATTR_USE_VIRTUAL_SENSORS,
     ATTR_VIRTUAL_SENSOR_REFERENCE,
@@ -198,56 +198,88 @@ async def async_setup_entry(
             "total_water_consumption",  # Füge Total Water hinzu
             "fertilizer_consumption",
             "total_fertilizer_consumption",  # Füge Total Fertilizer hinzu
-            "power_consumption",
-            "total_power_consumption",  # Füge Total Power hinzu
         ]
         for sensor_type in calculated_sensor_types:
-            cycle_sensors[sensor_type] = CycleMedianSensor(
+            cycle_sensors[sensor_type] = _create_calculated_sensor(
                 hass, entry, plant, sensor_type
             )
 
-        # Füge alle Sensoren zu Home Assistant hinzu
+        # Füge die Sensoren zu Home Assistant hinzu
         async_add_entities(cycle_sensors.values())
-
-        # Füge die Sensoren der Plant hinzu
-        plant.add_sensors(
-            temperature=cycle_sensors["temperature"],
-            moisture=cycle_sensors["moisture"],
-            conductivity=cycle_sensors["conductivity"],
-            illuminance=cycle_sensors["illuminance"],
-            humidity=cycle_sensors["humidity"],
-            CO2=cycle_sensors["CO2"],
-            power_consumption=cycle_sensors["power_consumption"],
-            ph=cycle_sensors["ph"],
-        )
-
-        # Füge die berechneten Sensoren hinzu
-        plant.add_calculations(
-            ppfd=cycle_sensors["ppfd"],
-            total_integral=cycle_sensors["total_integral"],
-            moisture_consumption=cycle_sensors["moisture_consumption"],
-            fertilizer_consumption=cycle_sensors["fertilizer_consumption"],
-        )
-        plant.add_dli(dli=cycle_sensors["dli"])
-
-        # Total Consumption Sensoren
-        plant.total_water_consumption = cycle_sensors["total_water_consumption"]
-        plant.total_fertilizer_consumption = cycle_sensors[
-            "total_fertilizer_consumption"
+        hass.data[DOMAIN][entry.entry_id][ATTR_SENSORS] = list(cycle_sensors.values())
+    elif plant.device_type == DEVICE_TYPE_TENT:
+        # For tents, create simple environmental sensors without complex calculations
+        tent_sensors = {}
+        
+        # Create basic environmental sensors for the tent
+        # These sensors will show the values from the tent's environmental sensors
+        environmental_sensor_types = [
+            "temperature",
+            "moisture", 
+            "conductivity",
+            "illuminance",
+            "humidity",
+            "ph",
+            "CO2",
+            "power_consumption"
         ]
+        
+        # Get tent environmental sensors from plant configuration
+        tent_env_sensors = entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_ENVIRONMENTAL_SENSORS, {})
+        
+        for sensor_type in environmental_sensor_types:
+            # Create a simple current status sensor for each environmental sensor type
+            sensor_class = _get_sensor_class_for_type(sensor_type)
+            if sensor_class:
+                tent_sensors[sensor_type] = sensor_class(hass, entry, plant)
+                
+                # Assign external sensor if available in tent configuration
+                sensor_mapping = {
+                    "temperature": FLOW_SENSOR_TEMPERATURE,
+                    "moisture": FLOW_SENSOR_MOISTURE,
+                    "conductivity": FLOW_SENSOR_CONDUCTIVITY,
+                    "illuminance": FLOW_SENSOR_ILLUMINANCE,
+                    "humidity": FLOW_SENSOR_HUMIDITY,
+                    "ph": FLOW_SENSOR_PH,
+                    "CO2": FLOW_SENSOR_CO2,
+                    "power_consumption": FLOW_SENSOR_POWER_CONSUMPTION
+                }
+                
+                if sensor_type in sensor_mapping:
+                    tent_sensor_key = sensor_mapping[sensor_type]
+                    if tent_sensor_key in tent_env_sensors and tent_env_sensors[tent_sensor_key]:
+                        tent_sensors[sensor_type].replace_external_sensor(tent_env_sensors[tent_sensor_key])
 
-        # Power Consumption Sensoren
-        plant.add_power_consumption_sensors(
-            current=cycle_sensors["power_consumption"],
-            total=cycle_sensors["total_power_consumption"],
+        # Add all sensors to Home Assistant
+        async_add_entities(tent_sensors.values())
+        hass.data[DOMAIN][entry.entry_id][ATTR_SENSORS] = list(tent_sensors.values())
+
+        # Add sensors to the plant device
+        plant.add_sensors(
+            temperature=tent_sensors.get("temperature"),
+            moisture=tent_sensors.get("moisture"), 
+            conductivity=tent_sensors.get("conductivity"),
+            illuminance=tent_sensors.get("illuminance"),
+            humidity=tent_sensors.get("humidity"),
+            CO2=tent_sensors.get("CO2"),
+            power_consumption=tent_sensors.get("power_consumption"),
+            ph=tent_sensors.get("ph"),
         )
 
     # Füge Energiekosten-Sensor hinzu
-    energy_cost = PlantEnergyCost(hass, entry, plant)
-    plant.energy_cost = energy_cost
-    async_add_entities([energy_cost])
-
-    return True
+def _get_sensor_class_for_type(sensor_type: str):
+    """Get the appropriate sensor class for a given sensor type."""
+    sensor_classes = {
+        "temperature": PlantCurrentTemperature,
+        "moisture": PlantCurrentMoisture,
+        "conductivity": PlantCurrentConductivity,
+        "illuminance": PlantCurrentIlluminance,
+        "humidity": PlantCurrentHumidity,
+        "CO2": PlantCurrentCO2,
+        "ph": PlantCurrentPh,
+        "power_consumption": PlantCurrentPowerConsumption,
+    }
+    return sensor_classes.get(sensor_type)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -2461,8 +2493,10 @@ class VirtualSensor(SensorDefinitionMixin, PlantCurrentStatus):
 
     def state_changed(self, entity_id, new_state):
         """Run on every update to allow for changes from the GUI and service call"""
-        # If reference entity is missing, don't update the state
+        # If reference entity is missing, set default state
         if not self._reference_entity_id:
+            self._attr_native_value = self._default_state
+            self.async_write_ha_state()
             return
             
         super().state_changed(entity_id, new_state)
