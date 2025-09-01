@@ -121,6 +121,7 @@ from .const import (
     ATTR_VIRTUAL_SENSOR_REFERENCE,
     ATTR_IS_VIRTUAL_SENSOR,
     ATTR_SENSOR_OVERRIDES,
+    ATTR_ENVIRONMENTAL_SENSORS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -234,21 +235,9 @@ async def async_setup_entry(
                 tent_sensors[sensor_type] = sensor_class(hass, entry, plant)
                 
                 # Assign external sensor if available in tent configuration
-                sensor_mapping = {
-                    "temperature": FLOW_SENSOR_TEMPERATURE,
-                    "moisture": FLOW_SENSOR_MOISTURE,
-                    "conductivity": FLOW_SENSOR_CONDUCTIVITY,
-                    "illuminance": FLOW_SENSOR_ILLUMINANCE,
-                    "humidity": FLOW_SENSOR_HUMIDITY,
-                    "ph": FLOW_SENSOR_PH,
-                    "CO2": FLOW_SENSOR_CO2,
-                    "power_consumption": FLOW_SENSOR_POWER_CONSUMPTION
-                }
-                
-                if sensor_type in sensor_mapping:
-                    tent_sensor_key = sensor_mapping[sensor_type]
-                    if tent_sensor_key in tent_env_sensors and tent_env_sensors[tent_sensor_key]:
-                        tent_sensors[sensor_type].replace_external_sensor(tent_env_sensors[tent_sensor_key])
+                # Tent environmental sensors are stored with simplified keys
+                if sensor_type in tent_env_sensors and tent_env_sensors[sensor_type]:
+                    tent_sensors[sensor_type].replace_external_sensor(tent_env_sensors[sensor_type])
 
         # Add all sensors to Home Assistant
         async_add_entities(tent_sensors.values())
