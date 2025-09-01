@@ -158,10 +158,35 @@ class PlantCurrentStatus(RestoreSensor):
         if self._external_sensor:
             external_sensor = self.hass.states.get(self._external_sensor)
             if external_sensor:
-                self._attr_native_value = external_sensor.state
-                self._attr_native_unit_of_measurement = external_sensor.attributes[
-                    ATTR_UNIT_OF_MEASUREMENT
-                ]
+                # Convert the state to float with proper error handling
+                if (
+                    external_sensor 
+                    and external_sensor.state != STATE_UNKNOWN
+                    and external_sensor.state != STATE_UNAVAILABLE
+                ):
+                    try:
+                        self._attr_native_value = float(external_sensor.state)
+                        self._attr_native_unit_of_measurement = external_sensor.attributes[
+                            ATTR_UNIT_OF_MEASUREMENT
+                        ]
+                    except (ValueError, TypeError) as e:
+                        _LOGGER.debug(
+                            "Invalid value for %s from external sensor %s: %s, setting to default: %s",
+                            self.entity_id,
+                            self._external_sensor,
+                            external_sensor.state,
+                            self._default_state,
+                        )
+                        self._attr_native_value = self._default_state
+                    except Exception as e:
+                        _LOGGER.warning(
+                            "Unexpected error processing state change for %s: %s",
+                            self.entity_id,
+                            str(e)
+                        )
+                        self._attr_native_value = self._default_state
+                else:
+                    self._attr_native_value = self._default_state
             else:
                 self._attr_native_value = STATE_UNKNOWN
         else:
