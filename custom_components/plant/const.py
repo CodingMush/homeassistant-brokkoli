@@ -17,13 +17,6 @@ ATTR_CONDUCTIVITY = "conductivity"
 ATTR_ILLUMINANCE = "illuminance"
 ATTR_HUMIDITY = "humidity"
 ATTR_CO2 = "co2"
-ATTR_PPFD = "ppfd"
-ATTR_MMOL = "mmol"
-ATTR_MOL = "mol"
-ATTR_DLI = "dli"
-ATTR_WATER_CONSUMPTION = "water_consumption"
-ATTR_FERTILIZER_CONSUMPTION = "fertilizer_consumption"
-ATTR_POWER_CONSUMPTION = "power_consumption"
 ATTR_PH = "ph"
 
 # Device Classes
@@ -53,20 +46,18 @@ READING_CONDUCTIVITY = "conductivity"
 READING_ILLUMINANCE = "illuminance"
 READING_HUMIDITY = "air humidity"
 READING_CO2 = "air CO2"
-READING_PPFD = "ppfd (mol)"
-READING_MMOL = "mmol"
-READING_MOL = "mol"
-READING_DLI = "dli"
-READING_MOISTURE_CONSUMPTION = "water consumption"
-READING_FERTILIZER_CONSUMPTION = "fertilizer consumption"
-READING_POWER_CONSUMPTION = "power consumption"
 READING_PH = "soil pH"
+READING_POWER_CONSUMPTION = "power consumption"
 
 ATTR_MAX_ILLUMINANCE_HISTORY = "max_illuminance"
 ATTR_LIMITS = "limits"
 ATTR_MIN = "min"
 ATTR_MAX = "max"
 ATTR_CURRENT = "current"
+ATTR_POWER_CONSUMPTION = "power_consumption"
+ATTR_DLI = "dli"
+ATTR_WATER_CONSUMPTION = "water_consumption"
+ATTR_FERTILIZER_CONSUMPTION = "fertilizer_consumption"
 
 DEFAULT_MIN_BATTERY_LEVEL = 20
 DEFAULT_MIN_TEMPERATURE = 10
@@ -81,20 +72,22 @@ DEFAULT_MIN_HUMIDITY = 20
 DEFAULT_MAX_HUMIDITY = 60
 DEFAULT_MIN_CO2 = 60
 DEFAULT_MAX_CO2 = 60
-DEFAULT_MIN_MMOL = 2000
-DEFAULT_MAX_MMOL = 20000
-DEFAULT_MIN_MOL = 2
-DEFAULT_MAX_MOL = 30
-DEFAULT_MIN_DLI = 2
-DEFAULT_MAX_DLI = 30
 
-# Neue Konstanten für Water/Fertilizer Consumption
-DEFAULT_MIN_WATER_CONSUMPTION = 0.1
-DEFAULT_MAX_WATER_CONSUMPTION = 2.0
-DEFAULT_MIN_FERTILIZER_CONSUMPTION = 0.1
-DEFAULT_MAX_FERTILIZER_CONSUMPTION = 2.0
-DEFAULT_MIN_POWER_CONSUMPTION = 0.1
-DEFAULT_MAX_POWER_CONSUMPTION = 5.0
+# DLI Defaults
+DEFAULT_MIN_DLI = 12
+DEFAULT_MAX_DLI = 40
+
+# Water Consumption Defaults
+DEFAULT_MIN_WATER_CONSUMPTION = 0
+DEFAULT_MAX_WATER_CONSUMPTION = 100
+
+# Fertilizer Consumption Defaults
+DEFAULT_MIN_FERTILIZER_CONSUMPTION = 0
+DEFAULT_MAX_FERTILIZER_CONSUMPTION = 100
+
+# Power Consumption Defaults
+DEFAULT_MIN_POWER_CONSUMPTION = 0
+DEFAULT_MAX_POWER_CONSUMPTION = 1000
 
 # pH Defaults
 DEFAULT_MIN_PH = 5.5
@@ -109,10 +102,6 @@ DATA_SOURCE_MANUAL = "Manual"
 DATA_SOURCE_DEFAULT = "Default values"
 DATA_UPDATED = "plant_data_updated"
 
-UNIT_PPFD = "mol/s⋅m²s"
-UNIT_MICRO_PPFD = "μmol/s⋅m²"
-UNIT_DLI = "mol/d⋅m²"
-UNIT_MICRO_DLI = "μmol/d⋅m²"
 UNIT_CONDUCTIVITY = "μS/cm"
 UNIT_VOLUME = "L"
 
@@ -147,27 +136,21 @@ FLOW_TEMP_UNIT = "temperature_unit"
 FLOW_ILLUMINANCE_TRIGGER = "illuminance_trigger"
 FLOW_HUMIDITY_TRIGGER = "humidity_trigger"
 FLOW_CO2_TRIGGER = "co2_trigger"
-FLOW_TEMPERATURE_TRIGGER = "temperature_trigger"
-FLOW_DLI_TRIGGER = "dli_trigger"
+FLOW_ILLUMINANCE_TRIGGER = "illuminance_trigger"
 FLOW_MOISTURE_TRIGGER = "moisture_trigger"
 FLOW_CONDUCTIVITY_TRIGGER = "conductivity_trigger"
+FLOW_TEMPERATURE_TRIGGER = "temperature_trigger"
 FLOW_WATER_CONSUMPTION_TRIGGER = "water_consumption_trigger"
 FLOW_FERTILIZER_CONSUMPTION_TRIGGER = "fertilizer_consumption_trigger"
 FLOW_POWER_CONSUMPTION_TRIGGER = "power_consumption_trigger"
-
 FLOW_FORCE_SPECIES_UPDATE = "force_update"
 
 ICON_CONDUCTIVITY = "mdi:spa-outline"
-ICON_DLI = "mdi:counter"
 ICON_HUMIDITY = "mdi:water-percent"
 ICON_CO2 = "mdi:molecule-co2"
 ICON_ILLUMINANCE = "mdi:brightness-6"
 ICON_MOISTURE = "mdi:water"
-ICON_PPFD = "mdi:white-balance-sunny"
 ICON_TEMPERATURE = "mdi:thermometer"
-ICON_WATER_CONSUMPTION = "mdi:water-pump"
-ICON_FERTILIZER_CONSUMPTION = "mdi:chart-line-variant"
-ICON_POWER_CONSUMPTION = "mdi:flash"
 ICON_PH = "mdi:ph"
 
 OPB_GET = "get"
@@ -176,8 +159,6 @@ OPB_SEARCH_RESULT = "search_result"
 OPB_PID = "pid"
 OPB_DISPLAY_PID = "display_pid"
 
-# PPFD to DLI: /1000000 * 3600 to get from microseconds to hours
-PPFD_DLI_FACTOR = 0.0036
 # See https://www.apogeeinstruments.com/conversion-ppfd-to-lux/
 # This equals normal sunlight
 DEFAULT_LUX_TO_PPFD = 0.0185
@@ -211,28 +192,16 @@ CONF_MIN_HUMIDITY = f"min_{ATTR_HUMIDITY}"
 CONF_MAX_HUMIDITY = f"max_{ATTR_HUMIDITY}"
 CONF_MIN_CO2 = f"min_{ATTR_CO2}"
 CONF_MAX_CO2 = f"max_{ATTR_CO2}"
-CONF_MIN_MMOL = f"min_{ATTR_MMOL}"
-CONF_MAX_MMOL = f"max_{ATTR_MMOL}"
-CONF_MIN_MOL = f"min_{ATTR_MOL}"
-CONF_MAX_MOL = f"max_{ATTR_MOL}"
-CONF_MIN_DLI = f"min_{ATTR_DLI}"
-CONF_MAX_DLI = f"max_{ATTR_DLI}"
-
+CONF_MIN_PH = f"min_{ATTR_PH}"
+CONF_MAX_PH = f"max_{ATTR_PH}"
+CONF_MIN_POWER_CONSUMPTION = f"min_{ATTR_POWER_CONSUMPTION}"
+CONF_MAX_POWER_CONSUMPTION = f"max_{ATTR_POWER_CONSUMPTION}"
 CONF_MIN_WATER_CONSUMPTION = f"min_{ATTR_WATER_CONSUMPTION}"
 CONF_MAX_WATER_CONSUMPTION = f"max_{ATTR_WATER_CONSUMPTION}"
 CONF_MIN_FERTILIZER_CONSUMPTION = f"min_{ATTR_FERTILIZER_CONSUMPTION}"
 CONF_MAX_FERTILIZER_CONSUMPTION = f"max_{ATTR_FERTILIZER_CONSUMPTION}"
-CONF_MIN_POWER_CONSUMPTION = f"min_{ATTR_POWER_CONSUMPTION}"
-CONF_MAX_POWER_CONSUMPTION = f"max_{ATTR_POWER_CONSUMPTION}"
-CONF_MIN_PH = f"min_{ATTR_PH}"
-CONF_MAX_PH = f"max_{ATTR_PH}"
-
-CONF_MIN_BRIGHTNESS = "min_brightness"  # DEPRECATED. Only used for config migration
-CONF_MAX_BRIGHTNESS = "max_brightness"  # DEPRECATED. Only used for config migration
-
-CONF_CHECK_DAYS = "check_days"
-CONF_STRAIN = "strain"
-CONF_IMAGE = "entity_picture"
+CONF_MIN_DLI = f"min_dli"
+CONF_MAX_DLI = f"max_dli"
 
 CONF_PLANTBOOK = "openplantbook"
 CONF_PLANTBOOK_MAPPING = {
@@ -248,8 +217,6 @@ CONF_PLANTBOOK_MAPPING = {
     CONF_MAX_HUMIDITY: "max_env_humid",
     CONF_MIN_CO2: "min_env_co2",
     CONF_MAX_CO2: "max_env_co2",
-    CONF_MIN_MMOL: "min_light_mmol",
-    CONF_MAX_MMOL: "max_light_mmol",
     CONF_MIN_POWER_CONSUMPTION: "min_power_consumption",
     CONF_MAX_POWER_CONSUMPTION: "max_power_consumption",
     # Neue Mappings für Water/Fertilizer Consumption
@@ -424,7 +391,6 @@ CONF_DEFAULT_MIN_PH = "default_min_ph"
 
 ATTR_WATER_CONSUMPTION = "water_consumption"
 ATTR_FERTILIZER_CONSUMPTION = "fertilizer_consumption"
-ATTR_POWER_CONSUMPTION = "power_consumption"
 
 DEFAULT_KWH_PRICE = 0.3684  # Default kWh Preis in Euro
 ATTR_KWH_PRICE = "kwh_price"  # Attribut für den kWh Preis

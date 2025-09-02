@@ -38,8 +38,8 @@ from homeassistant.helpers.event import async_call_later
 
 from .const import (
     ATTR_CONDUCTIVITY,
+    ATTR_CONDUCTIVITY,
     ATTR_CURRENT,
-    ATTR_DLI,
     ATTR_HUMIDITY,
     ATTR_CO2,
     ATTR_ILLUMINANCE,
@@ -60,11 +60,13 @@ from .const import (
     DOMAIN,
     DOMAIN_PLANTBOOK,
     FLOW_CONDUCTIVITY_TRIGGER,
-    FLOW_DLI_TRIGGER,
+    FLOW_CO2_TRIGGER,
+    FLOW_ILLUMINANCE_TRIGGER,
     FLOW_HUMIDITY_TRIGGER,
     FLOW_CO2_TRIGGER,
     FLOW_ILLUMINANCE_TRIGGER,
     FLOW_MOISTURE_TRIGGER,
+    FLOW_CONDUCTIVITY_TRIGGER,
     FLOW_PLANT_INFO,
     FLOW_TEMPERATURE_TRIGGER,
     FLOW_WATER_CONSUMPTION_TRIGGER,
@@ -79,12 +81,7 @@ from .const import (
     FLOW_SENSOR_POWER_CONSUMPTION,
     OPB_DISPLAY_PID,
     READING_CONDUCTIVITY,
-    READING_DLI,
     READING_HUMIDITY,
-    READING_CO2,
-    READING_ILLUMINANCE,
-    READING_MOISTURE,
-    READING_TEMPERATURE,
     READING_POWER_CONSUMPTION,
     STATE_HIGH,
     STATE_LOW,
@@ -252,6 +249,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     websocket_api.async_register_command(hass, ws_upload_image)
     websocket_api.async_register_command(hass, ws_delete_image)
     websocket_api.async_register_command(hass, ws_set_main_image)
+    websocket_api.async_register_command(hass, ws_get_plant_info)
     
     plant.async_schedule_update_ha_state(True)
 
@@ -691,6 +689,42 @@ async def ws_set_main_image(
         connection.send_error(msg["id"], "set_main_image_failed", str(e))
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "plant/get_info",
+        vol.Required("entity_id"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_get_plant_info(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict
+) -> None:
+    """Handle getting plant info via websocket."""
+    entity_id = msg["entity_id"]
+
+    # Finde die Entity (Plant, Cycle oder Tent)
+    target_entity = None
+    for entry_id in hass.data[DOMAIN]:
+        if isinstance(hass.data[DOMAIN][entry_id], dict) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+            entity = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+            if entity.entity_id == entity_id:
+                target_entity = entity
+                break
+
+    if not target_entity:
+        connection.send_error(msg["id"], "entity_not_found", f"Entity {entity_id} not found")
+        return
+
+    try:
+        # Hole die Pflanzeninformationen
+        plant_info = target_entity.get_plant_info()
+        connection.send_result(msg["id"], {"result": plant_info})
+
+    except Exception as e:
+        _LOGGER.error("Error getting plant info: %s", e)
+        connection.send_error(msg["id"], "get_plant_info_failed", str(e))
+
+
 class PlantDevice(Entity):
     """Base device for plants"""
 
@@ -772,17 +806,6 @@ class PlantDevice(Entity):
         self.sensor_CO2 = None
         self.sensor_power_consumption = None
         self.sensor_ph = None  # Add pH sensor attribute
-        self.total_power_consumption = None
-
-        self.dli = None
-        self.micro_dli = None
-        self.ppfd = None
-        self.total_integral = None
-        self.moisture_consumption = None
-        self.total_water_consumption = None  # Add Total Water Consumption
-        self.fertilizer_consumption = None
-        self.total_fertilizer_consumption = None  # Add Total Fertilizer Consumption
-        self.power_consumption = None
 
         # Initialize sensor status attributes
         self.conductivity_status = None
@@ -791,12 +814,6 @@ class PlantDevice(Entity):
         self.temperature_status = None
         self.humidity_status = None
         self.CO2_status = None
-        self.dli_status = None
-        self.water_consumption_status = None
-        self.fertilizer_consumption_status = None
-        self.power_consumption_status = None
-
-        self.flowering_duration = None
 
         # Add new attributes
         self.website = self._plant_info.get("website", "")
@@ -830,7 +847,6 @@ class PlantDevice(Entity):
         self._tent_assignment = self._plant_info.get(ATTR_TENT_ASSIGNMENT)
         self._assigned_plants = self._plant_info.get(ATTR_ASSIGNED_PLANTS, []) if self.device_type == DEVICE_TYPE_TENT else []
         self._environmental_sensors = self._plant_info.get(ATTR_ENVIRONMENTAL_SENSORS, {}) if self.device_type == DEVICE_TYPE_TENT else []
-
 
         self.cycle_select = None  # Neue Property
 
@@ -968,32 +984,22 @@ class PlantDevice(Entity):
     @property
     def dli_trigger(self) -> bool:
         """Whether we will generate alarms based on dli"""
-        return self._config.options.get(FLOW_DLI_TRIGGER, True)
-
-    @property
-    def moisture_trigger(self) -> bool:
-        """Whether we will generate alarms based on moisture"""
-        return self._config.options.get(FLOW_MOISTURE_TRIGGER, True)
-
-    @property
-    def conductivity_trigger(self) -> bool:
-        """Whether we will generate alarms based on conductivity"""
-        return self._config.options.get(FLOW_CONDUCTIVITY_TRIGGER, True)
+        return False
 
     @property
     def water_consumption_trigger(self) -> bool:
         """Whether we will generate alarms based on water consumption"""
-        return self._config.options.get(FLOW_WATER_CONSUMPTION_TRIGGER, True)
+        return False
 
     @property
     def fertilizer_consumption_trigger(self) -> bool:
         """Whether we will generate alarms based on fertilizer consumption"""
-        return self._config.options.get(FLOW_FERTILIZER_CONSUMPTION_TRIGGER, True)
+        return False
 
     @property
     def power_consumption_trigger(self) -> bool:
         """Return if power consumption should trigger problems."""
-        return self._config.data[FLOW_PLANT_INFO].get(FLOW_POWER_CONSUMPTION_TRIGGER, True)
+        return False
 
     @property
     def breeder(self) -> str:
@@ -1042,10 +1048,6 @@ class PlantDevice(Entity):
                 "illuminance_status": self.illuminance_status,
                 "humidity_status": self.humidity_status,
                 "CO2_status": self.CO2_status,
-                "dli_status": self.dli_status,
-                "water_consumption_status": self.water_consumption_status,
-                "fertilizer_consumption_status": self.fertilizer_consumption_status,
-                "power_consumption_status": self.power_consumption_status,
                 "pid": self.pid,
                 "type": self._plant_info.get(ATTR_TYPE, ""),
                 "feminized": self._plant_info.get("feminized", ""),
@@ -1080,10 +1082,7 @@ class PlantDevice(Entity):
                 "illuminance_status": self.illuminance_status,
                 "humidity_status": self.humidity_status,
                 "CO2_status": self.CO2_status,
-                "dli_status": self.dli_status,
-                "water_consumption_status": self.water_consumption_status,
-                "fertilizer_consumption_status": self.fertilizer_consumption_status,
-                "power_consumption_status": self.power_consumption_status,
+                "pid": self.pid,
                 "effects": self._plant_info.get("effects", ""),
                 "smell": self._plant_info.get("smell", ""),
                 "taste": self._plant_info.get("taste", ""),
@@ -1134,6 +1133,9 @@ class PlantDevice(Entity):
                     }
         
         return used_sensors
+
+    def get_plant_info(self):
+        """Get plant information for websocket response."""
         # Hole den Download-Pfad aus der Konfiguration und konvertiere ihn
         config_entry = None
         for entry in self._hass.config_entries.async_entries(DOMAIN):
@@ -1243,109 +1245,10 @@ class PlantDevice(Entity):
                 ATTR_UNIT_OF_MEASUREMENT: self.sensor_ph.unit_of_measurement,
                 ATTR_SENSOR: self.sensor_ph.entity_id,
             },
-            
-            # New structure: Separate section for diagnostic sensors
-            "diagnostic_sensors": {},
-            
-            # Helper-Entities bleiben in eigener Kategorie
-            "helpers": {}
         }
 
-        # Add diagnostic sensors
-        diagnostics = response["diagnostic_sensors"]
-        
-        if hasattr(self, 'energy_cost') and self.energy_cost:
-            diagnostics["energy_cost"] = {
-                "entity_id": self.energy_cost.entity_id,
-                "current": self.energy_cost.state,
-                "icon": self.energy_cost.icon,
-                "unit_of_measurement": self.energy_cost.native_unit_of_measurement,
-            }
-        
-        if self.total_power_consumption:
-            diagnostics["total_power_consumption"] = {
-                "entity_id": self.total_power_consumption.entity_id,
-                "current": self.total_power_consumption.state,
-                "icon": self.total_power_consumption.icon,
-                "unit_of_measurement": self.total_power_consumption.native_unit_of_measurement,
-            }
-        
-        if self.total_integral:
-            # Der Wert kommt als decimal.Decimal vom Sensor
-            current_value = self.total_integral.state
-            
-            # Convert to float for JSON serialization
-            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
-                try:
-                    # Explizite Konvertierung zu float
-                    current_value = float(current_value)
-                except (ValueError, TypeError):
-                    current_value = STATE_UNAVAILABLE
-                
-            diagnostics["total_integral"] = {
-                "entity_id": self.total_integral.entity_id,
-                "current": current_value,  # Jetzt als float oder Fehlerstring
-                "icon": self.total_integral.icon,
-                "unit_of_measurement": self.total_integral.native_unit_of_measurement,
-            }
-        
-        # Add total_water_consumption
-        if self.total_water_consumption:
-            current_value = self.total_water_consumption.state
-            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
-                try:
-                    current_value = float(current_value)
-                except (ValueError, TypeError):
-                    current_value = STATE_UNAVAILABLE
-                
-            diagnostics["total_water_consumption"] = {
-                "entity_id": self.total_water_consumption.entity_id,
-                "current": current_value,
-                "icon": self.total_water_consumption.icon,
-                "unit_of_measurement": self.total_water_consumption.native_unit_of_measurement,
-            }
-        
-        # Add total_fertilizer_consumption
-        if self.total_fertilizer_consumption:
-            current_value = self.total_fertilizer_consumption.state
-            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
-                try:
-                    current_value = float(current_value)
-                except (ValueError, TypeError):
-                    current_value = STATE_UNAVAILABLE
-                
-            diagnostics["total_fertilizer_consumption"] = {
-                "entity_id": self.total_fertilizer_consumption.entity_id,
-                "current": current_value,
-                "icon": self.total_fertilizer_consumption.icon,
-                "unit_of_measurement": self.total_fertilizer_consumption.native_unit_of_measurement,
-            }
-        
         # Dann nur echte Helper Entities in "helpers" einfügen (Selects, Numbers, Texts)
-        helpers = response["helpers"]
-        
-        # Growth Phase Select
-        if self.growth_phase_select:
-            helpers["growth_phase"] = {
-                "entity_id": self.growth_phase_select.entity_id,
-                "current": self.growth_phase_select.state,
-                "icon": self.growth_phase_select.icon,
-                "options": self.growth_phase_select.options,
-                "type": "select"
-            }
-        
-        # Flowering Duration Number
-        if self.flowering_duration:
-            helpers["flowering_duration"] = {
-                "entity_id": self.flowering_duration.entity_id,
-                "current": self.flowering_duration.state,
-                "icon": self.flowering_duration.icon,
-                "unit_of_measurement": self.flowering_duration.native_unit_of_measurement,
-                "min": self.flowering_duration.native_min_value,
-                "max": self.flowering_duration.native_max_value,
-                "step": self.flowering_duration.native_step,
-                "type": "number"
-            }
+        helpers = {}
         
         # Pot Size Number
         if self.pot_size:
@@ -1424,6 +1327,8 @@ class PlantDevice(Entity):
                 "type": "select"
             }
 
+        response["helpers"] = helpers
+
         # Add tent basic info for websocket response
         if self.device_type == DEVICE_TYPE_TENT:
             response.update({
@@ -1434,152 +1339,7 @@ class PlantDevice(Entity):
             
         return response
 
-    @property
-    def threshold_entities(self) -> list[Entity]:
-        """List all threshold entities"""
-        return [
-            self.max_conductivity,
-            self.max_dli,
-            self.max_humidity,
-            self.max_CO2,
-            self.max_illuminance,
-            self.max_moisture,
-            self.max_temperature,
-            self.min_conductivity,
-            self.min_dli,
-            self.min_humidity,
-            self.min_CO2,
-            self.min_illuminance,
-            self.min_moisture,
-            self.min_temperature,
-            self.max_water_consumption,
-            self.min_water_consumption,
-            self.max_fertilizer_consumption,
-            self.min_fertilizer_consumption,
-            self.max_power_consumption,
-            self.min_power_consumption,
-            self.max_ph,  # Neue pH Entities
-            self.min_ph,
-        ]
-
-    @property
-    def meter_entities(self) -> list[Entity]:
-        """List all meter (sensor) entities"""
-        return [
-            self.sensor_conductivity,
-            self.sensor_humidity,
-            self.sensor_CO2,
-            self.sensor_illuminance,
-            self.sensor_moisture,
-            self.sensor_temperature,
-            self.sensor_power_consumption,
-            self.sensor_ph,  # pH-Sensor hinzufügen
-        ]
-
-    @property
-    def integral_entities(self) -> list(Entity):
-        """List all integral entities"""
-        return [
-            self.dli,
-            self.ppfd,
-            self.total_integral,
-            self.moisture_consumption,
-            self.fertilizer_consumption,
-        ]
-
-    def add_image(self, image_url: str | None) -> None:
-        """Set new entity_picture"""
-        self._attr_entity_picture = image_url
-        options = self._config.options.copy()
-        options[ATTR_ENTITY_PICTURE] = image_url
-        self._hass.config_entries.async_update_entry(self._config, options=options)
-
-    def add_strain(self, strain: Entity | None) -> None:
-        """Set new strain"""
-        self.pid = strain
-
-    def add_thresholds(
-        self,
-        max_moisture: Entity | None,
-        min_moisture: Entity | None,
-        max_temperature: Entity | None,
-        min_temperature: Entity | None,
-        max_conductivity: Entity | None,
-        min_conductivity: Entity | None,
-        max_illuminance: Entity | None,
-        min_illuminance: Entity | None,
-        max_humidity: Entity | None,
-        min_humidity: Entity | None,
-        max_CO2: Entity | None,
-        min_CO2: Entity | None,
-        max_dli: Entity | None,
-        min_dli: Entity | None,
-        max_water_consumption: Entity | None,
-        min_water_consumption: Entity | None,
-        max_fertilizer_consumption: Entity | None,
-        min_fertilizer_consumption: Entity | None,
-        max_power_consumption: Entity | None,
-        min_power_consumption: Entity | None,
-        max_ph: Entity | None,  # Neue Parameter
-        min_ph: Entity | None,
-    ) -> None:
-        """Add threshold entities to the plant"""
-        self.max_moisture = max_moisture
-        self.min_moisture = min_moisture
-        self.max_temperature = max_temperature
-        self.min_temperature = min_temperature
-        self.max_conductivity = max_conductivity
-        self.min_conductivity = min_conductivity
-        self.max_illuminance = max_illuminance
-        self.min_illuminance = min_illuminance
-        self.max_humidity = max_humidity
-        self.min_humidity = min_humidity
-        self.max_CO2 = max_CO2
-        self.min_CO2 = min_CO2
-        self.max_dli = max_dli
-        self.min_dli = min_dli
-        self.max_water_consumption = max_water_consumption
-        self.min_water_consumption = min_water_consumption
-        self.max_fertilizer_consumption = max_fertilizer_consumption
-        self.min_fertilizer_consumption = min_fertilizer_consumption
-        self.max_power_consumption = max_power_consumption
-        self.min_power_consumption = min_power_consumption
-        self.max_ph = max_ph  # Neue Zuweisungen
-        self.min_ph = min_ph
-
-    def add_sensors(
-        self,
-        moisture: Entity | None,
-        temperature: Entity | None,
-        conductivity: Entity | None,
-        illuminance: Entity | None,
-        humidity: Entity | None,
-        CO2: Entity | None,
-        power_consumption: Entity | None,
-        ph: Entity | None,  # Neuer Parameter
-    ) -> None:
-        """Add the sensor entities"""
-        self.sensor_moisture = moisture
-        self.sensor_temperature = temperature
-        self.sensor_conductivity = conductivity
-        self.sensor_illuminance = illuminance
-        self.sensor_humidity = humidity
-        self.sensor_CO2 = CO2
-        self.sensor_power_consumption = power_consumption
-        self.sensor_ph = ph  # Neue Zuweisung
-
-    def add_dli(
-        self,
-        dli: Entity | None,
-    ) -> None:
-        """Add the DLI-utility sensors"""
-        self.dli = dli
-        self.plant_complete = True
-
     def add_calculations(self, ppfd: Entity, total_integral: Entity, moisture_consumption: Entity, fertilizer_consumption: Entity) -> None:
-        """Add the intermediate calculation entities"""
-        self.ppfd = ppfd
-        self.total_integral = total_integral
         self.moisture_consumption = moisture_consumption
         self.fertilizer_consumption = fertilizer_consumption
 
