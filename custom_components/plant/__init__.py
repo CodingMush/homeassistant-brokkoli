@@ -723,7 +723,36 @@ async def ws_get_plant_info(
     except Exception as e:
         _LOGGER.error("Error getting plant info: %s", e)
         connection.send_error(msg["id"], "get_plant_info_failed", str(e))
+from datetime import date
 
+import async_timeout
+
+import homeassistant.core
+import voluptuous as vol
+
+from homeassistant.components.device_automation.exceptions import DeviceLookupError
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ( ATTR_MANUFACTURER,
+)
+from homeassistant.core import (
+    callback,
+)
+from homeassistant.helpers.dispatcher import ( async_dispatcher_send)
+from homeassistant.helpers.entity import ( Entity )
+import traceback
+
+
+FLOW_PLANT_INFO = 'PLANT'
+
+attr_value_tolerancy_percent= vol.Extra(float(min(2)), True,
+                                   errorMsg=
+                               )
+
+
+"""
+    This is the base class for all plant devices.
+    It provides the basic functionality for all plant devices.
+"""
 
 class PlantDevice(Entity):
     """Base device for plants"""
@@ -806,7 +835,14 @@ class PlantDevice(Entity):
         self.sensor_CO2 = None
         self.sensor_power_consumption = None
         self.sensor_ph = None  # Add pH sensor attribute
-
+        self.dli = None  # Add DLI sensor attribute
+        
+        # Initialize missing attributes
+        self.integral_entities = []  # Add integral_entities attribute
+        self.threshold_entities = []  # Add threshold_entities attribute
+        self.meter_entities = []  # Add meter_entities attribute
+        
+        # Initialize sensor status attributes
         # Initialize sensor status attributes
         self.conductivity_status = None
         self.illuminance_status = None
@@ -814,6 +850,10 @@ class PlantDevice(Entity):
         self.temperature_status = None
         self.humidity_status = None
         self.CO2_status = None
+        self.dli_status = None  # Add DLI status attribute
+        self.water_consumption_status = None  # Add water consumption status attribute
+        self.fertilizer_consumption_status = None  # Add fertilizer consumption status attribute
+        self.power_consumption_status = None  # Add power consumption status attribute
 
         # Add new attributes
         self.website = self._plant_info.get("website", "")
@@ -1351,39 +1391,31 @@ class PlantDevice(Entity):
         """Füge die Blütedauer Number Entity hinzu."""
         self.flowering_duration = flowering_duration
 
+    def add_sensors(self, **kwargs) -> None:
+        """Add sensor entities to the plant device."""
+        # Assign sensor entities
+        for key, value in kwargs.items():
+            setattr(self, f"sensor_{key}", value)
+        # Add to meter_entities list for device registry (only non-None sensors)
+        self.meter_entities.extend([value for value in kwargs.values() if value is not None])
+
+    def add_thresholds(self, **kwargs) -> None:
+        """Add threshold entities to the plant device."""
+        # Assign threshold entities
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        # Add to threshold_entities list for device registry
+        self.threshold_entities.extend(kwargs.values())
+
+    def add_dli(self, dli_sensor: Entity) -> None:
+        """Add DLI sensor to the plant device."""
+        self.dli = dli_sensor
+        # Add to integral_entities list for device registry
+        if dli_sensor not in self.integral_entities:
+            self.integral_entities.append(dli_sensor)
+
     def update(self) -> None:
         """Run on every update of the entities"""
-        new_state = STATE_OK
-        known_state = False
-
-        # Track which sensors have actual problems vs missing data
-        sensors_with_problems = []
-
-        # Tents don't have threshold checking, just monitor sensors
-        if self.device_type == DEVICE_TYPE_TENT:
-            # For tents, just mark all sensors as OK if they have values
-            if any([
-                self.sensor_temperature and self.sensor_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
-                self.sensor_humidity and self.sensor_humidity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
-                self.sensor_CO2 and self.sensor_CO2.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
-                self.sensor_illuminance and self.sensor_illuminance.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
-                self.sensor_conductivity and self.sensor_conductivity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
-                self.sensor_moisture and self.sensor_moisture.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
-                self.sensor_ph and self.sensor_ph.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
-                self.sensor_power_consumption and self.sensor_power_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None]
-            ]):
-                known_state = True
-                new_state = STATE_OK
-            else:
-                new_state = STATE_UNKNOWN
-                
-            self._attr_state = new_state
-            self.update_registry()
-            return
-
-        if self.device_type == DEVICE_TYPE_CYCLE:
-            # Cycle-Update-Logik
-            if self.sensor_temperature is not None:
                 temperature = self._median_sensors.get('temperature')
                 if temperature is not None and temperature not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None]:
                     known_state = True

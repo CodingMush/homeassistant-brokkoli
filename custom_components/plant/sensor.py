@@ -112,6 +112,16 @@ from .const import (
     DEFAULT_KWH_PRICE,
 )
 
+# Import sensor classes from plant_meters
+from .plant_meters import (
+    PlantCurrentTemperature,
+    PlantCurrentMoisture,
+    PlantCurrentConductivity,
+    PlantCurrentIlluminance,
+    PlantCurrentHumidity,
+    PlantCurrentCO2,
+)
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ):
