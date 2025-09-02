@@ -126,6 +126,7 @@ from .const import (
 )
 from .plant_helpers import PlantHelper
 from .services import async_setup_services, async_unload_services
+from .tent_integration import add_tent_attributes, is_plant_in_tent, get_tent_sensor_for_plant, extend_websocket_info_with_tent_data
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SELECT, Platform.TEXT]
@@ -830,6 +831,9 @@ class PlantDevice(Entity):
         self._median_sensors = {}
 
         self.cycle_select = None  # Neue Property
+        
+        # Tent Integration
+        add_tent_attributes(self)
 
         # Aggregationsmethode für flowering_duration
         self.flowering_duration_aggregation = (
@@ -1081,6 +1085,12 @@ class PlantDevice(Entity):
             "name": self.name,  # Füge den Namen hinzu
             "icon": self.icon,  # Füge das Icon hinzu
             "state": self.state,  # Füge den Zustand hinzu
+            
+            # Tent Integration
+            "tent": {
+                "tent_id": self.tent_id if hasattr(self, "tent_id") else None,
+                "tent_sensors": self.tent_sensors if hasattr(self, "tent_sensors") else {}
+            }
             
             # Ursprüngliche Sensor-Info beibehalten
             ATTR_TEMPERATURE: {

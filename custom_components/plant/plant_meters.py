@@ -116,6 +116,15 @@ class PlantCurrentStatus(RestoreSensor):
 
         self.async_write_ha_state()
 
+    def get_effective_sensor(self) -> str:
+        """Get the effective sensor entity ID, considering tent assignment."""
+        # If plant is in a tent and no external sensor is set, use tent sensor
+        if is_plant_in_tent(self._plantdevice) and self._external_sensor is None:
+            tent_sensor = get_tent_sensor_for_plant(self._plantdevice, self._sensor_type)
+            if tent_sensor:
+                return tent_sensor
+        return self._external_sensor
+
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
         await super().async_added_to_hass()
@@ -155,8 +164,9 @@ class PlantCurrentStatus(RestoreSensor):
         current_attrs = self.hass.states.get(self.entity_id).attributes
         if current_attrs.get("external_sensor") != self._external_sensor:
             self.replace_external_sensor(current_attrs.get("external_sensor"))
-        if self._external_sensor:
-            external_sensor = self.hass.states.get(self._external_sensor)
+        effective_sensor = self.get_effective_sensor()
+        if effective_sensor:
+            external_sensor = self.hass.states.get(effective_sensor)
             if external_sensor:
                 self._attr_native_value = external_sensor.state
                 self._attr_native_unit_of_measurement = external_sensor.attributes[

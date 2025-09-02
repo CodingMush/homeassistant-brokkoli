@@ -53,6 +53,8 @@ from .sensor_definitions import (
     SensorDefinitionMixin,
     get_sensor_definition,
 )
+from .tent_integration import is_plant_in_tent, get_tent_sensor_for_plant
+from .tent_integration import is_plant_in_tent, get_tent_sensor_for_plant
 from .const import (
     ATTR_CONDUCTIVITY,
     ATTR_DLI,
@@ -417,6 +419,15 @@ class PlantCurrentStatus(RestoreSensor):
 
         self.async_write_ha_state()
 
+    def get_effective_sensor(self) -> str:
+        """Get the effective sensor entity ID, considering tent assignment."""
+        # If plant is in a tent and no external sensor is set, use tent sensor
+        if is_plant_in_tent(self._plantdevice) and self._external_sensor is None:
+            tent_sensor = get_tent_sensor_for_plant(self._plantdevice, self._sensor_type)
+            if tent_sensor:
+                return tent_sensor
+        return self._external_sensor
+
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
         await super().async_added_to_hass()
@@ -459,8 +470,10 @@ class PlantCurrentStatus(RestoreSensor):
             ):
                 self._attr_icon = new_state.attributes[ATTR_ICON]
 
+        # Use effective sensor which considers tent assignment
+        effective_sensor = self.get_effective_sensor() if hasattr(self, "get_effective_sensor") else self.external_sensor
         if (
-            self.external_sensor
+            effective_sensor
             and new_state
             and new_state.state != STATE_UNKNOWN
             and new_state.state != STATE_UNAVAILABLE
@@ -475,9 +488,11 @@ class PlantCurrentStatus(RestoreSensor):
 
     async def async_update(self) -> None:
         """Set state and unit to the parent sensor state and unit"""
-        if self.external_sensor:
+        # Use effective sensor which considers tent assignment
+        effective_sensor = self.get_effective_sensor() if hasattr(self, "get_effective_sensor") else self.external_sensor
+        if effective_sensor:
             try:
-                state = self._hass.states.get(self.external_sensor)
+                state = self._hass.states.get(effective_sensor)
                 if state:
                     self._attr_native_value = float(state.state)
                     if ATTR_UNIT_OF_MEASUREMENT in state.attributes:
@@ -488,7 +503,7 @@ class PlantCurrentStatus(RestoreSensor):
                 _LOGGER.debug(
                     "Unknown external sensor for %s: %s, setting to default: %s",
                     self.entity_id,
-                    self.external_sensor,
+                    effective_sensor,
                     self._default_state,
                 )
                 self._attr_native_value = self._default_state
@@ -496,8 +511,8 @@ class PlantCurrentStatus(RestoreSensor):
                 _LOGGER.debug(
                     "Unknown external value for %s: %s = %s, setting to default: %s",
                     self.entity_id,
-                    self.external_sensor,
-                    self._hass.states.get(self.external_sensor).state,
+                    effective_sensor,
+                    self._hass.states.get(effective_sensor).state,
                     self._default_state,
                 )
                 self._attr_native_value = self._default_state
