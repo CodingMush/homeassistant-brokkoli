@@ -11,6 +11,16 @@ from plant.sensor import PlantCurrentStatus
 from plant.tent_integration import is_plant_in_tent
 
 
+# Create a test class that inherits from PlantCurrentStatus for testing
+class TestPlantCurrentStatus(PlantCurrentStatus):
+    """Test class for PlantCurrentStatus"""
+    
+    def __init__(self, hass, config, plantdevice):
+        """Initialize the test sensor"""
+        self._attr_name = f"{plantdevice.name} Test"
+        super().__init__(hass, config, plantdevice)
+
+
 def test_get_effective_sensor_uses_correct_attribute():
     """Test that get_effective_sensor uses the correct plant attribute."""
     # Create mock objects
@@ -19,9 +29,10 @@ def test_get_effective_sensor_uses_correct_attribute():
     mock_config.entry_id = "test_entry_id"
     mock_plant = MagicMock()
     mock_plant.entity_id = "plant.test_plant"
+    mock_plant.name = "Test Plant"
     
     # Create sensor
-    sensor = PlantCurrentStatus(mock_hass, mock_config, mock_plant)
+    sensor = TestPlantCurrentStatus(mock_hass, mock_config, mock_plant)
     sensor._sensor_type = "temperature"
     
     # Verify that the sensor has the correct attribute name
@@ -48,8 +59,9 @@ def test_sensor_inheritance_consistency():
     mock_config.entry_id = "test_entry_id"
     mock_plant = MagicMock()
     mock_plant.entity_id = "plant.test_plant"
+    mock_plant.name = "Test Plant"
     
-    sensor = PlantCurrentStatus(mock_hass, mock_config, mock_plant)
+    sensor = TestPlantCurrentStatus(mock_hass, mock_config, mock_plant)
     
     # Verify the attribute is set correctly
     assert sensor._plant == mock_plant

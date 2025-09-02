@@ -1665,68 +1665,65 @@ class PlantDevice(Entity):
                     else:
                         self.dli_status = STATE_OK
 
-        # Überprüfe Wasser-Verbrauch
-        if self.moisture_consumption is not None:
-            water_consumption = self.moisture_consumption.state
-            if water_consumption is not None and water_consumption != STATE_UNAVAILABLE and water_consumption != STATE_UNKNOWN:
-                known_state = True
-                # Add null checks for threshold entities
-                if self.min_water_consumption is not None and self.max_water_consumption is not None:
-                    if float(water_consumption) < float(self.min_water_consumption.state):
-                        self.water_consumption_status = STATE_LOW
-                        if self.water_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(water_consumption) > float(self.max_water_consumption.state):
-                        self.water_consumption_status = STATE_HIGH
-                        if self.water_consumption_trigger:
-                            new_state = STATE_PROBLEM
+            # Überprüfe Wasser-Verbrauch
+            if self.moisture_consumption is not None:
+                water_consumption = self.moisture_consumption.state
+                if water_consumption is not None and water_consumption != STATE_UNAVAILABLE and water_consumption != STATE_UNKNOWN:
+                    known_state = True
+                    # Add null checks for threshold entities
+                    if self.min_water_consumption is not None and self.max_water_consumption is not None:
+                        if float(water_consumption) < float(self.min_water_consumption.state):
+                            self.water_consumption_status = STATE_LOW
+                            if self.water_consumption_trigger:
+                                new_state = STATE_PROBLEM
+                        elif float(water_consumption) > float(self.max_water_consumption.state):
+                            self.water_consumption_status = STATE_HIGH
+                            if self.water_consumption_trigger:
+                                new_state = STATE_PROBLEM
+                        else:
+                            self.water_consumption_status = STATE_OK
                     else:
                         self.water_consumption_status = STATE_OK
-                else:
-                    self.water_consumption_status = STATE_OK
 
-        # Überprüfe Dünger-Verbrauch
-        if self.fertilizer_consumption is not None:
-            fertilizer_consumption = self.fertilizer_consumption.state
-            if fertilizer_consumption is not None and fertilizer_consumption != STATE_UNAVAILABLE and fertilizer_consumption != STATE_UNKNOWN:
-                known_state = True
-                # Add null checks for threshold entities
-                if self.min_fertilizer_consumption is not None and self.max_fertilizer_consumption is not None:
-                    if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
-                        self.fertilizer_consumption_status = STATE_LOW
-                        if self.fertilizer_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
-                        self.fertilizer_consumption_status = STATE_HIGH
-                        if self.fertilizer_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                        self.fertilizer_consumption_status = STATE_HIGH
-                        if self.fertilizer_consumption_trigger:
-                            new_state = STATE_PROBLEM
+            # Überprüfe Dünger-Verbrauch
+            if self.fertilizer_consumption is not None:
+                fertilizer_consumption = self.fertilizer_consumption.state
+                if fertilizer_consumption is not None and fertilizer_consumption != STATE_UNAVAILABLE and fertilizer_consumption != STATE_UNKNOWN:
+                    known_state = True
+                    # Add null checks for threshold entities
+                    if self.min_fertilizer_consumption is not None and self.max_fertilizer_consumption is not None:
+                        if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
+                            self.fertilizer_consumption_status = STATE_LOW
+                            if self.fertilizer_consumption_trigger:
+                                new_state = STATE_PROBLEM
+                        elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
+                            self.fertilizer_consumption_status = STATE_HIGH
+                            if self.fertilizer_consumption_trigger:
+                                new_state = STATE_PROBLEM
+                        else:
+                            self.fertilizer_consumption_status = STATE_OK
                     else:
                         self.fertilizer_consumption_status = STATE_OK
-                else:
-                    self.fertilizer_consumption_status = STATE_OK
 
-        # Überprüfe Power Consumption
-        if self.sensor_power_consumption is not None:
-            power_consumption = self.sensor_power_consumption.state
-            if power_consumption is not None and power_consumption != STATE_UNAVAILABLE and power_consumption != STATE_UNKNOWN:
-                known_state = True
-                # Add null checks for threshold entities
-                if self.min_power_consumption is not None and self.max_power_consumption is not None:
-                    if float(power_consumption) < float(self.min_power_consumption.state):
-                        self.power_consumption_status = STATE_LOW
-                        if self.power_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(power_consumption) > float(self.max_power_consumption.state):
-                        self.power_consumption_status = STATE_HIGH
-                        if self.power_consumption_trigger:
-                            new_state = STATE_PROBLEM
+            # Überprüfe Power Consumption
+            if self.sensor_power_consumption is not None:
+                power_consumption = self.sensor_power_consumption.state
+                if power_consumption is not None and power_consumption != STATE_UNAVAILABLE and power_consumption != STATE_UNKNOWN:
+                    known_state = True
+                    # Add null checks for threshold entities
+                    if self.min_power_consumption is not None and self.max_power_consumption is not None:
+                        if float(power_consumption) < float(self.min_power_consumption.state):
+                            self.power_consumption_status = STATE_LOW
+                            if self.power_consumption_trigger:
+                                new_state = STATE_PROBLEM
+                        elif float(power_consumption) > float(self.max_power_consumption.state):
+                            self.power_consumption_status = STATE_HIGH
+                            if self.power_consumption_trigger:
+                                new_state = STATE_PROBLEM
+                        else:
+                            self.power_consumption_status = STATE_OK
                     else:
                         self.power_consumption_status = STATE_OK
-                else:
-                    self.power_consumption_status = STATE_OK
 
         else:
             # Plant-Update-Logik
@@ -1888,13 +1885,6 @@ class PlantDevice(Entity):
                 fertilizer_consumption = self.fertilizer_consumption.state
                 if fertilizer_consumption is not None and fertilizer_consumption != STATE_UNAVAILABLE and fertilizer_consumption != STATE_UNKNOWN:
                     known_state = True
-                    # Add null checks for threshold entities
-                    if self.min_fertilizer_consumption is not None and self.max_fertilizer_consumption is not None:
-                        if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
-                            self.fertilizer_consumption_status = STATE_LOW
-                            if self.fertilizer_consumption_trigger:
-                                new_state = STATE_PROBLEM
-                        elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
                             self.fertilizer_consumption_status = STATE_HIGH
                             if self.fertilizer_consumption_trigger:
                                 new_state = STATE_PROBLEM

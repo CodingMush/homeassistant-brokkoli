@@ -87,6 +87,7 @@ from .const import (
     READING_MOISTURE_CONSUMPTION,
     READING_FERTILIZER_CONSUMPTION,
     UNIT_CONDUCTIVITY,
+    UNIT_DLI,
     UNIT_PPFD,
     UNIT_VOLUME,
     ATTR_IS_NEW_PLANT,
@@ -516,66 +517,14 @@ class PlantMinTemperature(PlantMinMax):
     default_value = DEFAULT_MIN_TEMPERATURE
 
 
-class PlantMaxIlluminance(PlantMinMax):
-    """Entity class for max illuminance threshold"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the component."""
-        self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_ILLUMINANCE}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
-            CONF_MAX_ILLUMINANCE, DEFAULT_MAX_ILLUMINANCE
-        )
-        self._attr_unique_id = f"{config.entry_id}-max-illuminance"
-        self._attr_native_unit_of_measurement = LIGHT_LUX
-        self._attr_native_max_value = 200000
-        self._attr_native_min_value = 0
-        self._attr_native_step = 500
-        
-        super().__init__(hass, config, plantdevice)
-
-    @property
-    def device_class(self):
-        return f"{SensorDeviceClass.ILLUMINANCE} threshold"
-
-    limit_key = CONF_MAX_ILLUMINANCE
-    default_value = DEFAULT_MAX_ILLUMINANCE
-
-
-class PlantMinIlluminance(PlantMinMax):
-    """Entity class for min illuminance threshold"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the component."""
-        self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_ILLUMINANCE}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
-            CONF_MIN_ILLUMINANCE, DEFAULT_MIN_ILLUMINANCE
-        )
-        self._attr_unique_id = f"{config.entry_id}-min-illuminance"
-        self._attr_native_unit_of_measurement = LIGHT_LUX
-        self._attr_native_max_value = 200000
-        self._attr_native_min_value = 0
-        self._attr_native_step = 500
-        
-        super().__init__(hass, config, plantdevice)
-
-    @property
-    def device_class(self):
-        return f"{SensorDeviceClass.ILLUMINANCE} threshold"
-
-    limit_key = CONF_MIN_ILLUMINANCE
-    default_value = DEFAULT_MIN_ILLUMINANCE
-
-
 class PlantMaxDli(PlantMinMax):
     """Entity class for max illuminance threshold"""
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_DLI}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_DLI, DEFAULT_MAX_DLI
         )
         self._attr_unique_id = f"{config.entry_id}-max-dli"
@@ -599,7 +548,9 @@ class PlantMinDli(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_DLI}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_DLI, DEFAULT_MIN_DLI
         )
         self._attr_unique_id = f"{config.entry_id}-min-dli"
@@ -623,7 +574,9 @@ class PlantMaxConductivity(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_CONDUCTIVITY}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_CONDUCTIVITY, DEFAULT_MAX_CONDUCTIVITY
         )
         self._attr_unique_id = f"{config.entry_id}-max-conductivity"
@@ -647,7 +600,9 @@ class PlantMinConductivity(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_CONDUCTIVITY}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_CONDUCTIVITY, DEFAULT_MIN_CONDUCTIVITY
         )
         self._attr_unique_id = f"{config.entry_id}-min-conductivity"
@@ -671,7 +626,9 @@ class PlantMaxHumidity(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_HUMIDITY}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_HUMIDITY, DEFAULT_MAX_HUMIDITY
         )
         self._attr_unique_id = f"{config.entry_id}-max-humidity"
@@ -695,7 +652,9 @@ class PlantMinHumidity(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_HUMIDITY}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_HUMIDITY, DEFAULT_MIN_HUMIDITY
         )
         self._attr_unique_id = f"{config.entry_id}-min-humidity"
@@ -718,7 +677,9 @@ class PlantMaxCO2(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_CO2}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_CO2, DEFAULT_MAX_CO2
         )
         self._attr_unique_id = f"{config.entry_id}-max-CO2"
@@ -742,7 +703,9 @@ class PlantMinCO2(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_CO2}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_CO2, DEFAULT_MIN_CO2
         )
         self._attr_unique_id = f"{config.entry_id}-min-CO2"
@@ -766,7 +729,9 @@ class PlantMaxWaterConsumption(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_MOISTURE_CONSUMPTION}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_WATER_CONSUMPTION, DEFAULT_MAX_WATER_CONSUMPTION
         )
         self._attr_unique_id = f"{config.entry_id}-max-water-consumption"
@@ -791,7 +756,9 @@ class PlantMinWaterConsumption(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_MOISTURE_CONSUMPTION}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_WATER_CONSUMPTION, DEFAULT_MIN_WATER_CONSUMPTION
         )
         self._attr_unique_id = f"{config.entry_id}-min-water-consumption"
@@ -816,14 +783,16 @@ class PlantMaxFertilizerConsumption(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_FERTILIZER_CONSUMPTION}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_FERTILIZER_CONSUMPTION, DEFAULT_MAX_FERTILIZER_CONSUMPTION
         )
         self._attr_unique_id = f"{config.entry_id}-max-fertilizer-consumption"
-        self._attr_native_unit_of_measurement = UNIT_CONDUCTIVITY
-        self._attr_native_max_value = 3000
+        self._attr_native_unit_of_measurement = UNIT_VOLUME
+        self._attr_native_max_value = 10
         self._attr_native_min_value = 0
-        self._attr_native_step = 50
+        self._attr_native_step = 0.1
         self._attr_icon = ICON_FERTILIZER_CONSUMPTION
         
         super().__init__(hass, config, plantdevice)
@@ -841,14 +810,16 @@ class PlantMinFertilizerConsumption(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_FERTILIZER_CONSUMPTION}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_FERTILIZER_CONSUMPTION, DEFAULT_MIN_FERTILIZER_CONSUMPTION
         )
         self._attr_unique_id = f"{config.entry_id}-min-fertilizer-consumption"
-        self._attr_native_unit_of_measurement = UNIT_CONDUCTIVITY
-        self._attr_native_max_value = 3000
+        self._attr_native_unit_of_measurement = UNIT_VOLUME
+        self._attr_native_max_value = 10
         self._attr_native_min_value = 0
-        self._attr_native_step = 50
+        self._attr_native_step = 0.1
         self._attr_icon = ICON_FERTILIZER_CONSUMPTION
         
         super().__init__(hass, config, plantdevice)
@@ -866,11 +837,13 @@ class PlantMaxPowerConsumption(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_POWER_CONSUMPTION}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_POWER_CONSUMPTION, DEFAULT_MAX_POWER_CONSUMPTION
         )
         self._attr_unique_id = f"{config.entry_id}-max-power-consumption"
-        self._attr_native_unit_of_measurement = "kWh"
+        self._attr_native_unit_of_measurement = "kW"
         self._attr_native_max_value = 10
         self._attr_native_min_value = 0
         self._attr_native_step = 0.1
@@ -891,11 +864,13 @@ class PlantMinPowerConsumption(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_POWER_CONSUMPTION}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_POWER_CONSUMPTION, DEFAULT_MIN_POWER_CONSUMPTION
         )
         self._attr_unique_id = f"{config.entry_id}-min-power-consumption"
-        self._attr_native_unit_of_measurement = "kWh"
+        self._attr_native_unit_of_measurement = "kW"
         self._attr_native_max_value = 10
         self._attr_native_min_value = 0
         self._attr_native_step = 0.1
@@ -916,13 +891,15 @@ class PlantMaxPh(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_PH}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_PH, DEFAULT_MAX_PH
         )
         self._attr_unique_id = f"{config.entry_id}-max-ph"
-        self._attr_native_unit_of_measurement = None  # pH hat keine Einheit
-        self._attr_native_max_value = 14.0  # Maximaler pH-Wert
-        self._attr_native_min_value = 0.0  # Minimaler pH-Wert
+        self._attr_native_unit_of_measurement = "pH"
+        self._attr_native_max_value = 14
+        self._attr_native_min_value = 0
         self._attr_native_step = 0.1
         self._attr_icon = ICON_PH
         
@@ -941,13 +918,15 @@ class PlantMinPh(PlantMinMax):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_PH}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_PH, DEFAULT_MIN_PH
         )
         self._attr_unique_id = f"{config.entry_id}-min-ph"
-        self._attr_native_unit_of_measurement = None  # pH hat keine Einheit
-        self._attr_native_max_value = 14.0  # Maximaler pH-Wert
-        self._attr_native_min_value = 0.0  # Minimaler pH-Wert
+        self._attr_native_unit_of_measurement = "pH"
+        self._attr_native_max_value = 14
+        self._attr_native_min_value = 0
         self._attr_native_step = 0.1
         self._attr_icon = ICON_PH
         
@@ -959,3 +938,111 @@ class PlantMinPh(PlantMinMax):
 
     limit_key = CONF_MIN_PH
     default_value = DEFAULT_MIN_PH
+
+
+class PlantMaxDli(PlantMinMax):
+    """Entity class for max DLI threshold"""
+
+    def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
+        self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_DLI}"
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
+            CONF_MAX_DLI, DEFAULT_MAX_DLI
+        )
+        self._attr_unique_id = f"{config.entry_id}-max-dli"
+        self._attr_native_unit_of_measurement = UNIT_DLI
+        self._attr_native_max_value = 50
+        self._attr_native_min_value = 0
+        self._attr_native_step = 1
+        self._attr_icon = ICON_DLI
+        
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self):
+        return "dli threshold"
+
+    limit_key = CONF_MAX_DLI
+    default_value = DEFAULT_MAX_DLI
+
+
+class PlantMinDli(PlantMinMax):
+    """Entity class for min DLI threshold"""
+
+    def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
+        self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_DLI}"
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
+            CONF_MIN_DLI, DEFAULT_MIN_DLI
+        )
+        self._attr_unique_id = f"{config.entry_id}-min-dli"
+        self._attr_native_unit_of_measurement = UNIT_DLI
+        self._attr_native_max_value = 50
+        self._attr_native_min_value = 0
+        self._attr_native_step = 1
+        self._attr_icon = ICON_DLI
+        
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self):
+        return "dli threshold"
+
+    limit_key = CONF_MIN_DLI
+    default_value = DEFAULT_MIN_DLI
+
+
+class PlantMaxIlluminance(PlantMinMax):
+    """Entity class for max illuminance threshold"""
+
+    def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
+        self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_ILLUMINANCE}"
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
+            CONF_MAX_ILLUMINANCE, DEFAULT_MAX_ILLUMINANCE
+        )
+        self._attr_unique_id = f"{config.entry_id}-max-illuminance"
+        self._attr_native_unit_of_measurement = LIGHT_LUX
+        self._attr_native_max_value = 200000
+        self._attr_native_min_value = 0
+        self._attr_native_step = 100
+        self._attr_icon = ICON_ILLUMINANCE
+        
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self):
+        return f"{SensorDeviceClass.ILLUMINANCE} threshold"
+
+    limit_key = CONF_MAX_ILLUMINANCE
+    default_value = DEFAULT_MAX_ILLUMINANCE
+
+
+class PlantMinIlluminance(PlantMinMax):
+    """Entity class for min illuminance threshold"""
+
+    def __init__(self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity) -> None:
+        self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_ILLUMINANCE}"
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
+            CONF_MIN_ILLUMINANCE, DEFAULT_MIN_ILLUMINANCE
+        )
+        self._attr_unique_id = f"{config.entry_id}-min-illuminance"
+        self._attr_native_unit_of_measurement = LIGHT_LUX
+        self._attr_native_max_value = 200000
+        self._attr_native_min_value = 0
+        self._attr_native_step = 100
+        self._attr_icon = ICON_ILLUMINANCE
+        
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self):
+        return f"{SensorDeviceClass.ILLUMINANCE} threshold"
+
+    limit_key = CONF_MIN_ILLUMINANCE
+    default_value = DEFAULT_MIN_ILLUMINANCE
