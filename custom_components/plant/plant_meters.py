@@ -62,27 +62,33 @@ from .const import (
     ICON_PH,
     ATTR_PH,
 )
+from .sensor_definitions import SensorDefinitionMixin
+from .tent_integration import is_plant_in_tent, get_tent_sensor_for_plant
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class PlantCurrentStatus(RestoreSensor):
+class PlantCurrentStatus(SensorDefinitionMixin, RestoreSensor):
     """Parent class for the meter classes below"""
 
     def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+        self, sensor_type: str, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
         """Initialize the Plant component."""
         self._hass = hass
         self._config = config
         self._default_state = 0
         self._plant = plantdevice
+        self._sensor_type = sensor_type.lower()
         # self._conf_check_days = self._plant.check_days
         self.entity_id = async_generate_entity_id(
             f"{DOMAIN}.{{}}", self.name, current_ids={}
         )
         if not self._attr_native_value or self._attr_native_value == STATE_UNKNOWN:
             self._attr_native_value = self._default_state
+            
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__(sensor_type, hass, config, plantdevice)
 
     @property
     def state_class(self):
@@ -162,7 +168,7 @@ class PlantCurrentStatus(RestoreSensor):
         if not self.hass.states.get(self.entity_id):
             return
         current_attrs = self.hass.states.get(self.entity_id).attributes
-        if current_attrs.get("external_sensor") != self._external_sensor:
+        if current_attrs.get("external_sensor") != self.external_sensor:
             self.replace_external_sensor(current_attrs.get("external_sensor"))
         effective_sensor = self.get_effective_sensor()
         if effective_sensor:
@@ -172,6 +178,9 @@ class PlantCurrentStatus(RestoreSensor):
                 self._attr_native_unit_of_measurement = external_sensor.attributes[
                     ATTR_UNIT_OF_MEASUREMENT
                 ]
+                # Apply rounding for display
+                if self._attr_native_value is not None:
+                    self._attr_native_value = self._round_value_for_display(self._attr_native_value)
             else:
                 self._attr_native_value = STATE_UNKNOWN
         else:
@@ -179,6 +188,46 @@ class PlantCurrentStatus(RestoreSensor):
 
         if self.state == STATE_UNKNOWN or self.state is None:
             return
+
+    async def async_update(self) -> None:
+        """Set state and unit to the parent sensor state and unit"""
+        effective_sensor = self.get_effective_sensor()
+        if effective_sensor:
+            try:
+                state = self._hass.states.get(effective_sensor)
+                if state:
+                    self._attr_native_value = float(state.state)
+                    if ATTR_UNIT_OF_MEASUREMENT in state.attributes:
+                        self._attr_native_unit_of_measurement = state.attributes[
+                            ATTR_UNIT_OF_MEASUREMENT
+                        ]
+                    # Apply rounding for display
+                    if self._attr_native_value is not None:
+                        self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+            except AttributeError:
+                _LOGGER.debug(
+                    "Unknown external sensor for %s: %s, setting to default: %s",
+                    self.entity_id,
+                    effective_sensor,
+                    self._default_state,
+                )
+                self._attr_native_value = self._default_state
+            except ValueError:
+                _LOGGER.debug(
+                    "Unknown external value for %s: %s = %s, setting to default: %s",
+                    self.entity_id,
+                    effective_sensor,
+                    self._hass.states.get(effective_sensor).state,
+                    self._default_state,
+                )
+                self._attr_native_value = self._default_state
+        else:
+            _LOGGER.debug(
+                "External sensor not set for %s, setting to default: %s",
+                self.entity_id,
+                self._default_state,
+            )
+            self._attr_native_value = self._default_state
 
 
 class PlantCurrentIlluminance(PlantCurrentStatus):
@@ -201,7 +250,7 @@ class PlantCurrentIlluminance(PlantCurrentStatus):
         _LOGGER.info(
             "Added external sensor for %s %s", self.entity_id, self._external_sensor
         )
-        super().__init__(hass, config, plantdevice)
+        super().__init__("illuminance", hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:
@@ -226,7 +275,7 @@ class PlantCurrentConductivity(PlantCurrentStatus):
         )
         self._attr_native_unit_of_measurement = UnitOfConductivity.MICROSIEMENS_PER_CM
 
-        super().__init__(hass, config, plantdevice)
+        super().__init__("conductivity", hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:
@@ -249,7 +298,7 @@ class PlantCurrentMoisture(PlantCurrentStatus):
         self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_icon = "mdi:water"
 
-        super().__init__(hass, config, plantdevice)
+        super().__init__("moisture", hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:
@@ -274,7 +323,7 @@ class PlantCurrentTemperature(PlantCurrentStatus):
         )
         self._attr_icon = "mdi:thermometer"
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        super().__init__(hass, config, plantdevice)
+        super().__init__("temperature", hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:
@@ -296,7 +345,7 @@ class PlantCurrentHumidity(PlantCurrentStatus):
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
         self._attr_icon = "mdi:water-percent"
         self._attr_native_unit_of_measurement = PERCENTAGE
-        super().__init__(hass, config, plantdevice)
+        super().__init__("humidity", hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:
@@ -317,7 +366,7 @@ class PlantCurrentCO2(PlantCurrentStatus):
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2)
         self._attr_icon = "mdi:molecule-co2"
         self._attr_native_unit_of_measurement = "ppm"
-        super().__init__(hass, config, plantdevice)
+        super().__init__("co2", hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:

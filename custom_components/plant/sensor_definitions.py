@@ -72,8 +72,8 @@ SENSOR_DEFINITIONS = {
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=None,
         unit_of_measurement=PERCENTAGE,
-        display_precision=0,  # No decimal places for humidity
-        calculation_precision=1,
+        display_precision=1,  # No decimal places for humidity
+        calculation_precision=2,
         min_value=0.0,
         max_value=100.0,
         step=1.0,
@@ -552,7 +552,6 @@ class SensorDefinitionMixin:
     
     def __init__(self, sensor_type: str, *args, **kwargs):
         """Initialize with sensor type definition."""
-        super().__init__(*args, **kwargs)
         self._sensor_type = sensor_type.lower()
         
         # Apply sensor definition

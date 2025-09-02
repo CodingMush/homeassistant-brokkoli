@@ -353,24 +353,27 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-class PlantCurrentStatus(RestoreSensor):
+class PlantCurrentStatus(SensorDefinitionMixin, RestoreSensor):
     """Base device for plants"""
 
     def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+        self, sensor_type: str, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
         """Initialize the Plant component."""
-        super().__init__()
         self._hass = hass
         self._config = config
         self._default_state = 0
         self._plant = plantdevice
+        self._sensor_type = sensor_type.lower()
         self._external_sensor = None  # Initialize external sensor
         self.entity_id = async_generate_entity_id(
             f"{DOMAIN}.{{}}", self.name, current_ids={}
         )
         if not self._attr_native_value or self._attr_native_value == STATE_UNKNOWN:
             self._attr_native_value = self._default_state
+        
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__(sensor_type, hass, config, plantdevice)
 
     @property
     def state_class(self):
@@ -525,7 +528,110 @@ class PlantCurrentStatus(RestoreSensor):
             self._attr_native_value = self._default_state
 
 
-class PlantCurrentIlluminance(SensorDefinitionMixin, PlantCurrentStatus):
+class PlantCurrentHumidity(PlantCurrentStatus):
+    """Entity class for the current humidity meter"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_HUMIDITY}"
+        self._attr_unique_id = f"{config.entry_id}-current-humidity"
+        self._attr_has_entity_name = False
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("humidity", hass, config, plantdevice)
+
+    def state_changed(self, entity_id, new_state):
+        """Override to apply rounding to humidity values."""
+        super().state_changed(entity_id, new_state)
+        # Round humidity values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+    async def async_update(self) -> None:
+        """Update the sensor with proper rounding."""
+        await super().async_update()
+        # Round humidity values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+
+class PlantCurrentCO2(PlantCurrentStatus):
+    """Entity class for the current CO2 meter"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_CO2}"
+        self._attr_unique_id = f"{config.entry_id}-current-CO2"
+        self._attr_has_entity_name = False
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2)
+        self._attr_icon = ICON_CO2
+        self._attr_native_unit_of_measurement = "ppm"
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("co2", hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return SensorDeviceClass.CO2
+
+    def state_changed(self, entity_id, new_state):
+        """Override to apply rounding to CO2 values."""
+        super().state_changed(entity_id, new_state)
+        # Round CO2 values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+    async def async_update(self) -> None:
+        """Update the sensor with proper rounding."""
+        await super().async_update()
+        # Round CO2 values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+
+class PlantCurrentTemperature(PlantCurrentStatus):
+    """Entity class for the current temperature meter"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_TEMPERATURE}"
+        self._attr_unique_id = f"{config.entry_id}-current-temperature"
+        self._attr_has_entity_name = False
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
+            FLOW_SENSOR_TEMPERATURE
+        )
+        self._attr_icon = ICON_TEMPERATURE
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("temperature", hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return SensorDeviceClass.TEMPERATURE
+
+    def state_changed(self, entity_id, new_state):
+        """Override to apply rounding to temperature values."""
+        super().state_changed(entity_id, new_state)
+        # Round temperature values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+    async def async_update(self) -> None:
+        """Update the sensor with proper rounding."""
+        await super().async_update()
+        # Round temperature values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+
+class PlantCurrentIlluminance(PlantCurrentStatus):
     """Entity class for the current illuminance meter"""
 
     def __init__(
@@ -556,6 +662,60 @@ class PlantCurrentIlluminance(SensorDefinitionMixin, PlantCurrentStatus):
             self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
 
+class PlantCurrentPh(PlantCurrentStatus):
+    """Entity class for the current pH meter"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_PH}"
+        self._attr_unique_id = f"{config.entry_id}-current-ph"
+        self._attr_has_entity_name = False
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_PH)
+        self._attr_icon = ICON_PH
+        self._attr_native_unit_of_measurement = None  # pH hat keine Einheit
+        self._default_state = 7.0  # Neutraler pH-Wert als Default
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("ph", hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return DEVICE_CLASS_PH  # Verwende unsere eigene Device Class
+
+    def state_changed(self, entity_id, new_state):
+        """Override to apply rounding to pH values."""
+        super().state_changed(entity_id, new_state)
+        # Round pH values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+    async def async_update(self) -> None:
+        """Update the sensor with proper rounding."""
+        await super().async_update()
+        # Round pH values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+    async def set_manual_value(self, value: float) -> None:
+        """Set a manual pH measurement (0-14)."""
+        try:
+            if value is None:
+                return
+            # clamp plausible pH range
+            if value < 0:
+                value = 0
+            if value > 14:
+                value = 14
+            self._attr_native_value = float(value)
+            # Round pH values using sensor definition
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+            self.async_write_ha_state()
+        except (TypeError, ValueError):
+            return
+
+
 class PlantCurrentConductivity(PlantCurrentStatus):
     """Entity class for the current conductivity meter"""
 
@@ -578,7 +738,8 @@ class PlantCurrentConductivity(PlantCurrentStatus):
             ATTR_NORMALIZE_MOISTURE, False
         )
 
-        super().__init__(hass, config, plantdevice)
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("conductivity", hass, config, plantdevice)
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -630,6 +791,17 @@ class PlantCurrentConductivity(PlantCurrentStatus):
                     self._attr_native_value = round(normalized, 1)
                 except (ValueError, TypeError):
                     pass
+        
+        # Round conductivity values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+    def state_changed(self, entity_id, new_state):
+        """Override to apply rounding to conductivity values."""
+        super().state_changed(entity_id, new_state)
+        # Round conductivity values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
     @property
     def device_class(self) -> str:
@@ -663,7 +835,8 @@ class PlantCurrentMoisture(PlantCurrentStatus):
 
         self._raw_value = None  # Initialisiere _raw_value
         self._normalize_factor = None  # Initialisiere normalize_factor
-        super().__init__(hass, config, plantdevice)
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("moisture", hass, config, plantdevice)
 
         self._normalize = config.data[FLOW_PLANT_INFO].get(
             ATTR_NORMALIZE_MOISTURE, False
@@ -792,84 +965,22 @@ class PlantCurrentMoisture(PlantCurrentStatus):
                 self._attr_native_value = round(normalized, 1)
             except (ValueError, TypeError):
                 pass
+        
+        # Round moisture values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+    def state_changed(self, entity_id, new_state):
+        """Override to apply rounding to moisture values."""
+        super().state_changed(entity_id, new_state)
+        # Round moisture values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
     @property
     def device_class(self) -> str:
         """Device class"""
         return ATTR_MOISTURE
-
-
-class PlantCurrentTemperature(PlantCurrentStatus):
-    """Entity class for the current temperature meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_TEMPERATURE}"
-        self._attr_unique_id = f"{config.entry_id}-current-temperature"
-        self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
-            FLOW_SENSOR_TEMPERATURE
-        )
-        self._attr_icon = ICON_TEMPERATURE
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        super().__init__(hass, config, plantdevice)
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.TEMPERATURE
-
-
-class PlantCurrentHumidity(SensorDefinitionMixin, PlantCurrentStatus):
-    """Entity class for the current humidity meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_HUMIDITY}"
-        self._attr_unique_id = f"{config.entry_id}-current-humidity"
-        self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
-        # Initialize with sensor definition (automatically sets precision, device class, etc.)
-        super().__init__("humidity", hass, config, plantdevice)
-
-    def state_changed(self, entity_id, new_state):
-        """Override to apply rounding to humidity values."""
-        super().state_changed(entity_id, new_state)
-        # Round humidity values using sensor definition
-        if self._attr_native_value is not None:
-            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
-
-    async def async_update(self) -> None:
-        """Update the sensor with proper rounding."""
-        await super().async_update()
-        # Round humidity values using sensor definition
-        if self._attr_native_value is not None:
-            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
-
-
-class PlantCurrentCO2(PlantCurrentStatus):
-    """Entity class for the current CO2 meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_CO2}"
-        self._attr_unique_id = f"{config.entry_id}-current-CO2"
-        self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2)
-        self._attr_icon = ICON_CO2
-        self._attr_native_unit_of_measurement = "ppm"
-        super().__init__(hass, config, plantdevice)
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.CO2
 
 
 class PlantCurrentPpfd(PlantCurrentStatus):
@@ -884,12 +995,11 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         self._attr_has_entity_name = False
         self._attr_unit_of_measurement = UNIT_PPFD
         self._attr_native_unit_of_measurement = UNIT_PPFD
-        # Set precision for PPFD (1 decimal place)
-        self._attr_suggested_display_precision = 1
         self._plant = plantdevice
         self._external_sensor = self._plant.sensor_illuminance.entity_id
         self._attr_icon = ICON_PPFD
-        super().__init__(hass, config, plantdevice)
+        # Initialize with sensor definition (automatically sets precision, device class, etc.)
+        super().__init__("ppfd", hass, config, plantdevice)
         self._follow_unit = False
         self.entity_id = async_generate_entity_id(
             f"{DOMAIN_SENSOR}.{{}}", self.name, current_ids={}
@@ -923,8 +1033,7 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         """
         if value is not None and value != STATE_UNAVAILABLE and value != STATE_UNKNOWN:
             ppfd_value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
-            # Round PPFD to 1 decimal place for display
-            return round(ppfd_value, 1)
+            return ppfd_value
         else:
             return None
 
@@ -942,6 +1051,10 @@ class PlantCurrentPpfd(PlantCurrentStatus):
                 self._attr_native_value = None
         else:
             self._attr_native_value = None
+        
+        # Round PPFD values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
 
     @callback
     def state_changed(self, entity_id: str, new_state: str) -> None:
@@ -958,6 +1071,14 @@ class PlantCurrentPpfd(PlantCurrentStatus):
                 self._attr_native_value = None
         else:
             self._attr_native_value = None
+        
+        # Round PPFD values using sensor definition
+        if self._attr_native_value is not None:
+            self._attr_native_value = self._round_value_for_display(self._attr_native_value)
+
+    def _unit(self, source_unit: str) -> str:
+        """Override unit"""
+        return UNIT_PPFD  # Benutze immer PPFD als Einheit
 
 
 class PlantTotalLightIntegral(IntegrationSensor):

@@ -2151,18 +2151,11 @@ class PlantDevice(Entity):
                     else:
                         value = sorted_values[n//2]
 
-                # Runde die Werte entsprechend ihres Typs
-                if sensor_type == "total_integral":
-                    self._median_sensors[sensor_type] = round(value, 6)  # 6 Nachkommastellen wie bei Plant
-                elif sensor_type in ["ppfd", "dli"]:
-                    self._median_sensors[sensor_type] = round(value, 1)  # 1 Nachkommastelle für PPFD/DLI
-                elif sensor_type in ["temperature", "moisture", "moisture_consumption"]:
-                    self._median_sensors[sensor_type] = round(value, 1)  # 1 Nachkommastelle
-                elif sensor_type in ["humidity", "illuminance", "CO2", "conductivity"]:
-                    self._median_sensors[sensor_type] = round(value)  # Keine Nachkommastellen für Lux und Luftfeuchtigkeit
-                else:  # fertilizer_consumption, power_consumption etc.
-                    self._median_sensors[sensor_type] = round(value, 2)  # 2 Nachkommastellen für Verbrauchswerte
-
+                # Runde die Werte entsprechend den Sensor-Definitionen
+                from .sensor_definitions import round_sensor_value
+                rounded_value = round_sensor_value(value, sensor_type, for_display=True)
+                self._median_sensors[sensor_type] = rounded_value if rounded_value is not None else value
+                # Entfernt: Alte manuelle Rundungslogik
     def _update_cycle_attributes(self) -> None:
         """Update cycle attributes based on member plants."""
         if self.device_type != DEVICE_TYPE_CYCLE:

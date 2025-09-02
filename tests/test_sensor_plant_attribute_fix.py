@@ -18,7 +18,7 @@ class TestPlantCurrentStatus(PlantCurrentStatus):
     def __init__(self, hass, config, plantdevice):
         """Initialize the test sensor"""
         self._attr_name = f"{plantdevice.name} Test"
-        super().__init__(hass, config, plantdevice)
+        super().__init__("test", hass, config, plantdevice)
 
 
 def test_get_effective_sensor_uses_correct_attribute():

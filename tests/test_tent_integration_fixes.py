@@ -122,7 +122,7 @@ def test_plant_current_status_get_effective_sensor():
     class TestSensor(PlantCurrentStatus):
         def __init__(self, hass, config, plantdevice):
             self._attr_name = f"{plantdevice.name} Test"
-            super().__init__(hass, config, plantdevice)
+            super().__init__("test", hass, config, plantdevice)
     
     # Create sensor
     sensor = TestSensor(mock_hass, mock_config, mock_plant)
