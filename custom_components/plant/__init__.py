@@ -2043,7 +2043,7 @@ class PlantDevice(Entity):
                 )
 
     def _update_median_sensors(self) -> None:
-        """Aktualisiere die Median-Werte für alle Sensoren."""
+        """Calculate median values for all sensors in the tent."""
         if not self._member_plants:
             return
 
@@ -2155,7 +2155,7 @@ class PlantDevice(Entity):
                 from .sensor_definitions import round_sensor_value
                 rounded_value = round_sensor_value(value, sensor_type, for_display=True)
                 self._median_sensors[sensor_type] = rounded_value if rounded_value is not None else value
-                # Entfernt: Alte manuelle Rundungslogik
+
     def _update_cycle_attributes(self) -> None:
         """Update cycle attributes based on member plants."""
         if self.device_type != DEVICE_TYPE_CYCLE:
