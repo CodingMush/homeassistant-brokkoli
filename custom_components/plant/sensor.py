@@ -104,20 +104,12 @@ from .const import (
     # Tent-specific imports
     ATTR_TENT_ASSIGNMENT,
     ATTR_ENVIRONMENTAL_SENSORS,
-)
-
     ICON_PPFD,
     ICON_DLI,
     ICON_WATER_CONSUMPTION,
     ICON_FERTILIZER_CONSUMPTION,
     ATTR_KWH_PRICE,
     DEFAULT_KWH_PRICE,
-    READING_ENERGY_COST,
-    ICON_ENERGY_COST,
-    DEVICE_CLASS_PH,  # Importiere unsere eigene Device Class
-    # Tent-specific imports
-    ATTR_TENT_ASSIGNMENT,
-    ATTR_ENVIRONMENTAL_SENSORS,
 )
 
 async def async_setup_entry(
