@@ -1090,7 +1090,7 @@ class PlantDevice(Entity):
             "tent": {
                 "tent_id": self.tent_id if hasattr(self, "tent_id") else None,
                 "tent_sensors": self.tent_sensors if hasattr(self, "tent_sensors") else {}
-            }
+            },
             
             # Ursprüngliche Sensor-Info beibehalten
             ATTR_TEMPERATURE: {

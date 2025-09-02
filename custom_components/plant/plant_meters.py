@@ -30,7 +30,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
 from homeassistant.helpers.event import async_track_state_change_event
-from homeassistant.util import dt_util
+from homeassistant.util.dt import as_local
 
 from .const import (
     ATTR_CONDUCTIVITY,
