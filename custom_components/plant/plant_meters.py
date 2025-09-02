@@ -119,8 +119,8 @@ class PlantCurrentStatus(RestoreSensor):
     def get_effective_sensor(self) -> str:
         """Get the effective sensor entity ID, considering tent assignment."""
         # If plant is in a tent and no external sensor is set, use tent sensor
-        if is_plant_in_tent(self._plantdevice) and self._external_sensor is None:
-            tent_sensor = get_tent_sensor_for_plant(self._plantdevice, self._sensor_type)
+        if is_plant_in_tent(self._plant) and self._external_sensor is None:
+            tent_sensor = get_tent_sensor_for_plant(self._plant, self._sensor_type)
             if tent_sensor:
                 return tent_sensor
         return self._external_sensor

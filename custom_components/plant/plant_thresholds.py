@@ -261,7 +261,9 @@ class PlantMaxMoisture(PlantMinMax):
     ) -> None:
         """Initialize the component."""
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_MOISTURE}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_MOISTURE, DEFAULT_MAX_MOISTURE
         )
         self._attr_unique_id = f"{config.entry_id}-max-moisture"
@@ -289,7 +291,9 @@ class PlantMinMoisture(PlantMinMax):
     ) -> None:
         """Initialize the Plant component."""
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_MOISTURE}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_MOISTURE, DEFAULT_MIN_MOISTURE
         )
         self._attr_unique_id = f"{config.entry_id}-min-moisture"
@@ -318,7 +322,9 @@ class PlantMaxTemperature(PlantMinMax):
         
         # Dann können wir auf self._hass zugreifen
         self._attr_name = f"{plantdevice.name} {ATTR_MAX} {READING_TEMPERATURE}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MAX_TEMPERATURE, DEFAULT_MAX_TEMPERATURE
         )
         self._attr_unique_id = f"{config.entry_id}-max-temperature"
@@ -417,7 +423,9 @@ class PlantMinTemperature(PlantMinMax):
         
         # Dann können wir auf self._hass zugreifen
         self._attr_name = f"{plantdevice.name} {ATTR_MIN} {READING_TEMPERATURE}"
-        self._attr_native_value = config.data[FLOW_PLANT_INFO][FLOW_PLANT_LIMITS].get(
+        # Fix KeyError: 'limits' by providing a default empty dict if FLOW_PLANT_LIMITS is missing
+        limits = config.data.get(FLOW_PLANT_INFO, {}).get(FLOW_PLANT_LIMITS, {})
+        self._attr_native_value = limits.get(
             CONF_MIN_TEMPERATURE, DEFAULT_MIN_TEMPERATURE
         )
         self._attr_unique_id = f"{config.entry_id}-min-temperature"

@@ -770,6 +770,10 @@ class PlantDevice(Entity):
         self.max_power_consumption = None
         self.min_power_consumption = None
 
+        # Neue pH Attribute
+        self.max_ph = None
+        self.min_ph = None
+
         self.sensor_moisture = None
         self.sensor_temperature = None
         self.sensor_conductivity = None
