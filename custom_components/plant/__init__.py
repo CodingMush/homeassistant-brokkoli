@@ -288,6 +288,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+    return True
+
+
 async def _plant_add_to_device_registry(
     hass: HomeAssistant, plant_entities: list[Entity], device_id: str
 ) -> None:
@@ -730,7 +733,7 @@ import async_timeout
 import homeassistant.core
 import voluptuous as vol
 
-from homeassistant.components.device_automation.exceptions import DeviceLookupError
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ( ATTR_MANUFACTURER,
 )
@@ -741,18 +744,6 @@ from homeassistant.helpers.dispatcher import ( async_dispatcher_send)
 from homeassistant.helpers.entity import ( Entity )
 import traceback
 
-
-FLOW_PLANT_INFO = 'PLANT'
-
-attr_value_tolerancy_percent= vol.Extra(float(min(2)), True,
-                                   errorMsg=
-                               )
-
-
-"""
-    This is the base class for all plant devices.
-    It provides the basic functionality for all plant devices.
-"""
 
 class PlantDevice(Entity):
     """Base device for plants"""
@@ -842,7 +833,6 @@ class PlantDevice(Entity):
         self.threshold_entities = []  # Add threshold_entities attribute
         self.meter_entities = []  # Add meter_entities attribute
         
-        # Initialize sensor status attributes
         # Initialize sensor status attributes
         self.conductivity_status = None
         self.illuminance_status = None
@@ -1416,6 +1406,37 @@ class PlantDevice(Entity):
 
     def update(self) -> None:
         """Run on every update of the entities"""
+        new_state = STATE_OK
+        known_state = False
+
+        # Track which sensors have actual problems vs missing data
+        sensors_with_problems = []
+
+        # Tents don't have threshold checking, just monitor sensors
+        if self.device_type == DEVICE_TYPE_TENT:
+            # For tents, just mark all sensors as OK if they have values
+            if any([
+                self.sensor_temperature and self.sensor_temperature.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_humidity and self.sensor_humidity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_CO2 and self.sensor_CO2.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_illuminance and self.sensor_illuminance.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_conductivity and self.sensor_conductivity.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_moisture and self.sensor_moisture.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_ph and self.sensor_ph.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None],
+                self.sensor_power_consumption and self.sensor_power_consumption.state not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None]
+            ]):
+                known_state = True
+                new_state = STATE_OK
+            else:
+                new_state = STATE_UNKNOWN
+                
+            self._attr_state = new_state
+            self.update_registry()
+            return
+
+        if self.device_type == DEVICE_TYPE_CYCLE:
+            # Cycle-Update-Logik
+            if self.sensor_temperature is not None:
                 temperature = self._median_sensors.get('temperature')
                 if temperature is not None and temperature not in [STATE_UNAVAILABLE, STATE_UNKNOWN, None]:
                     known_state = True
