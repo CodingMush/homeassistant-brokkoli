@@ -324,6 +324,7 @@ SERVICE_CREATE_PLANT = "create_plant"
 # Neue Konstanten für Device Types
 DEVICE_TYPE_PLANT = "plant"
 DEVICE_TYPE_CYCLE = "cycle"
+DEVICE_TYPE_CONFIG = "config"
 
 # Aggregation methods
 AGGREGATION_MEDIAN = "median"
