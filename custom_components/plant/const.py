@@ -304,6 +304,7 @@ ATTR_SMELL = "smell"
 ATTR_TASTE = "taste"
 ATTR_LINEAGE = "lineage"
 ATTR_TYPE = "type"  # Replaces "sorte" for consistency
+ATTR_WATER_CAPACITY = "water_capacity"
 
 # Benutzerdefinierte Pflanzenattribute
 ATTR_PHENOTYPE = "phenotype"
@@ -325,6 +326,12 @@ SERVICE_CREATE_PLANT = "create_plant"
 DEVICE_TYPE_PLANT = "plant"
 DEVICE_TYPE_CYCLE = "cycle"
 DEVICE_TYPE_CONFIG = "config"
+
+DEVICE_TYPES = (
+    DEVICE_TYPE_PLANT,
+    DEVICE_TYPE_CYCLE,
+    DEVICE_TYPE_CONFIG,
+)
 
 # Aggregation methods
 AGGREGATION_MEDIAN = "median"
@@ -367,6 +374,7 @@ DEFAULT_AGGREGATIONS = {
 
 # Pot size
 DEFAULT_POT_SIZE = 12
+DEFAULT_WATER_CAPACITY = 10
 
 # Default configuration constants
 CONF_DEFAULT_MAX_MOISTURE = "default_max_moisture"
@@ -389,6 +397,8 @@ CONF_DEFAULT_MAX_FERTILIZER_CONSUMPTION = "default_max_fertilizer_consumption"
 CONF_DEFAULT_MIN_FERTILIZER_CONSUMPTION = "default_min_fertilizer_consumption"
 CONF_DEFAULT_MAX_POWER_CONSUMPTION = "default_max_power_consumption"
 CONF_DEFAULT_MIN_POWER_CONSUMPTION = "default_min_power_consumption"
+CONF_DEFAULT_MAX_PH = "default_max_ph"
+CONF_DEFAULT_MIN_PH = "default_min_ph"
 
 # Aggregation configuration
 CONF_AGGREGATION = "aggregation"
