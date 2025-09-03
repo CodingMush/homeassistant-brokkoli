@@ -1,0 +1,2 @@
+# Requirements for Brokkoli Plant Manager integration
+async-timeout>=4.0.2
