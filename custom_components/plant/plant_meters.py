@@ -30,7 +30,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
 from homeassistant.helpers.event import async_track_state_change_event
-from homeassistant.util import dt_util
 
 from .const import (
     ATTR_CONDUCTIVITY,
@@ -77,6 +76,7 @@ class PlantCurrentStatus(RestoreSensor):
         self._config = config
         self._default_state = 0
         self._plant = plantdevice
+        self._external_sensor = None  # Initialize the external sensor attribute
         # self._conf_check_days = self._plant.check_days
         self.entity_id = async_generate_entity_id(
             f"{DOMAIN}.{{}}", self.name, current_ids={}
@@ -99,6 +99,13 @@ class PlantCurrentStatus(RestoreSensor):
             return attributes
 
     @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    @property
     def external_sensor(self) -> str:
         """The external sensor we are tracking"""
         return self._external_sensor
@@ -108,9 +115,15 @@ class PlantCurrentStatus(RestoreSensor):
         _LOGGER.info("Setting %s external sensor to %s", self.entity_id, new_sensor)
         # pylint: disable=attribute-defined-outside-init
         self._external_sensor = new_sensor
+        
+        # Create tracker list, excluding None values
+        tracker = [self.entity_id]
+        if self._external_sensor:
+            tracker.append(self._external_sensor)
+            
         async_track_state_change_event(
             self._hass,
-            list([self.entity_id, self._external_sensor]),
+            tracker,
             self._state_changed_event,
         )
 
@@ -158,14 +171,18 @@ class PlantCurrentStatus(RestoreSensor):
         if self._external_sensor:
             external_sensor = self.hass.states.get(self._external_sensor)
             if external_sensor:
-                self._attr_native_value = external_sensor.state
+                # For numeric sensors, convert STATE_UNKNOWN and STATE_UNAVAILABLE to None
+                if external_sensor.state in [STATE_UNKNOWN, STATE_UNAVAILABLE]:
+                    self._attr_native_value = None
+                else:
+                    self._attr_native_value = external_sensor.state
                 self._attr_native_unit_of_measurement = external_sensor.attributes[
                     ATTR_UNIT_OF_MEASUREMENT
                 ]
             else:
-                self._attr_native_value = STATE_UNKNOWN
+                self._attr_native_value = None
         else:
-            self._attr_native_value = STATE_UNKNOWN
+            self._attr_native_value = None
 
         if self.state == STATE_UNKNOWN or self.state is None:
             return

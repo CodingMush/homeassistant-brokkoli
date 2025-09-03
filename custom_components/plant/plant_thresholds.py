@@ -167,6 +167,13 @@ class PlantMinMax(RestoreNumber):
         """The entity category"""
         return EntityCategory.CONFIG
 
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
     # @property
     # def unit_of_measurement(self) -> str | None:
     #     """The unit of measurement"""
