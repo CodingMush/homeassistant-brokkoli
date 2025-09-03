@@ -62,6 +62,8 @@ from .const import (
     ICON_PH,
     ATTR_PH,
 )
+# Import the centralized sensor configuration
+from .sensor_config import get_sensor_definition
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -178,11 +180,13 @@ class PlantCurrentIlluminance(PlantCurrentStatus):
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
         """Initialize the sensor"""
+        # Get sensor definition from centralized configuration
+        sensor_def = get_sensor_definition("illuminance")
         self._attr_name = (
-            f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_ILLUMINANCE}"
+            f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {sensor_def['name']}"
         )
         self._attr_unique_id = f"{config.entry_id}-current-illuminance"
-        self._attr_icon = "mdi:brightness-6"
+        self._attr_icon = sensor_def["icon"]
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(
             FLOW_SENSOR_ILLUMINANCE
         )

@@ -2202,6 +2202,222 @@ class PlantDevice(Entity):
         if hasattr(self, 'energy_cost') and self.energy_cost:
             self.energy_cost.async_schedule_update_ha_state(True)
 
+    def _update_median_sensors(self) -> None:
+        """Update the median sensors."""
+        if self.device_type == DEVICE_TYPE_PLANT:
+            return
+
+        # Get all member plants
+        member_plants = []
+        for entry_id in self._hass.data[DOMAIN]:
+            if (
+                ATTR_PLANT in self._hass.data[DOMAIN][entry_id]
+                and self._hass.data[DOMAIN][entry_id][ATTR_PLANT].device_type
+                == DEVICE_TYPE_PLANT
+            ):
+                plant = self._hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                # Check if this plant is a member of this cycle
+                if (
+                    hasattr(plant, "cycle")
+                    and plant.cycle
+                    and plant.cycle.entity_id == self.entity_id
+                ):
+                    member_plants.append(plant)
+
+        if not member_plants:
+            return
+
+        # Collect values for each sensor type
+        sensor_values = {}
+        for plant in member_plants:
+            # Temperature
+            if plant.sensor_temperature and plant.sensor_temperature.state not in (
+                STATE_UNKNOWN,
+                STATE_UNAVAILABLE,
+            ):
+                try:
+                    temp = float(plant.sensor_temperature.state)
+                    sensor_values.setdefault("temperature", []).append(temp)
+                except (ValueError, TypeError):
+                    pass
+
+            # Moisture
+            if plant.sensor_moisture and plant.sensor_moisture.state not in (
+                STATE_UNKNOWN,
+                STATE_UNAVAILABLE,
+            ):
+                try:
+                    moisture = float(plant.sensor_moisture.state)
+                    sensor_values.setdefault("moisture", []).append(moisture)
+                except (ValueError, TypeError):
+                    pass
+
+            # Conductivity
+            if plant.sensor_conductivity and plant.sensor_conductivity.state not in (
+                STATE_UNKNOWN,
+                STATE_UNAVAILABLE,
+            ):
+                try:
+                    conductivity = float(plant.sensor_conductivity.state)
+                    sensor_values.setdefault("conductivity", []).append(conductivity)
+                except (ValueError, TypeError):
+                    pass
+
+            # Illuminance
+            if plant.sensor_illuminance and plant.sensor_illuminance.state not in (
+                STATE_UNKNOWN,
+                STATE_UNAVAILABLE,
+            ):
+                try:
+                    illuminance = float(plant.sensor_illuminance.state)
+                    sensor_values.setdefault("illuminance", []).append(illuminance)
+                except (ValueError, TypeError):
+                    pass
+
+            # Humidity
+            if plant.sensor_humidity and plant.sensor_humidity.state not in (
+                STATE_UNKNOWN,
+                STATE_UNAVAILABLE,
+            ):
+                try:
+                    humidity = float(plant.sensor_humidity.state)
+                    sensor_values.setdefault("humidity", []).append(humidity)
+                except (ValueError, TypeError):
+                    pass
+
+            # CO2
+            if plant.sensor_CO2 and plant.sensor_CO2.state not in (
+                STATE_UNKNOWN,
+                STATE_UNAVAILABLE,
+            ):
+                try:
+                    co2 = float(plant.sensor_CO2.state)
+                    sensor_values.setdefault("CO2", []).append(co2)
+                except (ValueError, TypeError):
+                    pass
+
+            # PPFD
+            if plant.sensor_ppfd and plant.sensor_ppfd.state not in (
+                STATE_UNKNOWN,
+                STATE_UNAVAILABLE,
+            ):
+                try:
+                    ppfd = float(plant.sensor_ppfd.state)
+                    sensor_values.setdefault("ppfd", []).append(ppfd)
+                except (ValueError, TypeError):
+                    pass
+
+            # DLI
+            if plant.dli and plant.dli.state not in (
+                STATE_UNKNOWN,
+                STATE_UNAVAILABLE,
+            ):
+                try:
+                    dli = float(plant.dli.state)
+                    sensor_values.setdefault("dli", []).append(dli)
+                except (ValueError, TypeError):
+                    pass
+
+            # Water consumption
+            if (
+                plant.moisture_consumption
+                and plant.moisture_consumption.state not in (
+                    STATE_UNKNOWN,
+                    STATE_UNAVAILABLE,
+                )
+            ):
+                try:
+                    water_consumption = float(plant.moisture_consumption.state)
+                    sensor_values.setdefault("moisture_consumption", []).append(water_consumption)
+                except (ValueError, TypeError):
+                    pass
+
+            # Fertilizer consumption
+            if (
+                plant.fertilizer_consumption
+                and plant.fertilizer_consumption.state not in (
+                    STATE_UNKNOWN,
+                    STATE_UNAVAILABLE,
+                )
+            ):
+                try:
+                    fertilizer_consumption = float(plant.fertilizer_consumption.state)
+                    sensor_values.setdefault("fertilizer_consumption", []).append(fertilizer_consumption)
+                except (ValueError, TypeError):
+                    pass
+
+            # Power consumption
+            if (
+                plant.sensor_power_consumption
+                and plant.sensor_power_consumption.state not in (
+                    STATE_UNKNOWN,
+                    STATE_UNAVAILABLE,
+                )
+            ):
+                try:
+                    power_consumption = float(plant.sensor_power_consumption.state)
+                    sensor_values.setdefault("power_consumption", []).append(power_consumption)
+                except (ValueError, TypeError):
+                    pass
+
+            # Total power consumption
+            if (
+                plant.total_power_consumption
+                and plant.total_power_consumption.state not in (
+                    STATE_UNKNOWN,
+                    STATE_UNAVAILABLE,
+                )
+            ):
+                try:
+                    total_power_consumption = float(plant.total_power_consumption.state)
+                    sensor_values.setdefault("total_power_consumption", []).append(total_power_consumption)
+                except (ValueError, TypeError):
+                    pass
+
+            # Total integral
+            if (
+                plant.total_integral
+                and plant.total_integral.state not in (
+                    STATE_UNKNOWN,
+                    STATE_UNAVAILABLE,
+                )
+            ):
+                try:
+                    # Convert decimal.Decimal to float for processing
+                    total_integral = float(plant.total_integral.state)
+                    sensor_values.setdefault("total_integral", []).append(total_integral)
+                except (ValueError, TypeError):
+                    pass
+
+        # Calculate median values for each sensor type
+        for sensor_type, values in sensor_values.items():
+            if not values:
+                continue
+
+            # For power/energy sensors, we might want to extract just the values
+            if sensor_type in ['power_consumption', 'total_power_consumption']:
+                values = [v[0] for v in values]  # Extrahiere nur die Werte, nicht die Sensoren
+
+            # Determine aggregation method (could be configurable in the future)
+            aggregation_method = DEFAULT_AGGREGATIONS.get(sensor_type, AGGREGATION_MEDIAN)
+            
+            if aggregation_method == AGGREGATION_MEAN:
+                value = sum(values) / len(values)
+            elif aggregation_method == AGGREGATION_MIN:
+                value = min(values)
+            elif aggregation_method == AGGREGATION_MAX:
+                value = max(values)
+            else:  # AGGREGATION_MEDIAN
+                sorted_values = sorted(values)
+                n = len(sorted_values)
+                if n % 2 == 0:
+                    value = (sorted_values[n//2 - 1] + sorted_values[n//2]) / 2
+                else:
+                    value = sorted_values[n//2]
+
+            # Use centralized precision handling instead of hardcoded rounding
+            rounded_value = round_sensor_value(value, sensor_type)
+            self._median_sensors[sensor_type] = rounded_value
 
 async def async_remove_config_entry_device(
     hass: HomeAssistant,

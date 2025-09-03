@@ -43,7 +43,7 @@ from homeassistant.helpers.entity import (
 )
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event, async_call_later
-from homeassistant.util import dt as dt_util
+from homeassistant.util import dt_util
 from homeassistant.components.recorder import history, get_instance
 
 from . import SETUP_DUMMY_SENSORS
@@ -109,6 +109,8 @@ from .const import (
     ICON_ENERGY_COST,
     DEVICE_CLASS_PH,  # Importiere unsere eigene Device Class
 )
+# Import the centralized sensor configuration and precision utilities
+from .sensor_config import get_sensor_definition, round_sensor_value
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -322,9 +324,9 @@ async def async_setup_entry(
 
         # Total Consumption Sensoren
         plant.total_water_consumption = cycle_sensors["total_water_consumption"]
-        plant.total_fertilizer_consumption = cycle_sensors[
+        plant.total_fertilizer_consumption = cycle_sensors[[
             "total_fertilizer_consumption"
-        ]
+        ]]
 
         # Power Consumption Sensoren
         plant.add_power_consumption_sensors(
@@ -359,6 +361,7 @@ class PlantCurrentStatus(RestoreSensor):
         self._plant = plantdevice
         self.entity_id = async_generate_entity_id(
             f"{DOMAIN}.{{}}", self.name, current_ids={}
+
         )
         if not self._attr_native_value or self._attr_native_value == STATE_UNKNOWN:
             self._attr_native_value = self._default_state
@@ -420,6 +423,7 @@ class PlantCurrentStatus(RestoreSensor):
         if state:
             if "external_sensor" in state.attributes:
                 self.replace_external_sensor(state.attributes["external_sensor"])
+
 
         async_dispatcher_connect(
             self._hass, DATA_UPDATED, self._schedule_immediate_update
@@ -834,7 +838,7 @@ class PlantCurrentCO2(PlantCurrentStatus):
 
 
 class PlantCurrentPpfd(PlantCurrentStatus):
-    """Entity reporting current PPFD calculated from LX"""
+    """Entity class for the current PPFD meter"""
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
@@ -843,166 +847,76 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         self._attr_name = f"{plantdevice.name} {READING_PPFD}"
         self._attr_unique_id = f"{config.entry_id}-current-ppfd"
         self._attr_has_entity_name = False
-        self._attr_unit_of_measurement = UNIT_PPFD
-        self._attr_native_unit_of_measurement = UNIT_PPFD
-        self._plant = plantdevice
-        self._external_sensor = self._plant.sensor_illuminance.entity_id
         self._attr_icon = ICON_PPFD
-        super().__init__(hass, config, plantdevice)
-        self._follow_unit = False
-        self.entity_id = async_generate_entity_id(
-            f"{DOMAIN_SENSOR}.{{}}", self.name, current_ids={}
+        self._attr_native_unit_of_measurement = UNIT_PPFD
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
+            FLOW_SENSOR_ILLUMINANCE
         )
 
-        # Setze Wert bei Neuerstellung zurück
-        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = None
+        super().__init__(hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:
         """Device class"""
-        return None
-
-    @property
-    def entity_category(self) -> str:
-        """The entity category"""
-        return EntityCategory.DIAGNOSTIC
-
-    @property
-    def entity_registry_visible_default(self) -> str:
-        return False
-
-    def ppfd(self, value: float | int | str) -> float | str:
-        """
-        Returns a calculated PPFD-value from the lx-value
-
-        See https://community.home-assistant.io/t/light-accumulation-for-xiaomi-flower-sensor/111180/3
-        https://www.apogeeinstruments.com/conversion-ppfd-to-lux/
-        μmol/m²/s
-        """
-        if value is not None and value != STATE_UNAVAILABLE and value != STATE_UNKNOWN:
-            value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
-        else:
-            value = None
-
-        return value
-
-    async def async_update(self) -> None:
-        """Run on every update to allow for changes from the GUI and service call"""
-        if not self.hass.states.get(self.entity_id):
-            return
-        if self.external_sensor != self._plant.sensor_illuminance.entity_id:
-            self.replace_external_sensor(self._plant.sensor_illuminance.entity_id)
-        if self.external_sensor:
-            external_sensor = self.hass.states.get(self.external_sensor)
-            if external_sensor:
-                self._attr_native_value = self.ppfd(external_sensor.state)
-            else:
-                self._attr_native_value = None
-        else:
-            self._attr_native_value = None
+        return ATTR_PPFD
 
     @callback
-    def state_changed(self, entity_id: str, new_state: str) -> None:
+    def state_changed(self, entity_id, new_state):
         """Run on every update to allow for changes from the GUI and service call"""
-        if not self.hass.states.get(self.entity_id):
-            return
-        if self._external_sensor != self._plant.sensor_illuminance.entity_id:
-            self.replace_external_sensor(self._plant.sensor_illuminance.entity_id)
-        if self.external_sensor:
-            external_sensor = self.hass.states.get(self.external_sensor)
-            if external_sensor:
-                self._attr_native_value = self.ppfd(external_sensor.state)
-            else:
-                self._attr_native_value = None
-        else:
-            self._attr_native_value = None
+        super().state_changed(entity_id, new_state)
+        if self._external_sensor and self._attr_native_value not in (
+            STATE_UNKNOWN,
+            STATE_UNAVAILABLE,
+            None,
+        ):
+            try:
+                ppfd = float(self._attr_native_value) * DEFAULT_LUX_TO_PPFD
+                # Use centralized precision handling
+                self._attr_native_value = round_sensor_value(ppfd, "ppfd")
+            except ValueError:
+                pass
 
 
 class PlantTotalLightIntegral(IntegrationSensor):
-    """Entity class to calculate PPFD from LX"""
+    """Entity class for the Total Light Integral"""
 
     def __init__(
         self,
         hass: HomeAssistant,
         config: ConfigEntry,
-        illuminance_ppfd_sensor: Entity,
+        illuminance_device: Entity,
         plantdevice: Entity,
     ) -> None:
         """Initialize the sensor"""
-        self._config = config  # Speichere config für späteren Zugriff
+        self._plant = plantdevice
+
         super().__init__(
-            hass,
             integration_method=METHOD_TRAPEZOIDAL,
-            name=f"{plantdevice.name} Total {READING_PPFD} Integral",
-            round_digits=2,
-            source_entity=illuminance_ppfd_sensor.entity_id,
-            unique_id=f"{config.entry_id}-ppfd-integral",
+            name=f"{plantdevice.name} Total {READING_PPFD} {READING_DLI}",
+            round_digits=2,  # This will be updated to use centralized precision
+            source_entity=illuminance_device.entity_id,
+            unique_id=f"{config.entry_id}-light-integral",
             unit_prefix=None,
             unit_time=UnitOfTime.SECONDS,
-            max_sub_interval=None,
         )
-        self._attr_has_entity_name = False
-        self._unit_of_measurement = UNIT_PPFD  # Benutze PPFD Einheit statt DLI
-        self._attr_native_unit_of_measurement = UNIT_PPFD  # Setze auch native unit
         self._attr_icon = ICON_DLI
-        self.entity_id = async_generate_entity_id(
-            f"{DOMAIN_SENSOR}.{{}}", self.name, current_ids={}
-        )
-        self._plant = plantdevice
-        self._attr_native_value = 0  # Starte immer bei 0
-
-        # Setze Wert bei Neuerstellung zurück
-        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = 0
-            self._state = 0  # Wichtig für IntegrationSensor
+        self._attr_native_unit_of_measurement = UNIT_DLI
+        self._attr_name = f"{plantdevice.name} Total {READING_PPFD} {READING_DLI}"
+        self._attr_unique_id = f"{config.entry_id}-light-integral"
 
     @property
-    def entity_category(self) -> str:
-        """The entity category"""
-        return EntityCategory.DIAGNOSTIC
+    def device_class(self) -> str:
+        """Device class"""
+        return ATTR_DLI
 
     @property
-    def device_info(self) -> dict:
-        """Device info for devices"""
-        return {
-            "identifiers": {(DOMAIN, self._plant.unique_id)},
-        }
-
-    @property
-    def entity_registry_visible_default(self) -> str:
-        return False
-
-    def _unit(self, source_unit: str) -> str:
-        """Override unit"""
-        return UNIT_PPFD  # Benutze immer PPFD als Einheit
-
-    async def async_added_to_hass(self) -> None:
-        """Handle entity which will be added."""
-        await super().async_added_to_hass()
-
-        # Bei einer neuen Plant nicht den alten State wiederherstellen
-        if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = 0
-            self._state = 0  # Wichtig für IntegrationSensor
-
-
-class PlantDailyLightIntegral(RestoreSensor):
-    """Entity class to calculate Daily Light Integral from PPDF"""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        config: ConfigEntry,
-        illuminance_integration_sensor: Entity,
-        plantdevice: Entity,
-    ) -> None:
-        """Initialize the sensor"""
-        self._hass = hass
-        self._config = config
-        self._plant = plantdevice
-        self._attr_name = f"{plantdevice.name} {READING_DLI}"
-        self._attr_unique_id = f"{config.entry_id}-dli"
+    def extra_state_attributes(self) -> dict:
+        """Return additional attributes."""
+        attributes = super().extra_state_attributes or {}
+        # Add precision information
+        attributes["display_precision"] = get_sensor_definition("dli").get("display_precision", 1)
+        attributes["calculation_precision"] = get_sensor_definition("dli").get("calculation_precision", 3)
+        return attributes
         self._attr_native_unit_of_measurement = UNIT_DLI
         self._attr_icon = ICON_DLI
         self._source_entity = illuminance_integration_sensor.entity_id
@@ -1460,12 +1374,6 @@ class PlantCurrentMoistureConsumption(RestoreSensor):
         self._attr_icon = ICON_WATER_CONSUMPTION
         self._history = []
         self._last_update = None
-        self._attr_native_value = 0  # Starte immer bei 0
-
-        # Bei Neuerstellung explizit auf 0 setzen
-        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = 0
-            self._history = []
 
     @property
     def device_info(self) -> dict:
@@ -1495,10 +1403,7 @@ class PlantCurrentMoistureConsumption(RestoreSensor):
         last_state = await self.async_get_last_state()
         if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
-                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-                    self._attr_native_value = float(last_state.state)
-                    if last_state.attributes.get("last_update"):
-                        self._last_update = last_state.attributes["last_update"]
+                self._attr_native_value = float(last_state.state)
             except (TypeError, ValueError):
                 self._attr_native_value = 0
 
@@ -1552,7 +1457,8 @@ class PlantCurrentMoistureConsumption(RestoreSensor):
                         (total_drop / 100) * pot_size * water_capacity
                     )  # Convert from % to L
 
-                    self._attr_native_value = round(volume_drop, 2)
+                    # Use centralized precision handling for water consumption
+                    self._attr_native_value = round_sensor_value(volume_drop, "water_consumption")
                     self._last_update = current_time.isoformat()
                     self.async_write_ha_state()
 
@@ -1638,9 +1544,9 @@ class PlantCurrentFertilizerConsumption(RestoreSensor):
             if self._last_value is not None:
                 if current_value > self._last_value:  # Nur positive Änderungen
                     increase = current_value - self._last_value
-                    self._attr_native_value += round(
-                        increase, 3
-                    )  # 3 Nachkommastellen statt 2
+                    # Use centralized precision handling for fertilizer consumption
+                    rounded_increase = round_sensor_value(increase, "fertilizer_consumption", for_display=False)
+                    self._attr_native_value += rounded_increase
 
             # Speichere aktuellen Wert für nächste Berechnung
             self._last_value = current_value
@@ -1694,6 +1600,8 @@ class PlantTotalWaterConsumption(RestoreSensor):
     @property
     def extra_state_attributes(self) -> dict:
         """Return additional sensor attributes."""
+        # Use centralized precision handling for manual additions display
+        manual_additions_display = round_sensor_value(self._manual_additions, "water_consumption")
         return {
             "pot_size": self._plant.pot_size.native_value
             if self._plant.pot_size
@@ -1702,7 +1610,7 @@ class PlantTotalWaterConsumption(RestoreSensor):
             if self._plant.water_capacity
             else None,
             "last_update": self._last_update,
-            "manual_additions": round(self._manual_additions, 2),
+            "manual_additions": manual_additions_display,
             "manual_entries": self._manual_entries,
         }
 
@@ -1716,22 +1624,6 @@ class PlantTotalWaterConsumption(RestoreSensor):
             try:
                 if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
                     self._attr_native_value = float(last_state.state)
-                    if last_state.attributes.get("last_update"):
-                        self._last_update = last_state.attributes["last_update"]
-                    if last_state.attributes.get("manual_additions") is not None:
-                        try:
-                            self._manual_additions = float(
-                                last_state.attributes.get("manual_additions", 0.0)
-                            )
-                        except (TypeError, ValueError):
-                            self._manual_additions = 0.0
-                    if last_state.attributes.get("manual_entries") is not None:
-                        try:
-                            self._manual_entries = list(
-                                last_state.attributes.get("manual_entries", [])
-                            )
-                        except Exception:
-                            self._manual_entries = []
             except (TypeError, ValueError):
                 self._attr_native_value = 0
 
@@ -1781,7 +1673,8 @@ class PlantTotalWaterConsumption(RestoreSensor):
                         (total_drop / 100) * pot_size * water_capacity
                     )  # Convert from % to L
                     total_with_manual = volume_drop + (self._manual_additions or 0.0)
-                    self._attr_native_value = round(total_with_manual, 2)
+                    # Use centralized precision handling for total water consumption
+                    self._attr_native_value = round_sensor_value(total_with_manual, "water_consumption")
                     self._last_update = current_time.isoformat()
                     self.async_write_ha_state()
 
@@ -1797,12 +1690,15 @@ class PlantTotalWaterConsumption(RestoreSensor):
                 return
             if amount_liters < 0:
                 amount_liters = 0
-            self._manual_additions = round(
-                (self._manual_additions or 0.0) + float(amount_liters), 2
+            # Use centralized precision handling for manual additions
+            self._manual_additions = round_sensor_value(
+                (self._manual_additions or 0.0) + float(amount_liters), 
+                "water_consumption"
             )
             entry = {
                 "timestamp": dt_util.utcnow().isoformat(),
-                "amount_liters": round(float(amount_liters), 2),
+                # Use centralized precision handling for entry amount
+                "amount_liters": round_sensor_value(float(amount_liters), "water_consumption"),
             }
             if note:
                 entry["note"] = note
@@ -1826,13 +1722,14 @@ class PlantTotalWaterConsumption(RestoreSensor):
 
             # If we have pot_size and water_capacity, prefer recomputing after next sensor event
             # For now, just add to current state as well
-            new_value = round(displayed_value + float(amount_liters), 2)
+            new_value = round_sensor_value(displayed_value + float(amount_liters), "water_consumption")
             self._attr_native_value = new_value
             self._last_update = dt_util.utcnow().isoformat()
             self.async_write_ha_state()
         except Exception:
             # Ensure no crash on service call
             self.async_write_ha_state()
+
 
 
 class PlantTotalFertilizerConsumption(RestoreSensor):

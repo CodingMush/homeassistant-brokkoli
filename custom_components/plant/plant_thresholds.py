@@ -114,6 +114,8 @@ from .const import (
     READING_PH,
     ATTR_PH,
 )
+# Import the centralized sensor configuration
+from .sensor_config import get_sensor_definition
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -147,20 +149,31 @@ class PlantMinMax(RestoreNumber):
         if hasattr(self, '_attr_native_value') and self._attr_native_value is not None:
             _LOGGER.debug("Using configured value: %s", self._attr_native_value)
         # Icon basierend auf dem Entity-Typ setzen
+        # Use centralized sensor configuration for icons
         if "temperature" in self.entity_id:
-            self._attr_icon = ICON_TEMPERATURE
+            sensor_def = get_sensor_definition("temperature")
+            self._attr_icon = sensor_def["icon"]
         elif "moisture" in self.entity_id:
-            self._attr_icon = ICON_MOISTURE
+            sensor_def = get_sensor_definition("moisture")
+            self._attr_icon = sensor_def["icon"]
         elif "conductivity" in self.entity_id:
-            self._attr_icon = ICON_CONDUCTIVITY
+            sensor_def = get_sensor_definition("conductivity")
+            self._attr_icon = sensor_def["icon"]
         elif "humidity" in self.entity_id:
-            self._attr_icon = ICON_HUMIDITY
+            sensor_def = get_sensor_definition("humidity")
+            self._attr_icon = sensor_def["icon"]
         elif "CO2" in self.entity_id:
-            self._attr_icon = ICON_CO2
+            sensor_def = get_sensor_definition("co2")
+            self._attr_icon = sensor_def["icon"]
         elif "illuminance" in self.entity_id:
-            self._attr_icon = ICON_ILLUMINANCE
+            sensor_def = get_sensor_definition("illuminance")
+            self._attr_icon = sensor_def["icon"]
         elif "dli" in self.entity_id:
-            self._attr_icon = ICON_DLI
+            sensor_def = get_sensor_definition("dli")
+            self._attr_icon = sensor_def["icon"]
+        elif "ph" in self.entity_id:
+            sensor_def = get_sensor_definition("ph")
+            self._attr_icon = sensor_def["icon"]
 
     @property
     def entity_category(self) -> str:

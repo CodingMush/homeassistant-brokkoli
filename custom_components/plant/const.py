@@ -25,6 +25,11 @@ ATTR_WATER_CONSUMPTION = "water_consumption"
 ATTR_FERTILIZER_CONSUMPTION = "fertilizer_consumption"
 ATTR_POWER_CONSUMPTION = "power_consumption"
 ATTR_PH = "ph"
+ATTR_DEVICE_TYPE = "device_type"
+ATTR_KWH_PRICE = "kwh_price"
+ATTR_POSITION_X = "position_x"
+ATTR_POSITION_Y = "position_y"
+ATTR_POT_SIZE = "pot_size"
 
 # Device Classes
 DEVICE_CLASS_PH = "ph"  # Eigene Device Class für pH
@@ -68,6 +73,9 @@ ATTR_MIN = "min"
 ATTR_MAX = "max"
 ATTR_CURRENT = "current"
 
+# Default values are now centralized in sensor_config.py
+# Kept here for backward compatibility and other uses
+
 DEFAULT_MIN_BATTERY_LEVEL = 20
 DEFAULT_MIN_TEMPERATURE = 10
 DEFAULT_MAX_TEMPERATURE = 40
@@ -103,6 +111,9 @@ DEFAULT_MAX_PH = 7.5
 DEFAULT_IMAGE_PATH = "/config/www/images/plants/"
 DEFAULT_IMAGE_LOCAL_URL = "/local/images/plants/"
 
+# kWh Price
+DEFAULT_KWH_PRICE = 0.35
+
 DATA_SOURCE = "data_source"
 DATA_SOURCE_PLANTBOOK = "OpenPlantbook"
 DATA_SOURCE_MANUAL = "Manual"
@@ -126,6 +137,7 @@ FLOW_PLANT_SPECIES = "plant_species"
 FLOW_PLANT_NAME = "plant_name"
 FLOW_PLANT_IMAGE = "image_url"
 FLOW_PLANT_LIMITS = "limits"
+FLOW_DOWNLOAD_PATH = "download_path"
 
 FLOW_SENSOR_TEMPERATURE = "temperature_sensor"
 FLOW_SENSOR_MOISTURE = "moisture_sensor"
@@ -162,6 +174,8 @@ ICON_WATER_CONSUMPTION = "mdi:water-pump"
 ICON_FERTILIZER_CONSUMPTION = "mdi:chart-line-variant"
 ICON_POWER_CONSUMPTION = "mdi:flash"
 ICON_PH = "mdi:ph"
+ICON_DEVICE_PLANT = "mdi:flower"
+ICON_DEVICE_CYCLE = "mdi:flower-poppy"
 
 OPB_GET = "get"
 OPB_SEARCH = "search"
@@ -175,12 +189,22 @@ PPFD_DLI_FACTOR = 0.0036
 # This equals normal sunlight
 DEFAULT_LUX_TO_PPFD = 0.0185
 
+# Services
 SERVICE_REPLACE_SENSOR = "replace_sensor"
 SERVICE_REMOVE_PLANT = "remove_plant"
 SERVICE_REMOVE_CYCLE = "remove_cycle"
 SERVICE_MOVE_TO_AREA = "move_to_area"
 SERVICE_EXPORT_PLANTS = "export_plants"
 SERVICE_IMPORT_PLANTS = "import_plants"
+SERVICE_CREATE_PLANT = "create_plant"
+SERVICE_CREATE_CYCLE = "create_cycle"
+SERVICE_MOVE_TO_CYCLE = "move_to_cycle"
+SERVICE_CLONE_PLANT = "clone_plant"
+SERVICE_ADD_IMAGE = "add_image"
+SERVICE_CHANGE_POSITION = "change_position"
+SERVICE_ADD_WATERING = "add_watering"
+SERVICE_ADD_CONDUCTIVITY = "add_conductivity"
+SERVICE_ADD_PH = "add_ph"
 
 STATE_LOW = "Low"
 STATE_HIGH = "High"
@@ -300,89 +324,34 @@ SERVICE_CREATE_PLANT = "create_plant"
 # Neue Konstanten für Device Types
 DEVICE_TYPE_PLANT = "plant"
 DEVICE_TYPE_CYCLE = "cycle"
-DEVICE_TYPE_CONFIG = "config"  # Neuer Gerätetyp für Konfiguration
-ATTR_DEVICE_TYPE = "device_type"
 
-DEVICE_TYPES = [
-    DEVICE_TYPE_PLANT,
-    DEVICE_TYPE_CYCLE
-]  # Config wird nicht in der Auswahl angezeigt
-
-# Icons für Device Types
-ICON_DEVICE_PLANT = "mdi:flower-outline"
-ICON_DEVICE_CYCLE = "mdi:grass"
-ICON_DEVICE_CONFIG = "mdi:cog"  # Icon für Konfiguration
-
-SERVICE_MOVE_TO_CYCLE = "move_to_cycle"
-
-SERVICE_CREATE_CYCLE = "create_cycle"
-
-# Aggregation Methoden
+# Aggregation methods
 AGGREGATION_MEDIAN = "median"
 AGGREGATION_MEAN = "mean"
 AGGREGATION_MIN = "min"
 AGGREGATION_MAX = "max"
-AGGREGATION_ORIGINAL = "original"  # Neue Methode für DLI/PPFD Berechnungen
+AGGREGATION_ORIGINAL = "original"
 
-AGGREGATION_METHODS = [
-    AGGREGATION_MEDIAN,
-    AGGREGATION_MEAN, 
-    AGGREGATION_MIN,
-    AGGREGATION_MAX
-]
-
-# Erweiterte Methoden für DLI/PPFD
-AGGREGATION_METHODS_EXTENDED = [
-    AGGREGATION_ORIGINAL,  # Original zuerst, da dies der Standardwert sein soll
-    AGGREGATION_MEDIAN,
-    AGGREGATION_MEAN, 
-    AGGREGATION_MIN,
-    AGGREGATION_MAX
-]
-
-# Default Aggregationen pro Sensor-Typ
+# Default aggregations
 DEFAULT_AGGREGATIONS = {
-    'temperature': AGGREGATION_MEAN,
-    'moisture': AGGREGATION_MEDIAN,
-    'conductivity': AGGREGATION_MEDIAN,
-    'illuminance': AGGREGATION_MEAN,
-    'humidity': AGGREGATION_MEAN,
-    'CO2': AGGREGATION_MEAN,
-    'ppfd': AGGREGATION_ORIGINAL,
-    'dli': AGGREGATION_ORIGINAL,
-    'total_integral': AGGREGATION_ORIGINAL,
-    'moisture_consumption': AGGREGATION_ORIGINAL,
-    'fertilizer_consumption': AGGREGATION_ORIGINAL,
-    'total_water_consumption': AGGREGATION_ORIGINAL,
-    'total_fertilizer_consumption': AGGREGATION_ORIGINAL,
-    'power_consumption': AGGREGATION_MEAN,
-    'total_power_consumption': AGGREGATION_ORIGINAL,
-    'health': AGGREGATION_MEAN,  # Hinzugefügt für Health Helper
-    'ph': AGGREGATION_MEDIAN,  # Neue Default-Aggregation für pH
+    "temperature": AGGREGATION_MEDIAN,
+    "moisture": AGGREGATION_MEDIAN,
+    "conductivity": AGGREGATION_MEDIAN,
+    "illuminance": AGGREGATION_MEDIAN,
+    "humidity": AGGREGATION_MEDIAN,
+    "co2": AGGREGATION_MEDIAN,
+    "ppfd": AGGREGATION_MEDIAN,
+    "dli": AGGREGATION_MEDIAN,
+    "ph": AGGREGATION_MEDIAN,
+    "water_consumption": AGGREGATION_MEDIAN,
+    "fertilizer_consumption": AGGREGATION_MEDIAN,
+    "power_consumption": AGGREGATION_MEDIAN,
 }
 
-# Config Flow Keys
-CONF_AGGREGATION = "aggregation"
+# Pot size
+DEFAULT_POT_SIZE = 12
 
-# Neue Konstanten für Sensor-Normalisierung
-ATTR_NORMALIZE_MOISTURE = "normalize_moisture"
-ATTR_NORMALIZE_WINDOW = "normalize_window"
-ATTR_NORMALIZE_PERCENTILE = "normalize_percentile"
-DEFAULT_NORMALIZE_WINDOW = 7  # Tage
-DEFAULT_NORMALIZE_PERCENTILE = 95
-
-# Füge die neue Service-Konstante hinzu
-SERVICE_CLONE_PLANT = "clone_plant"
-
-# Neue Konstante für Topfgröße
-ATTR_POT_SIZE = "pot_size"
-DEFAULT_POT_SIZE = 0.4  # 0,4 Liter als Standardwert
-
-# Neue Konstante für Wasserkapazität
-ATTR_WATER_CAPACITY = "water_capacity"
-DEFAULT_WATER_CAPACITY = 50  # 50% als Standardwert
-
-# Neue Konstanten für Default-Werte
+# Default configuration constants
 CONF_DEFAULT_MAX_MOISTURE = "default_max_moisture"
 CONF_DEFAULT_MIN_MOISTURE = "default_min_moisture"
 CONF_DEFAULT_MAX_ILLUMINANCE = "default_max_illuminance"
@@ -397,66 +366,9 @@ CONF_DEFAULT_MAX_HUMIDITY = "default_max_humidity"
 CONF_DEFAULT_MIN_HUMIDITY = "default_min_humidity"
 CONF_DEFAULT_MAX_CO2 = "default_max_co2"
 CONF_DEFAULT_MIN_CO2 = "default_min_co2"
-
-# Neue Default-Konstanten für Water/Fertilizer Consumption
-CONF_DEFAULT_MIN_WATER_CONSUMPTION = "default_min_water_consumption"
 CONF_DEFAULT_MAX_WATER_CONSUMPTION = "default_max_water_consumption"
-CONF_DEFAULT_MIN_FERTILIZER_CONSUMPTION = "default_min_fertilizer_consumption"
+CONF_DEFAULT_MIN_WATER_CONSUMPTION = "default_min_water_consumption"
 CONF_DEFAULT_MAX_FERTILIZER_CONSUMPTION = "default_max_fertilizer_consumption"
-CONF_DEFAULT_MIN_POWER_CONSUMPTION = "default_min_power_consumption"
+CONF_DEFAULT_MIN_FERTILIZER_CONSUMPTION = "default_min_fertilizer_consumption"
 CONF_DEFAULT_MAX_POWER_CONSUMPTION = "default_max_power_consumption"
-CONF_DEFAULT_MAX_PH = "default_max_ph"  # Neue Konstanten für pH
-CONF_DEFAULT_MIN_PH = "default_min_ph"
-
-ATTR_WATER_CONSUMPTION = "water_consumption"
-ATTR_FERTILIZER_CONSUMPTION = "fertilizer_consumption"
-ATTR_POWER_CONSUMPTION = "power_consumption"
-
-DEFAULT_KWH_PRICE = 0.3684  # Default kWh Preis in Euro
-ATTR_KWH_PRICE = "kwh_price"  # Attribut für den kWh Preis
-READING_ENERGY_COST = "energy cost"  # Lesbarer Name für Energiekosten
-ICON_ENERGY_COST = "mdi:currency-eur"  # Icon für Energiekosten
-
-# Neue Konstanten für Bild-Download
-SERVICE_ADD_IMAGE = "add_image"
-FLOW_DOWNLOAD_PATH = "download_path"
-
-# Service to add manual watering entries
-SERVICE_ADD_WATERING = "add_watering"
-SERVICE_ADD_CONDUCTIVITY = "add_conductivity"
-SERVICE_ADD_PH = "add_ph"
-
-# Treatment Options
-TREATMENT_NONE = ""
-TREATMENT_CUT = "cut"
-TREATMENT_SUPER_CROPPING = "super cropping"
-TREATMENT_TOPPING = "topping"
-TREATMENT_LOLLIPOP = "lollipop"
-TREATMENT_FIM = "fim"
-TREATMENT_RIB = "rib"
-TREATMENT_SPRAY_PEST = "spray pest"
-TREATMENT_SPRAY_WATER = "spray water"
-
-TREATMENT_OPTIONS = [
-    TREATMENT_CUT,
-    TREATMENT_SUPER_CROPPING,
-    TREATMENT_TOPPING,
-    TREATMENT_LOLLIPOP,
-    TREATMENT_FIM,
-    TREATMENT_RIB,
-    TREATMENT_SPRAY_PEST,
-    TREATMENT_SPRAY_WATER,
-]
-
-# Health Rating Constants
-HEALTH_MIN_VALUE = 0
-HEALTH_MAX_VALUE = 5
-HEALTH_STEP = 0.5
-HEALTH_DEFAULT = HEALTH_MAX_VALUE  # Volle Punktzahl als Standard
-CONF_DEFAULT_HEALTH = "default_health"  # Für Config Node
-
-# Neue Konstanten für die Positionierung von Pflanzen
-ATTR_POSITION_X = "position_x"
-ATTR_POSITION_Y = "position_y"
-SERVICE_CHANGE_POSITION = "change_position"
-ATTR_POSITION_HISTORY = "position_history"
+CONF_DEFAULT_MIN_POWER_CONSUMPTION = "default_min_power_consumption"
