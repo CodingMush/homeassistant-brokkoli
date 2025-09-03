@@ -391,3 +391,10 @@ CONF_DEFAULT_MIN_POWER_CONSUMPTION = "default_min_power_consumption"
 
 # Aggregation configuration
 CONF_AGGREGATION = "aggregation"
+
+# Normalization constants
+ATTR_NORMALIZE_MOISTURE = "normalize_moisture"
+ATTR_NORMALIZE_WINDOW = "normalize_window"
+ATTR_NORMALIZE_PERCENTILE = "normalize_percentile"
+DEFAULT_NORMALIZE_WINDOW = 30
+DEFAULT_NORMALIZE_PERCENTILE = 90
