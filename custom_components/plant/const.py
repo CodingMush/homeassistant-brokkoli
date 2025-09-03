@@ -34,6 +34,10 @@ ATTR_POT_SIZE = "pot_size"
 # Device Classes
 DEVICE_CLASS_PH = "ph"  # Eigene Device Class für pH
 
+# Treatment constants
+TREATMENT_OPTIONS = ["None", "Fungicide", "Insecticide", "Nutrients", "Pruning", "Repotting"]
+TREATMENT_NONE = "None"
+
 ATTR_TEMPERATURE = "temperature"
 ATTR_PROBLEM = "problem"
 ATTR_SENSORS = "sensors"
@@ -66,6 +70,7 @@ READING_MOISTURE_CONSUMPTION = "water consumption"
 READING_FERTILIZER_CONSUMPTION = "fertilizer consumption"
 READING_POWER_CONSUMPTION = "power consumption"
 READING_PH = "soil pH"
+READING_ENERGY_COST = "energy cost"
 
 ATTR_MAX_ILLUMINANCE_HISTORY = "max_illuminance"
 ATTR_LIMITS = "limits"
@@ -176,6 +181,7 @@ ICON_POWER_CONSUMPTION = "mdi:flash"
 ICON_PH = "mdi:ph"
 ICON_DEVICE_PLANT = "mdi:flower"
 ICON_DEVICE_CYCLE = "mdi:flower-poppy"
+ICON_ENERGY_COST = "mdi:currency-eur"
 
 OPB_GET = "get"
 OPB_SEARCH = "search"
@@ -409,3 +415,10 @@ ATTR_NORMALIZE_WINDOW = "normalize_window"
 ATTR_NORMALIZE_PERCENTILE = "normalize_percentile"
 DEFAULT_NORMALIZE_WINDOW = 30
 DEFAULT_NORMALIZE_PERCENTILE = 90
+
+# Health rating constants
+HEALTH_MIN_VALUE = 0
+HEALTH_MAX_VALUE = 100
+HEALTH_STEP = 1
+HEALTH_DEFAULT = 100
+CONF_DEFAULT_HEALTH = "default_health"

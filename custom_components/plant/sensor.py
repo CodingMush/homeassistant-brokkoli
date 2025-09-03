@@ -107,7 +107,7 @@ from .const import (
     DEFAULT_KWH_PRICE,
     READING_ENERGY_COST,
     ICON_ENERGY_COST,
-    DEVICE_CLASS_PH,  # Importiere unsere eigene Device Class
+    DEVICE_CLASS_PH  # Importiere unsere eigene Device Class
 )
 # Import the centralized sensor configuration and precision utilities
 from .sensor_config import get_sensor_definition, round_sensor_value
