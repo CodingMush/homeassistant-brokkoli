@@ -388,3 +388,6 @@ CONF_DEFAULT_MAX_FERTILIZER_CONSUMPTION = "default_max_fertilizer_consumption"
 CONF_DEFAULT_MIN_FERTILIZER_CONSUMPTION = "default_min_fertilizer_consumption"
 CONF_DEFAULT_MAX_POWER_CONSUMPTION = "default_max_power_consumption"
 CONF_DEFAULT_MIN_POWER_CONSUMPTION = "default_min_power_consumption"
+
+# Aggregation configuration
+CONF_AGGREGATION = "aggregation"
