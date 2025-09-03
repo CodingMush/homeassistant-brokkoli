@@ -776,6 +776,7 @@ class PlantDevice(Entity):
         self.sensor_humidity = None
         self.sensor_CO2 = None
         self.sensor_power_consumption = None
+        self.sensor_ph = None
         self.total_power_consumption = None
 
         self.dli = None
