@@ -49,7 +49,15 @@ def get_decimals_for(sensor_type: str, overrides: Dict[str, int] | None = None) 
     overrides: mapping from sensor_type to decimals
     """
     if overrides and sensor_type in overrides:
-        return max(0, int(overrides[sensor_type]))
+        override_value = overrides.get(sensor_type)
+        try:
+            if override_value is None:
+                raise TypeError("override is None")
+            coerced = int(override_value)
+            return max(0, coerced)
+        except (TypeError, ValueError):
+            # Fall back to defaults on invalid override values
+            pass
     config = DEFAULT_DECIMALS.get(sensor_type)
     return config.decimals if config else 2
 

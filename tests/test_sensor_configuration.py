@@ -71,3 +71,7 @@ def test_get_decimals_for_defaults_and_overrides():
     # Negative values are clamped to >= 0
     assert get_decimals_for("temperature", {"temperature": -2}) == 0
 
+    # None or invalid overrides fall back to defaults, not crashing
+    assert get_decimals_for("temperature", {"temperature": None}) == 1
+    assert get_decimals_for("temperature", {"temperature": "not-a-number"}) == 1
+
