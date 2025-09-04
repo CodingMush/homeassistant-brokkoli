@@ -126,6 +126,7 @@ from .const import (
 )
 from .plant_helpers import PlantHelper
 from .services import async_setup_services, async_unload_services
+from .sensor_configuration import get_decimals_for
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SELECT, Platform.TEXT]
@@ -882,6 +883,36 @@ class PlantDevice(Entity):
             self._config.options.get("health_aggregation") or
             self._plant_info.get("health_aggregation", "mean")
         )
+
+        # Cache for decimals overrides loaded from central config entry
+        self._decimals_overrides = None
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if entry.data.get("is_config", False):
+                info = entry.data.get(FLOW_PLANT_INFO, {})
+                self._decimals_overrides = {
+                    "temperature": info.get("decimals_temperature"),
+                    "moisture": info.get("decimals_moisture"),
+                    "conductivity": info.get("decimals_conductivity"),
+                    "illuminance": info.get("decimals_illuminance"),
+                    "humidity": info.get("decimals_humidity"),
+                    "CO2": info.get("decimals_CO2"),
+                    "ph": info.get("decimals_ph"),
+                    "ppfd": info.get("decimals_ppfd"),
+                    "dli": info.get("decimals_dli"),
+                    "total_integral": info.get("decimals_total_integral"),
+                    "moisture_consumption": info.get("decimals_moisture_consumption"),
+                    "total_water_consumption": info.get("decimals_total_water_consumption"),
+                    "fertilizer_consumption": info.get("decimals_fertilizer_consumption"),
+                    "total_fertilizer_consumption": info.get("decimals_total_fertilizer_consumption"),
+                    "power_consumption": info.get("decimals_power_consumption"),
+                    "total_power_consumption": info.get("decimals_total_power_consumption"),
+                    "energy_cost": info.get("decimals_energy_cost"),
+                }
+                break
+
+    def decimals_for(self, sensor_type: str) -> int:
+        """Return configured decimals for a sensor type."""
+        return get_decimals_for(sensor_type, self._decimals_overrides)
 
     @property
     def entity_category(self) -> None:
@@ -2055,15 +2086,12 @@ class PlantDevice(Entity):
                     else:
                         value = sorted_values[n//2]
 
-                # Runde die Werte entsprechend ihres Typs
-                if sensor_type == "total_integral":
-                    self._median_sensors[sensor_type] = round(value, 6)  # 6 Nachkommastellen wie bei Plant
-                elif sensor_type in ["ppfd", "dli"]:
-                    self._median_sensors[sensor_type] = round(value, 3)  # 3 Nachkommastellen
-                elif sensor_type in ["temperature", "moisture", "humidity", "moisture_consumption", "CO2"]:
-                    self._median_sensors[sensor_type] = round(value, 1)  # 1 Nachkommastelle
-                else:  # conductivity, illuminance, fertilizer_consumption
-                    self._median_sensors[sensor_type] = round(value)  # Keine Nachkommastellen
+                # Runde die Werte entsprechend zentraler Dezimal-Konfiguration
+                try:
+                    decimals = self.decimals_for(sensor_type)
+                except Exception:
+                    decimals = 2
+                self._median_sensors[sensor_type] = round(value, decimals)
 
     def _update_cycle_attributes(self) -> None:
         """Update cycle attributes based on member plants."""

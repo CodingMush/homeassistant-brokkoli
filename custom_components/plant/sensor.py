@@ -596,7 +596,9 @@ class PlantCurrentConductivity(PlantCurrentStatus):
                         float(self._attr_native_value)
                         * moisture_sensor._normalize_factor
                     )
-                    self._attr_native_value = round(normalized, 1)
+                    self._attr_native_value = round(
+                        normalized, self._plant.decimals_for("moisture")
+                    )
                 except (ValueError, TypeError):
                     pass
 
@@ -758,7 +760,9 @@ class PlantCurrentMoisture(PlantCurrentStatus):
                 normalized = min(
                     100, (float(self._attr_native_value) / self._max_moisture) * 100
                 )
-                self._attr_native_value = round(normalized, 1)
+                self._attr_native_value = round(
+                    normalized, self._plant.decimals_for("moisture")
+                )
             except (ValueError, TypeError):
                 pass
 
@@ -1087,7 +1091,9 @@ class PlantDailyLightIntegral(RestoreSensor):
                     dli = (current_value - self._history[0][1]) * (
                         24 * 3600 / time_diff
                     )
-                    self._attr_native_value = round(max(0, dli), 2)
+                    self._attr_native_value = round(
+                        max(0, dli), self._plant.decimals_for("dli")
+                    )
                     self._last_update = current_time.isoformat()
                     self.async_write_ha_state()
 
@@ -1552,7 +1558,10 @@ class PlantCurrentMoistureConsumption(RestoreSensor):
                         (total_drop / 100) * pot_size * water_capacity
                     )  # Convert from % to L
 
-                    self._attr_native_value = round(volume_drop, 2)
+                    self._attr_native_value = round(
+                        volume_drop,
+                        self._plant.decimals_for("moisture_consumption"),
+                    )
                     self._last_update = current_time.isoformat()
                     self.async_write_ha_state()
 
@@ -1639,8 +1648,8 @@ class PlantCurrentFertilizerConsumption(RestoreSensor):
                 if current_value > self._last_value:  # Nur positive Änderungen
                     increase = current_value - self._last_value
                     self._attr_native_value += round(
-                        increase, 3
-                    )  # 3 Nachkommastellen statt 2
+                        increase, self._plant.decimals_for("fertilizer_consumption")
+                    )
 
             # Speichere aktuellen Wert für nächste Berechnung
             self._last_value = current_value
@@ -1702,7 +1711,9 @@ class PlantTotalWaterConsumption(RestoreSensor):
             if self._plant.water_capacity
             else None,
             "last_update": self._last_update,
-            "manual_additions": round(self._manual_additions, 2),
+            "manual_additions": round(
+                self._manual_additions, self._plant.decimals_for("total_water_consumption")
+            ),
             "manual_entries": self._manual_entries,
         }
 
@@ -1781,7 +1792,10 @@ class PlantTotalWaterConsumption(RestoreSensor):
                         (total_drop / 100) * pot_size * water_capacity
                     )  # Convert from % to L
                     total_with_manual = volume_drop + (self._manual_additions or 0.0)
-                    self._attr_native_value = round(total_with_manual, 2)
+                    self._attr_native_value = round(
+                        total_with_manual,
+                        self._plant.decimals_for("total_water_consumption"),
+                    )
                     self._last_update = current_time.isoformat()
                     self.async_write_ha_state()
 
@@ -1798,11 +1812,15 @@ class PlantTotalWaterConsumption(RestoreSensor):
             if amount_liters < 0:
                 amount_liters = 0
             self._manual_additions = round(
-                (self._manual_additions or 0.0) + float(amount_liters), 2
+                (self._manual_additions or 0.0) + float(amount_liters),
+                self._plant.decimals_for("total_water_consumption"),
             )
             entry = {
                 "timestamp": dt_util.utcnow().isoformat(),
-                "amount_liters": round(float(amount_liters), 2),
+                "amount_liters": round(
+                    float(amount_liters),
+                    self._plant.decimals_for("total_water_consumption"),
+                ),
             }
             if note:
                 entry["note"] = note
@@ -1826,7 +1844,10 @@ class PlantTotalWaterConsumption(RestoreSensor):
 
             # If we have pot_size and water_capacity, prefer recomputing after next sensor event
             # For now, just add to current state as well
-            new_value = round(displayed_value + float(amount_liters), 2)
+            new_value = round(
+                displayed_value + float(amount_liters),
+                self._plant.decimals_for("total_water_consumption"),
+            )
             self._attr_native_value = new_value
             self._last_update = dt_util.utcnow().isoformat()
             self.async_write_ha_state()
@@ -1920,8 +1941,9 @@ class PlantTotalFertilizerConsumption(RestoreSensor):
                 if current_value > self._last_value:  # Nur positive Änderungen
                     increase = current_value - self._last_value
                     self._attr_native_value += round(
-                        increase, 3
-                    )  # 3 Nachkommastellen statt 2
+                        increase,
+                        self._plant.decimals_for("total_fertilizer_consumption"),
+                    )
 
             # Speichere aktuellen Wert für nächste Berechnung
             self._last_value = current_value
@@ -1995,8 +2017,8 @@ class PlantCurrentPowerConsumption(RestoreSensor):
                         (current_value - self._last_value) * 3600 * 1000
                     ) / time_diff
                     self._attr_native_value = max(
-                        0, round(power, 0)
-                    )  # Keine Nachkommastellen
+                        0, round(power, self._plant.decimals_for("power_consumption"))
+                    )
 
             # Speichere aktuelle Werte für nächste Berechnung
             self._last_value = current_value
@@ -2097,8 +2119,9 @@ class PlantTotalPowerConsumption(RestoreSensor):
                         if current_value > self._last_value:  # Nur positive Änderungen
                             increase = current_value - self._last_value
                             self._attr_native_value += round(
-                                increase, 3
-                            )  # 3 Nachkommastellen statt 2
+                                increase,
+                                self._plant.decimals_for("total_power_consumption"),
+                            )
 
                     # Speichere aktuellen Wert für nächste Berechnung
                     self._last_value = current_value
@@ -2161,7 +2184,10 @@ class PlantEnergyCost(RestoreSensor):
 
         try:
             total_power = float(self._plant.total_power_consumption.state)
-            self._attr_native_value = round(total_power * self._plant.kwh_price, 2)
+            self._attr_native_value = round(
+                total_power * self._plant.kwh_price,
+                self._plant.decimals_for("energy_cost"),
+            )
         except (TypeError, ValueError):
             self._attr_native_value = 0.0
 
