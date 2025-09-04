@@ -113,13 +113,11 @@ Update cannabis strain and refresh data from Seedfinder:
 3. Enable "Force refresh" to update all data including images
 4. Strain changes take effect immediately
 
-### Central sensor configuration and decimal places
-
-This integration includes a central configuration for sensor formatting in `custom_components/plant/sensor_configuration.py`.
-
-- Defaults: per-sensor decimal places are defined centrally and used across all sensors.
-- Overrides: the central “Plant Monitor Konfiguration” entry (created automatically on first use) exposes options like `decimals_temperature`, `decimals_dli`, `decimals_total_water_consumption`, etc.
-- Effect: rounding and display precision become consistent; changes propagate without code changes.
+### Central sensor decimals
+- Centralized defaults are defined in `custom_components/plant/sensor_configuration.py`.
+- The central config entry “Plant Monitor Konfiguration” exposes decimal options per sensor (e.g. `decimals_temperature`, `decimals_humidity`, `decimals_illuminance`, `decimals_ppfd`, `decimals_dli`, `decimals_total_water_consumption`, ...).
+- All live current sensors (temperature, humidity, illuminance, moisture, conductivity, CO2, ppfd, pH) and derived values use these settings for consistent rounding.
+- Manual updates (e.g. add watering) also respect the configured decimals.
 
 ## 📱 Available Services
 
