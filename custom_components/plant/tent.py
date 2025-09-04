@@ -8,6 +8,7 @@ from typing import List, Optional
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN, FLOW_PLANT_INFO
 
@@ -131,11 +132,19 @@ class Tent(Entity):
             self._updated_at = datetime.fromisoformat(updated_at_str)
         except ValueError:
             self._updated_at = datetime.now()
+            
+        # Initialize device_id
+        self._device_id = None
 
     @property
     def device_type(self) -> str:
         """Return the device type."""
         return "tent"
+
+    @property
+    def device_id(self) -> str:
+        """The device ID used for all the entities"""
+        return self._device_id
 
     @property
     def tent_id(self) -> str:
@@ -203,6 +212,20 @@ class Tent(Entity):
     def assign_to_plant(self, plant) -> None:
         """Assign this tent's sensors to a plant."""
         plant.replace_sensors(self._sensors)
+
+    def update_registry(self) -> None:
+        """Update registry with correct data"""
+        if self._device_id is None:
+            device_registry = dr.async_get(self._hass)
+            device = device_registry.async_get_device(
+                identifiers={(DOMAIN, self.unique_id)}
+            )
+            if device:
+                self._device_id = device.id
+
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to hass."""
+        self.update_registry()
 
     def _update_config(self) -> None:
         """Update the config entry with current tent data."""
