@@ -71,9 +71,9 @@ from .const import (
     SERVICE_ADD_WATERING,
     SERVICE_ADD_CONDUCTIVITY,
     SERVICE_ADD_PH,
-
 )
 from .plant_helpers import PlantHelper
+from .tent import Tent
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -165,6 +165,12 @@ ADD_CONDUCTIVITY_SCHEMA = vol.Schema({
 ADD_PH_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_id,
     vol.Required("value"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=14.0)),
+})
+
+# Schema for create_tent Service
+CREATE_TENT_SCHEMA = vol.Schema({
+    vol.Required(ATTR_NAME): cv.string,
+    vol.Optional("sensors", default=[]): vol.All(cv.ensure_list, [cv.string]),
 })
 
 
@@ -1855,6 +1861,22 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         supports_response=SupportsResponse.OPTIONAL
     )
     
+    async def create_tent(call: ServiceCall) -> ServiceResponse:
+        """Create a new tent."""
+        # This is a placeholder implementation
+        # In a real implementation, this would create a new tent entity
+        _LOGGER.info("Creating tent: %s", call.data.get(ATTR_NAME))
+        return {"success": True, "message": "Tent created successfully"}
+    
+    # Register create_tent service
+    hass.services.async_register(
+        DOMAIN,
+        "create_tent",
+        create_tent,
+        schema=CREATE_TENT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL
+    )
+    
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
@@ -1873,4 +1895,5 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_CHANGE_POSITION) 
     hass.services.async_remove(DOMAIN, SERVICE_EXPORT_PLANTS)
     hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PLANTS)
+    hass.services.async_remove(DOMAIN, "create_tent")
  

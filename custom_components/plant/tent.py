@@ -1,0 +1,220 @@
+"""Tent class for managing sensors in Home Assistant plant integration."""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime
+from typing import List, Optional
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.entity import Entity
+
+from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class JournalEntry:
+    """Represents a single journal entry."""
+
+    def __init__(self, content: str, author: str = "System") -> None:
+        """Initialize the journal entry."""
+        self.timestamp = datetime.now()
+        self.content = content
+        self.author = author
+
+    def to_dict(self) -> dict:
+        """Convert journal entry to dictionary."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "content": self.content,
+            "author": self.author,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> JournalEntry:
+        """Create journal entry from dictionary."""
+        entry = cls(data["content"], data.get("author", "System"))
+        entry.timestamp = datetime.fromisoformat(data["timestamp"])
+        return entry
+
+
+class Journal:
+    """Represents a journal for documenting events."""
+
+    def __init__(self) -> None:
+        """Initialize the journal."""
+        self.entries: List[JournalEntry] = []
+
+    def add_entry(self, entry: JournalEntry) -> None:
+        """Add an entry to the journal."""
+        self.entries.append(entry)
+
+    def get_entries(self) -> List[JournalEntry]:
+        """Get all journal entries."""
+        return self.entries.copy()
+
+    def to_dict(self) -> dict:
+        """Convert journal to dictionary."""
+        return {
+            "entries": [entry.to_dict() for entry in self.entries]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Journal:
+        """Create journal from dictionary."""
+        journal = cls()
+        journal.entries = [JournalEntry.from_dict(entry_data) for entry_data in data.get("entries", [])]
+        return journal
+
+
+class MaintenanceEntry:
+    """Represents a maintenance entry."""
+
+    def __init__(self, description: str, performed_by: str = "System", cost: float = 0.0) -> None:
+        """Initialize the maintenance entry."""
+        self.timestamp = datetime.now()
+        self.description = description
+        self.performed_by = performed_by
+        self.cost = cost
+
+    def to_dict(self) -> dict:
+        """Convert maintenance entry to dictionary."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "description": self.description,
+            "performed_by": self.performed_by,
+            "cost": self.cost,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> MaintenanceEntry:
+        """Create maintenance entry from dictionary."""
+        entry = cls(
+            data["description"],
+            data.get("performed_by", "System"),
+            data.get("cost", 0.0)
+        )
+        entry.timestamp = datetime.fromisoformat(data["timestamp"])
+        return entry
+
+
+class Tent(Entity):
+    """Representation of a Tent that manages sensors."""
+
+    def __init__(self, hass: HomeAssistant, config: ConfigEntry) -> None:
+        """Initialize the Tent."""
+        self._hass = hass
+        self._config = config
+        self._tent_id = config.data.get("tent_id")
+        self._name = config.data.get("name", "Unnamed Tent")
+        self._sensors: List[str] = config.data.get("sensors", [])  # List of sensor entity IDs
+        self._journal = Journal.from_dict(config.data.get("journal", {}))
+        self._maintenance_entries: List[MaintenanceEntry] = []
+        
+        # Load maintenance entries from config
+        maintenance_data = config.data.get("maintenance_entries", [])
+        for entry_data in maintenance_data:
+            self._maintenance_entries.append(MaintenanceEntry.from_dict(entry_data))
+            
+        self._created_at = datetime.fromisoformat(config.data.get("created_at", datetime.now().isoformat()))
+        self._updated_at = datetime.fromisoformat(config.data.get("updated_at", datetime.now().isoformat()))
+
+    @property
+    def tent_id(self) -> str:
+        """Return the tent ID."""
+        return self._tent_id
+
+    @property
+    def name(self) -> str:
+        """Return the name of the tent."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID for the tent."""
+        return f"tent_{self._tent_id}"
+
+    @property
+    def device_info(self) -> dict:
+        """Return device information about the tent."""
+        return {
+            "identifiers": {(DOMAIN, self.unique_id)},
+            "name": self.name,
+            "manufacturer": "Home Assistant",
+            "model": "Tent",
+        }
+
+    def add_sensor(self, sensor_entity_id: str) -> None:
+        """Add a sensor to this tent."""
+        if sensor_entity_id not in self._sensors:
+            self._sensors.append(sensor_entity_id)
+            self._updated_at = datetime.now()
+            self._update_config()
+
+    def remove_sensor(self, sensor_entity_id: str) -> None:
+        """Remove a sensor from this tent."""
+        if sensor_entity_id in self._sensors:
+            self._sensors.remove(sensor_entity_id)
+            self._updated_at = datetime.now()
+            self._update_config()
+
+    def get_sensors(self) -> List[str]:
+        """Get all sensors associated with this tent."""
+        return self._sensors.copy()
+
+    def add_journal_entry(self, entry: JournalEntry) -> None:
+        """Add a journal entry to this tent."""
+        self._journal.add_entry(entry)
+        self._updated_at = datetime.now()
+        self._update_config()
+
+    def get_journal(self) -> Journal:
+        """Get the journal for this tent."""
+        return self._journal
+
+    def add_maintenance_entry(self, entry: MaintenanceEntry) -> None:
+        """Add a maintenance entry to this tent."""
+        self._maintenance_entries.append(entry)
+        self._updated_at = datetime.now()
+        self._update_config()
+
+    def get_maintenance_entries(self) -> List[MaintenanceEntry]:
+        """Get all maintenance entries for this tent."""
+        return self._maintenance_entries.copy()
+
+    def assign_to_plant(self, plant) -> None:
+        """Assign this tent's sensors to a plant."""
+        plant.replace_sensors(self._sensors)
+
+    def _update_config(self) -> None:
+        """Update the config entry with current tent data."""
+        if not self._config:
+            return
+            
+        data = dict(self._config.data)
+        data["sensors"] = self._sensors
+        data["journal"] = self._journal.to_dict()
+        data["maintenance_entries"] = [entry.to_dict() for entry in self._maintenance_entries]
+        data["updated_at"] = self._updated_at.isoformat()
+        
+        # Update the config entry
+        self._hass.config_entries.async_update_entry(self._config, data=data)
+
+    def to_dict(self) -> dict:
+        """Convert tent to dictionary for storage."""
+        return {
+            "tent_id": self._tent_id,
+            "name": self._name,
+            "sensors": self._sensors,
+            "journal": self._journal.to_dict(),
+            "maintenance_entries": [entry.to_dict() for entry in self._maintenance_entries],
+            "created_at": self._created_at.isoformat(),
+            "updated_at": self._updated_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, hass: HomeAssistant, data: dict) -> Tent:
+        """Create tent from dictionary."""
+        # This would be used for loading tents from storage
+        pass

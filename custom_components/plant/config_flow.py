@@ -169,6 +169,7 @@ from .const import (
 )
 from .plant_helpers import PlantHelper
 from .sensor_configuration import DEFAULT_DECIMALS
+from .tent import Tent
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -183,6 +184,13 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize flow."""
         self.plant_info = {}
         self.error = None
+
+    def _get_available_tents(self):
+        """Get a list of available tents for selection."""
+        tents = []
+        # In a real implementation, this would query the system for available tents
+        # For now, we'll return an empty list as we need to implement tent creation first
+        return tents
 
     @staticmethod
     @callback
@@ -341,6 +349,8 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input[ATTR_DEVICE_TYPE] == DEVICE_TYPE_CYCLE:
             return await self.async_step_cycle()
+        elif user_input[ATTR_DEVICE_TYPE] == DEVICE_TYPE_TENT:
+            return await self.async_step_tent()
         else:
             return await self.async_step_plant()
 
@@ -530,6 +540,53 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Wenn der Aufruf vom Service kommt, nutzen wir die vorgegebenen Daten
         if self.context.get("source_type") == "service":
             return self.async_create_entry(
+                title=self.plant_info[ATTR_NAME],
+                data={FLOW_PLANT_INFO: self.plant_info},
+            )
+
+    async def async_step_tent(self, user_input=None):
+        """Handle tent configuration."""
+        errors = {}
+
+        # Hole die Default-Werte aus dem Konfigurationsknoten
+        config_entry = None
+        for entry in self._async_current_entries():
+            if entry.data.get("is_config", False):
+                config_entry = entry
+                break
+
+        if config_entry:
+            config_data = config_entry.data[FLOW_PLANT_INFO]
+        else:
+            config_data = {}
+
+        if user_input is not None:
+            self.plant_info = {
+                ATTR_NAME: user_input[ATTR_NAME],
+                ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
+                ATTR_IS_NEW_PLANT: True,
+                "plant_emoji": user_input.get("plant_emoji", "⛺"),
+            }
+
+            # Erstelle direkt den Entry ohne weitere Schritte
+            return self.async_create_entry(
+                title=self.plant_info[ATTR_NAME],
+                data={FLOW_PLANT_INFO: self.plant_info},
+            )
+
+        data_schema = {
+            # Basis-Informationen
+            vol.Required(ATTR_NAME): cv.string,
+            vol.Optional(
+                "plant_emoji", default="⛺"
+            ): cv.string,
+        }
+
+        return self.async_show_form(
+            step_id="tent",
+            data_schema=vol.Schema(data_schema),
+            errors=errors,
+        )
                 title=user_input[ATTR_NAME],
                 data={
                     FLOW_PLANT_INFO: {
@@ -736,6 +793,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     FLOW_SENSOR_POWER_CONSUMPTION
                 ),
                 FLOW_SENSOR_PH: user_input.get(FLOW_SENSOR_PH),
+                "assigned_tent": user_input.get("assigned_tent"),
             }
 
             plant_helper = PlantHelper(hass=self.hass)
@@ -889,6 +947,12 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ATTR_NORMALIZE_PERCENTILE,
                 default=config_data.get("default_normalize_percentile"),
             ): cv.positive_int,
+            # Tent selection
+            vol.Optional("assigned_tent"): selector({
+                "select": {
+                    "options": self._get_available_tents()
+                }
+            }),
         }
 
         return self.async_show_form(

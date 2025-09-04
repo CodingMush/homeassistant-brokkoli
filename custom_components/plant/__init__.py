@@ -127,6 +127,7 @@ from .const import (
 from .plant_helpers import PlantHelper
 from .services import async_setup_services, async_unload_services
 from .sensor_configuration import get_decimals_for
+from .tent import Tent
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SELECT, Platform.TEXT]
@@ -800,6 +801,10 @@ class PlantDevice(Entity):
         self.fertilizer_consumption_status = None
         self.power_consumption_status = None
 
+        # Tent assignment
+        self._assigned_tent = None
+        self._tent_id = None
+
         self.flowering_duration = None
 
         # Neue Attribute hinzufügen
@@ -948,11 +953,17 @@ class PlantDevice(Entity):
                 "model": self._plant_info.get(ATTR_STRAIN, ""),
                 "model_id": self._plant_info.get(ATTR_TYPE, ""),
             })
-        else:  # DEVICE_TYPE_CYCLE
+        elif device_type == DEVICE_TYPE_CYCLE:
             info.update({
                 "manufacturer": "Home Assistant",
                 "model": "Cycle",
                 "model_id": self._plant_info.get(ATTR_TYPE, ""),
+            })
+        else:  # DEVICE_TYPE_TENT
+            info.update({
+                "manufacturer": "Home Assistant",
+                "model": "Tent",
+                "model_id": "Tent",
             })
         
         # Optional website hinzufügen wenn vorhanden
@@ -2233,6 +2244,28 @@ class PlantDevice(Entity):
         # Aktualisiere den Energiekosten-Sensor wenn vorhanden
         if hasattr(self, 'energy_cost') and self.energy_cost:
             self.energy_cost.async_schedule_update_ha_state(True)
+
+    def assign_tent(self, tent: Tent) -> None:
+        """Assign a tent to this plant and replace sensors."""
+        self._assigned_tent = tent
+        self._tent_id = tent.tent_id
+        tent_sensors = tent.get_sensors()
+        self.replace_sensors(tent_sensors)
+
+    def change_tent(self, new_tent: Tent) -> None:
+        """Change the assigned tent and update sensors."""
+        self._assigned_tent = new_tent
+        self._tent_id = new_tent.tent_id
+        tent_sensors = new_tent.get_sensors()
+        self.replace_sensors(tent_sensors)
+
+    def get_assigned_tent(self) -> Tent:
+        """Get the assigned tent."""
+        return self._assigned_tent
+
+    def get_tent_id(self) -> str:
+        """Get the assigned tent ID."""
+        return self._tent_id
 
 
 async def async_remove_config_entry_device(

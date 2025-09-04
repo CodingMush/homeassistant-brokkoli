@@ -301,11 +301,13 @@ SERVICE_CREATE_PLANT = "create_plant"
 DEVICE_TYPE_PLANT = "plant"
 DEVICE_TYPE_CYCLE = "cycle"
 DEVICE_TYPE_CONFIG = "config"  # Neuer Gerätetyp für Konfiguration
+DEVICE_TYPE_TENT = "tent"  # Neue Gerätetyp für Tent
 ATTR_DEVICE_TYPE = "device_type"
 
 DEVICE_TYPES = [
     DEVICE_TYPE_PLANT,
-    DEVICE_TYPE_CYCLE
+    DEVICE_TYPE_CYCLE,
+    DEVICE_TYPE_TENT
 ]  # Config wird nicht in der Auswahl angezeigt
 
 # Icons für Device Types
@@ -460,3 +462,9 @@ ATTR_POSITION_X = "position_x"
 ATTR_POSITION_Y = "position_y"
 SERVICE_CHANGE_POSITION = "change_position"
 ATTR_POSITION_HISTORY = "position_history"
+
+# Tent constants
+SERVICE_CREATE_TENT = "create_tent"
+ATTR_TENT_ID = "tent_id"
+ATTR_JOURNAL = "journal"
+ATTR_MAINTENANCE_ENTRIES = "maintenance_entries"
