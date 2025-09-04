@@ -120,16 +120,6 @@ from .plant_meters import (
     PlantCurrentHumidity,
     PlantCurrentCO2,
 )
-
-# Import missing sensor classes from plant_meters
-from .plant_meters import (
-    PlantCurrentConductivity,
-    PlantCurrentIlluminance,
-    PlantCurrentMoisture,
-    PlantCurrentTemperature,
-    PlantCurrentHumidity,
-    PlantCurrentCO2,
-)
 from .sensor_config import get_sensor_config, round_sensor_value, format_sensor_value
 
 _LOGGER = logging.getLogger(__name__)

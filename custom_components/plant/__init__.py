@@ -128,7 +128,7 @@ from .plant_helpers import PlantHelper
 from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SELECT, Platform.TEXT]
+PLATFORMS = [Platform.NUMBER, Platform.SENSOR, "plant_select", Platform.TEXT]
 
 # Use this during testing to generate some dummy-sensors
 # to provide random readings for temperature, moisture etc.
