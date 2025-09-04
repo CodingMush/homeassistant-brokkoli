@@ -14,7 +14,7 @@ A Home Assistant integration for monitoring cannabis plants with sensors and con
 - Cycle system for grouping plants together
 
 ### Supported Sensors
-- **Moisture**: Soil moisture percentage
+- **Moisture**: Soil moisture percentage 
 - **Temperature**: Ambient temperature (°C/°F)
 - **Light/Brightness**: Light intensity (lux)
 - **Conductivity**: Soil conductivity (µS/cm)
