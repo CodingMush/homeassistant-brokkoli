@@ -371,11 +371,14 @@ class PlantCurrentStatus(RestoreSensor):
         """Apply centralized decimal rounding if applicable."""
         sensor_key = self.sensor_type()
         if sensor_key is None:
-            return value
+            return self._default_state if value in (STATE_UNKNOWN, STATE_UNAVAILABLE, None) else value
+        # Treat unknown/unavailable/non-numeric as default numeric state
+        if value in (STATE_UNKNOWN, STATE_UNAVAILABLE, None):
+            return self._default_state
         try:
             numeric = float(value)
         except (TypeError, ValueError):
-            return value
+            return self._default_state
         try:
             decimals = self._plant.decimals_for(sensor_key)
         except Exception:
