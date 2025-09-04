@@ -182,6 +182,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN].setdefault(entry.entry_id, {})
     _LOGGER.debug("Setting up config entry %s: %s", entry.entry_id, entry)
 
+    # Prüfe ob bereits eine ID existiert
+    device_type = entry.data[FLOW_PLANT_INFO].get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
+    
     # Erstelle PlantDevice oder Tent basierend auf dem Gerätetyp
     if device_type == "tent":
         # Für Tents erstellen wir ein Tent-Objekt
@@ -191,8 +194,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Für Plants und Cycles verwenden wir PlantDevice
         plant = PlantDevice(hass, entry)
     
-    # Prüfe ob bereits eine ID existiert
-    device_type = entry.data[FLOW_PLANT_INFO].get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
     id_key = f"{device_type}_id"
     
     if id_key not in entry.data[FLOW_PLANT_INFO]:
@@ -237,7 +238,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _plant_add_to_device_registry(hass, plant.threshold_entities, device_id)
         await _plant_add_to_device_registry(hass, plant.meter_entities, device_id)
 
-    #
     # Set up utility sensor (nur für Plants und Cycles)
     if device_type != "tent":
         hass.data.setdefault(DATA_UTILITY, {})
