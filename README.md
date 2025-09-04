@@ -115,7 +115,7 @@ Update cannabis strain and refresh data from Seedfinder:
 
 ### Central sensor decimals
 - Centralized defaults are defined in `custom_components/plant/sensor_configuration.py`.
-- The central config entry “Plant Monitor Konfiguration” exposes decimal options per sensor (e.g. `decimals_temperature`, `decimals_humidity`, `decimals_illuminance`, `decimals_ppfd`, `decimals_dli`, `decimals_total_water_consumption`, ...).
+- The central config entry "Plant Monitor Konfiguration" exposes decimal options per sensor (e.g. `decimals_temperature`, `decimals_humidity`, `decimals_illuminance`, `decimals_ppfd`, `decimals_dli`, `decimals_total_water_consumption`, ...).
 - All live current sensors (temperature, humidity, illuminance, moisture, conductivity, CO2, ppfd, pH) and derived values use these settings for consistent rounding.
 - Manual updates (e.g. add watering) also respect the configured decimals.
 
@@ -138,6 +138,15 @@ The integration provides various services to interact with your cannabis plants:
 - `plant.import_plants` - Import plant configurations
 
 These services are integrated into the [Brokkoli Card](https://github.com/dingausmwald/lovelace-brokkoli-card) interface for convenient operation, or can be used directly in automations and scripts.
+
+## 🧪 Development and Testing
+
+For developers interested in contributing to the Brokkoli integration, comprehensive technical documentation is available in the [DEVELOPMENT.md](file:///d:/Python/2/homeassistant-brokkoli/DEVELOPMENT.md) file. This includes:
+
+- Testing strategy and test organization
+- Architecture overview
+- Development best practices
+- Quality metrics and troubleshooting tips
 
 ## 🆘 Troubleshooting
 
@@ -168,4 +177,3 @@ If you find this project helpful, consider supporting its development:
 ---
 
 **Part of the Brokkoli Suite** - Cannabis cultivation tracking for Home Assistant
-
