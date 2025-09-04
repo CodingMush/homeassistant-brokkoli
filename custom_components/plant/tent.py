@@ -133,6 +133,11 @@ class Tent(Entity):
             self._updated_at = datetime.now()
 
     @property
+    def device_type(self) -> str:
+        """Return the device type."""
+        return "tent"
+
+    @property
     def tent_id(self) -> str:
         """Return the tent ID."""
         return self._tent_id
