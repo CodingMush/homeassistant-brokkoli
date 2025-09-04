@@ -1125,7 +1125,11 @@ class PlantDevice(Entity):
             ATTR_ILLUMINANCE: {
                 ATTR_MAX: self.max_illuminance.state,
                 ATTR_MIN: self.min_illuminance.state,
-                ATTR_CURRENT: self.sensor_illuminance.state or STATE_UNAVAILABLE,
+                ATTR_CURRENT: (
+                    self.sensor_illuminance.state
+                    if self.sensor_illuminance.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    else STATE_UNAVAILABLE
+                ),
                 ATTR_ICON: self.sensor_illuminance.icon,
                 ATTR_UNIT_OF_MEASUREMENT: self.sensor_illuminance.unit_of_measurement,
                 ATTR_SENSOR: self.sensor_illuminance.entity_id,
