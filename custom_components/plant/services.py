@@ -1196,7 +1196,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     current_value = float(current_state) if current_state not in (None, "unknown", "unavailable") else 0.0
                 except (TypeError, ValueError):
                     current_value = 0.0
-                twc._attr_native_value = round(current_value + float(amount_liters), 2)
+                # Use centralized decimal setting for total_water_consumption
+                try:
+                    decimals = target_plant.decimals_for("total_water_consumption")
+                except Exception:
+                    decimals = 2
+                twc._attr_native_value = round(current_value + float(amount_liters), decimals)
                 try:
                     twc._last_update = datetime.utcnow().isoformat()
                 except Exception:

@@ -168,6 +168,7 @@ from .const import (
     ATTR_PH,
 )
 from .plant_helpers import PlantHelper
+from .sensor_configuration import DEFAULT_DECIMALS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -301,6 +302,24 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "yield": "",
                     "notes": "",
                     "images": [],  # Leeres Array für Bilder
+                    # Default decimal places for sensors
+                    "decimals_temperature": DEFAULT_DECIMALS["temperature"].decimals,
+                    "decimals_moisture": DEFAULT_DECIMALS["moisture"].decimals,
+                    "decimals_conductivity": DEFAULT_DECIMALS["conductivity"].decimals,
+                    "decimals_illuminance": DEFAULT_DECIMALS["illuminance"].decimals,
+                    "decimals_humidity": DEFAULT_DECIMALS["humidity"].decimals,
+                    "decimals_CO2": DEFAULT_DECIMALS["CO2"].decimals,
+                    "decimals_ph": DEFAULT_DECIMALS["ph"].decimals,
+                    "decimals_ppfd": DEFAULT_DECIMALS["ppfd"].decimals,
+                    "decimals_dli": DEFAULT_DECIMALS["dli"].decimals,
+                    "decimals_total_integral": DEFAULT_DECIMALS["total_integral"].decimals,
+                    "decimals_moisture_consumption": DEFAULT_DECIMALS["moisture_consumption"].decimals,
+                    "decimals_total_water_consumption": DEFAULT_DECIMALS["total_water_consumption"].decimals,
+                    "decimals_fertilizer_consumption": DEFAULT_DECIMALS["fertilizer_consumption"].decimals,
+                    "decimals_total_fertilizer_consumption": DEFAULT_DECIMALS["total_fertilizer_consumption"].decimals,
+                    "decimals_power_consumption": DEFAULT_DECIMALS["power_consumption"].decimals,
+                    "decimals_total_power_consumption": DEFAULT_DECIMALS["total_power_consumption"].decimals,
+                    "decimals_energy_cost": DEFAULT_DECIMALS["energy_cost"].decimals,
                 },
                 # Flag um anzuzeigen, dass dies ein Konfigurationsknoten ist
                 "is_config": True,
@@ -1436,6 +1455,24 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     "default_ph_aggregation": "default_ph_aggregation",
                     # Füge Download-Pfad hinzu
                     FLOW_DOWNLOAD_PATH: FLOW_DOWNLOAD_PATH,
+                    # Decimal places per sensor
+                    "decimals_temperature": "decimals_temperature",
+                    "decimals_moisture": "decimals_moisture",
+                    "decimals_conductivity": "decimals_conductivity",
+                    "decimals_illuminance": "decimals_illuminance",
+                    "decimals_humidity": "decimals_humidity",
+                    "decimals_CO2": "decimals_CO2",
+                    "decimals_ph": "decimals_ph",
+                    "decimals_ppfd": "decimals_ppfd",
+                    "decimals_dli": "decimals_dli",
+                    "decimals_total_integral": "decimals_total_integral",
+                    "decimals_moisture_consumption": "decimals_moisture_consumption",
+                    "decimals_total_water_consumption": "decimals_total_water_consumption",
+                    "decimals_fertilizer_consumption": "decimals_fertilizer_consumption",
+                    "decimals_total_fertilizer_consumption": "decimals_total_fertilizer_consumption",
+                    "decimals_power_consumption": "decimals_power_consumption",
+                    "decimals_total_power_consumption": "decimals_total_power_consumption",
+                    "decimals_energy_cost": "decimals_energy_cost",
                 }
 
                 for default_key, limit_key in default_fields.items():
@@ -1587,6 +1624,109 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                             "default_water_capacity", DEFAULT_WATER_CAPACITY
                         ),
                     ): vol.Coerce(int),
+                    # Decimal places per sensor
+                    vol.Optional(
+                        "decimals_temperature",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_temperature", DEFAULT_DECIMALS["temperature"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_moisture",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_moisture", DEFAULT_DECIMALS["moisture"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_conductivity",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_conductivity", DEFAULT_DECIMALS["conductivity"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_illuminance",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_illuminance", DEFAULT_DECIMALS["illuminance"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_humidity",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_humidity", DEFAULT_DECIMALS["humidity"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_CO2",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_CO2", DEFAULT_DECIMALS["CO2"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_ph",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_ph", DEFAULT_DECIMALS["ph"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_ppfd",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_ppfd", DEFAULT_DECIMALS["ppfd"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_dli",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_dli", DEFAULT_DECIMALS["dli"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_total_integral",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_total_integral", DEFAULT_DECIMALS["total_integral"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_moisture_consumption",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_moisture_consumption", DEFAULT_DECIMALS["moisture_consumption"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_total_water_consumption",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_total_water_consumption", DEFAULT_DECIMALS["total_water_consumption"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_fertilizer_consumption",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_fertilizer_consumption", DEFAULT_DECIMALS["fertilizer_consumption"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_total_fertilizer_consumption",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_total_fertilizer_consumption", DEFAULT_DECIMALS["total_fertilizer_consumption"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_power_consumption",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_power_consumption", DEFAULT_DECIMALS["power_consumption"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_total_power_consumption",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_total_power_consumption", DEFAULT_DECIMALS["total_power_consumption"].decimals
+                        ),
+                    ): int,
+                    vol.Optional(
+                        "decimals_energy_cost",
+                        default=self.entry.data[FLOW_PLANT_INFO].get(
+                            "decimals_energy_cost", DEFAULT_DECIMALS["energy_cost"].decimals
+                        ),
+                    ): int,
                     vol.Optional(
                         CONF_DEFAULT_MAX_MOISTURE,
                         default=self.entry.data[FLOW_PLANT_INFO].get(
