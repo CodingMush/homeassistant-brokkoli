@@ -39,12 +39,6 @@ from .const import (
     AGGREGATION_MAX,
     AGGREGATION_METHODS,
     AGGREGATION_METHODS_EXTENDED,
-)
-from .plant_helpers import PlantHelper
-from .sensor_configuration import DEFAULT_DECIMALS
-from .tent import Tent
-# _get_next_id is imported from __init__.py
-
     AGGREGATION_ORIGINAL,
     DEFAULT_AGGREGATIONS,
     CONF_AGGREGATION,
@@ -177,6 +171,7 @@ from .tent import Tent
 from .plant_helpers import PlantHelper
 from .sensor_configuration import DEFAULT_DECIMALS
 from .tent import Tent
+# _get_next_id is imported from __init__.py
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -206,15 +201,6 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.OptionsFlow:
         """Create the options flow."""
         return OptionsFlowHandler(config_entry)
-
-    async def async_step_import(self, import_input):
-        """Importing config from configuration.yaml"""
-        _LOGGER.debug(import_input)
-        # return FlowResultType.ABORT
-        return self.async_create_entry(
-            title=import_input[FLOW_PLANT_INFO][ATTR_NAME],
-            data=import_input,
-        )
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
@@ -627,19 +613,6 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(data_schema),
             errors=errors,
         )
-                title=user_input[ATTR_NAME],
-                data={
-                    FLOW_PLANT_INFO: {
-                        ATTR_NAME: user_input[ATTR_NAME],
-                        ATTR_DEVICE_TYPE: DEVICE_TYPE_CYCLE,
-                        ATTR_IS_NEW_PLANT: True,
-                        ATTR_STRAIN: "",
-                        ATTR_BREEDER: "",
-                        "growth_phase": DEFAULT_GROWTH_PHASE,
-                        "plant_emoji": user_input.get("plant_emoji", ""),
-                    }
-                },
-            )
 
         data_schema = {
             vol.Required(ATTR_NAME): cv.string,
