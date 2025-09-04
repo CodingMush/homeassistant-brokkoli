@@ -7,6 +7,7 @@ import logging
 import re
 from typing import Any
 import urllib.parse
+from datetime import datetime
 
 # Third Party Imports
 import voluptuous as vol
@@ -38,6 +39,12 @@ from .const import (
     AGGREGATION_MAX,
     AGGREGATION_METHODS,
     AGGREGATION_METHODS_EXTENDED,
+)
+from .plant_helpers import PlantHelper
+from .sensor_configuration import DEFAULT_DECIMALS
+from .tent import Tent
+# _get_next_id is imported from __init__.py
+
     AGGREGATION_ORIGINAL,
     DEFAULT_AGGREGATIONS,
     CONF_AGGREGATION,
@@ -544,6 +551,20 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data={FLOW_PLANT_INFO: self.plant_info},
             )
 
+    async def _get_sensor_entities(self):
+        """Get available sensor entities for selection."""
+        # Get all entities from the entity registry
+        from homeassistant.helpers.entity_registry import async_get
+        entity_registry = async_get(self.hass)
+        
+        # Filter for sensor entities
+        sensor_entities = []
+        for entity in entity_registry.entities.values():
+            if entity.domain == "sensor":
+                sensor_entities.append(entity.entity_id)
+        
+        return sorted(sensor_entities)
+
     async def async_step_tent(self, user_input=None):
         """Handle tent configuration."""
         errors = {}
@@ -561,11 +582,21 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             config_data = {}
 
         if user_input is not None:
+            # Generate a unique ID for the tent
+            from .__init__ import _get_next_id
+            tent_id = await _get_next_id(self.hass, DEVICE_TYPE_TENT)
+            
             self.plant_info = {
                 ATTR_NAME: user_input[ATTR_NAME],
                 ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
                 ATTR_IS_NEW_PLANT: True,
                 "plant_emoji": user_input.get("plant_emoji", "⛺"),
+                "tent_id": tent_id,
+                "sensors": user_input.get("sensors", []),
+                "journal": {},
+                "maintenance_entries": [],
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
             }
 
             # Erstelle direkt den Entry ohne weitere Schritte
@@ -574,12 +605,21 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data={FLOW_PLANT_INFO: self.plant_info},
             )
 
+        # Get available sensors for selection
+        sensor_entities = await self._get_sensor_entities()
+        
         data_schema = {
             # Basis-Informationen
             vol.Required(ATTR_NAME): cv.string,
             vol.Optional(
                 "plant_emoji", default="⛺"
             ): cv.string,
+            vol.Optional("sensors"): selector({
+                "entity": {
+                    "multiple": True,
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
         }
 
         return self.async_show_form(

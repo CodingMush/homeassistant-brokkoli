@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import Entity
 
-from .const import DOMAIN
+from .const import DOMAIN, FLOW_PLANT_INFO
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,7 +64,8 @@ class Journal:
     def from_dict(cls, data: dict) -> Journal:
         """Create journal from dictionary."""
         journal = cls()
-        journal.entries = [JournalEntry.from_dict(entry_data) for entry_data in data.get("entries", [])]
+        if data:
+            journal.entries = [JournalEntry.from_dict(entry_data) for entry_data in data.get("entries", [])]
         return journal
 
 
@@ -106,19 +107,30 @@ class Tent(Entity):
         """Initialize the Tent."""
         self._hass = hass
         self._config = config
-        self._tent_id = config.data.get("tent_id")
-        self._name = config.data.get("name", "Unnamed Tent")
-        self._sensors: List[str] = config.data.get("sensors", [])  # List of sensor entity IDs
-        self._journal = Journal.from_dict(config.data.get("journal", {}))
+        plant_info = config.data.get(FLOW_PLANT_INFO, {})
+        self._tent_id = plant_info.get("tent_id")
+        self._name = plant_info.get("name", plant_info.get("ATTR_NAME", "Unnamed Tent"))
+        self._sensors: List[str] = plant_info.get("sensors", [])  # List of sensor entity IDs
+        self._journal = Journal.from_dict(plant_info.get("journal", {}))
         self._maintenance_entries: List[MaintenanceEntry] = []
         
         # Load maintenance entries from config
-        maintenance_data = config.data.get("maintenance_entries", [])
+        maintenance_data = plant_info.get("maintenance_entries", [])
         for entry_data in maintenance_data:
             self._maintenance_entries.append(MaintenanceEntry.from_dict(entry_data))
             
-        self._created_at = datetime.fromisoformat(config.data.get("created_at", datetime.now().isoformat()))
-        self._updated_at = datetime.fromisoformat(config.data.get("updated_at", datetime.now().isoformat()))
+        created_at_str = plant_info.get("created_at", datetime.now().isoformat())
+        updated_at_str = plant_info.get("updated_at", datetime.now().isoformat())
+        
+        try:
+            self._created_at = datetime.fromisoformat(created_at_str)
+        except ValueError:
+            self._created_at = datetime.now()
+            
+        try:
+            self._updated_at = datetime.fromisoformat(updated_at_str)
+        except ValueError:
+            self._updated_at = datetime.now()
 
     @property
     def tent_id(self) -> str:

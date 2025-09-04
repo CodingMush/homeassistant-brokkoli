@@ -182,8 +182,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN].setdefault(entry.entry_id, {})
     _LOGGER.debug("Setting up config entry %s: %s", entry.entry_id, entry)
 
-    # Erstelle PlantDevice und hole oder generiere ID
-    plant = PlantDevice(hass, entry)
+    # Erstelle PlantDevice oder Tent basierend auf dem Gerätetyp
+    if device_type == "tent":
+        # Für Tents erstellen wir ein Tent-Objekt
+        from .tent import Tent
+        plant = Tent(hass, entry)
+    else:
+        # Für Plants und Cycles verwenden wir PlantDevice
+        plant = PlantDevice(hass, entry)
     
     # Prüfe ob bereits eine ID existiert
     device_type = entry.data[FLOW_PLANT_INFO].get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
@@ -209,7 +215,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data[DOMAIN][entry.entry_id][ATTR_PLANT] = plant
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # Für Tents brauchen wir keine Sensor-Plattformen
+    if device_type != "tent":
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     plant_entities = [
         plant,
@@ -222,16 +230,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Add the rest of the entities to device registry together with plant
     device_id = plant.device_id
     await _plant_add_to_device_registry(hass, plant_entities, device_id)
-    await _plant_add_to_device_registry(hass, plant.integral_entities, device_id)
-    await _plant_add_to_device_registry(hass, plant.threshold_entities, device_id)
-    await _plant_add_to_device_registry(hass, plant.meter_entities, device_id)
+    
+    # Für Tents nur die Haupt-Entity registrieren
+    if device_type != "tent":
+        await _plant_add_to_device_registry(hass, plant.integral_entities, device_id)
+        await _plant_add_to_device_registry(hass, plant.threshold_entities, device_id)
+        await _plant_add_to_device_registry(hass, plant.meter_entities, device_id)
 
     #
-    # Set up utility sensor
-    hass.data.setdefault(DATA_UTILITY, {})
-    hass.data[DATA_UTILITY].setdefault(entry.entry_id, {})
-    hass.data[DATA_UTILITY][entry.entry_id].setdefault(DATA_TARIFF_SENSORS, [])
-    hass.data[DATA_UTILITY][entry.entry_id][DATA_TARIFF_SENSORS].append(plant.dli)
+    # Set up utility sensor (nur für Plants und Cycles)
+    if device_type != "tent":
+        hass.data.setdefault(DATA_UTILITY, {})
+        hass.data[DATA_UTILITY].setdefault(entry.entry_id, {})
+        hass.data[DATA_UTILITY][entry.entry_id].setdefault(DATA_TARIFF_SENSORS, [])
+        hass.data[DATA_UTILITY][entry.entry_id][DATA_TARIFF_SENSORS].append(plant.dli)
 
     # Service Setup auslagern - ersetze den alten Service-Code durch:
     await async_setup_services(hass)
@@ -245,7 +257,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     plant.async_schedule_update_ha_state(True)
 
     # Lets add the dummy sensors automatically if we are testing stuff
-    if USE_DUMMY_SENSORS is True:
+    # Nur für Plants und Cycles
+    if device_type != "tent" and USE_DUMMY_SENSORS is True:
         for sensor in plant.meter_entities:
             if sensor.external_sensor is None:
                 await hass.services.async_call(
@@ -262,12 +275,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 )
 
     # Setze das Flag zurück nach vollständigem Setup
-    if entry.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+    # Nur für Plants und Cycles
+    if device_type != "tent" and entry.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
         data = dict(entry.data)
         data[FLOW_PLANT_INFO][ATTR_IS_NEW_PLANT] = False
         hass.config_entries.async_update_entry(entry, data=data)
 
     # Wenn ein neuer Cycle erstellt wurde, aktualisiere alle Plant Cycle Selects
+    # Nur für Cycles
     if plant.device_type == DEVICE_TYPE_CYCLE:
         for entry_id in hass.data[DOMAIN]:
             if ATTR_PLANT in hass.data[DOMAIN][entry_id]:

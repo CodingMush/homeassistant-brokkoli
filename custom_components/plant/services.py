@@ -1863,10 +1863,36 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     
     async def create_tent(call: ServiceCall) -> ServiceResponse:
         """Create a new tent."""
-        # This is a placeholder implementation
-        # In a real implementation, this would create a new tent entity
-        _LOGGER.info("Creating tent: %s", call.data.get(ATTR_NAME))
-        return {"success": True, "message": "Tent created successfully"}
+        from .__init__ import _get_next_id
+        
+        tent_name = call.data.get(ATTR_NAME)
+        sensors = call.data.get("sensors", [])
+        
+        # Generate a unique ID for the tent
+        tent_id = await _get_next_id(hass, "tent")
+        
+        # Create tent data
+        tent_data = {
+            FLOW_PLANT_INFO: {
+                ATTR_NAME: tent_name,
+                "name": tent_name,
+                ATTR_DEVICE_TYPE: "tent",
+                ATTR_IS_NEW_PLANT: True,
+                "plant_emoji": "⛺",
+                "tent_id": tent_id,
+                "sensors": sensors,
+                "journal": {},
+                "maintenance_entries": [],
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+            }
+        }
+        
+        # Create config entry for the tent
+        hass.config_entries.async_entries(DOMAIN)
+        
+        _LOGGER.info("Creating tent: %s with ID: %s", tent_name, tent_id)
+        return {"success": True, "tent_id": tent_id, "message": f"Tent {tent_name} created successfully"}
     
     # Register create_tent service
     hass.services.async_register(
