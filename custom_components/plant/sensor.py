@@ -599,18 +599,21 @@ class PlantCurrentConductivity(PlantCurrentStatus):
         self.async_write_ha_state()
 
     async def async_update(self) -> None:
-        return await super().async_update()
+        await super().async_update()
 
     def sensor_type(self) -> str | None:
         return "conductivity"
-        """Update the sensor."""
+
+        # NOTE: The following normalization must be performed in async_update;
+        # it was previously misplaced causing a SyntaxError.
+    async def async_update(self) -> None:
         await super().async_update()
 
-        # Speichere den Rohwert vor der Normalisierung
+        # Preserve raw value before normalization
         if self._attr_native_value is not None:
             self._raw_value = self._attr_native_value
 
-        # Normalisiere den Wert wenn der Moisture Sensor normalisiert wird
+        # Normalize based on moisture normalization factor, if enabled
         if self._normalize and self._attr_native_value is not None:
             moisture_sensor = self._plant.sensor_moisture
             if (
@@ -623,7 +626,7 @@ class PlantCurrentConductivity(PlantCurrentStatus):
                         * moisture_sensor._normalize_factor
                     )
                     self._attr_native_value = round(
-                        normalized, self._plant.decimals_for("moisture")
+                        normalized, self._plant.decimals_for("conductivity")
                     )
                 except (ValueError, TypeError):
                     pass
