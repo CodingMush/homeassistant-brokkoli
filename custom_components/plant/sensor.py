@@ -363,6 +363,25 @@ class PlantCurrentStatus(RestoreSensor):
         if not self._attr_native_value or self._attr_native_value == STATE_UNKNOWN:
             self._attr_native_value = self._default_state
 
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config. Override in subclasses."""
+        return None
+
+    def _apply_rounding(self, value: Any) -> Any:
+        """Apply centralized decimal rounding if applicable."""
+        sensor_key = self.sensor_type()
+        if sensor_key is None:
+            return value
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return value
+        try:
+            decimals = self._plant.decimals_for(sensor_key)
+        except Exception:
+            decimals = 2
+        return round(numeric, decimals)
+
     @property
     def state_class(self):
         """Return the state class."""
@@ -457,7 +476,7 @@ class PlantCurrentStatus(RestoreSensor):
             and new_state.state != STATE_UNKNOWN
             and new_state.state != STATE_UNAVAILABLE
         ):
-            self._attr_native_value = new_state.state
+            self._attr_native_value = self._apply_rounding(new_state.state)
             if ATTR_UNIT_OF_MEASUREMENT in new_state.attributes:
                 self._attr_native_unit_of_measurement = new_state.attributes[
                     ATTR_UNIT_OF_MEASUREMENT
@@ -471,7 +490,7 @@ class PlantCurrentStatus(RestoreSensor):
             try:
                 state = self._hass.states.get(self.external_sensor)
                 if state:
-                    self._attr_native_value = float(state.state)
+                    self._attr_native_value = self._apply_rounding(state.state)
                     if ATTR_UNIT_OF_MEASUREMENT in state.attributes:
                         self._attr_native_unit_of_measurement = state.attributes[
                             ATTR_UNIT_OF_MEASUREMENT
@@ -523,6 +542,9 @@ class PlantCurrentIlluminance(PlantCurrentStatus):
     def device_class(self) -> str:
         """Device class"""
         return SensorDeviceClass.ILLUMINANCE
+
+    def sensor_type(self) -> str | None:
+        return "illuminance"
 
 
 class PlantCurrentConductivity(PlantCurrentStatus):
@@ -577,6 +599,10 @@ class PlantCurrentConductivity(PlantCurrentStatus):
         self.async_write_ha_state()
 
     async def async_update(self) -> None:
+        return await super().async_update()
+
+    def sensor_type(self) -> str | None:
+        return "conductivity"
         """Update the sensor."""
         await super().async_update()
 
@@ -620,6 +646,8 @@ class PlantCurrentConductivity(PlantCurrentStatus):
 
 class PlantCurrentMoisture(PlantCurrentStatus):
     """Entity class for the current moisture meter"""
+    def sensor_type(self) -> str | None:
+        return "moisture"
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
@@ -773,6 +801,8 @@ class PlantCurrentMoisture(PlantCurrentStatus):
 
 
 class PlantCurrentTemperature(PlantCurrentStatus):
+    def sensor_type(self) -> str | None:
+        return "temperature"
     """Entity class for the current temperature meter"""
 
     def __init__(
@@ -796,6 +826,8 @@ class PlantCurrentTemperature(PlantCurrentStatus):
 
 
 class PlantCurrentHumidity(PlantCurrentStatus):
+    def sensor_type(self) -> str | None:
+        return "humidity"
     """Entity class for the current humidity meter"""
 
     def __init__(
@@ -817,6 +849,8 @@ class PlantCurrentHumidity(PlantCurrentStatus):
 
 
 class PlantCurrentCO2(PlantCurrentStatus):
+    def sensor_type(self) -> str | None:
+        return "CO2"
     """Entity class for the current CO2 meter"""
 
     def __init__(
@@ -861,6 +895,9 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         # Setze Wert bei Neuerstellung zurück
         if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
             self._attr_native_value = None
+
+    def sensor_type(self) -> str | None:
+        return "ppfd"
 
     @property
     def device_class(self) -> str:
@@ -2207,6 +2244,9 @@ class PlantCurrentPh(PlantCurrentStatus):
         self._attr_native_unit_of_measurement = None  # pH hat keine Einheit
         self._default_state = 7.0  # Neutraler pH-Wert als Default
         super().__init__(hass, config, plantdevice)
+
+    def sensor_type(self) -> str | None:
+        return "ph"
 
     @property
     def device_class(self) -> str:
