@@ -723,6 +723,7 @@ class PlantDevice(Entity):
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry) -> None:
         """Initialize the Plant/Cycle component."""
+        self._config = config
         self._config_entries = []
         self._data_source = config.data[FLOW_PLANT_INFO].get(DATA_SOURCE)
         self._plant_id = None  # Neue Property für die ID
