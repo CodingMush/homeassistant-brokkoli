@@ -582,13 +582,26 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             from .__init__ import _get_next_id
             tent_id = await _get_next_id(self.hass, DEVICE_TYPE_TENT)
             
+            # Collect sensors from user input
+            sensors = []
+            if user_input.get(FLOW_SENSOR_TEMPERATURE):
+                sensors.append(user_input[FLOW_SENSOR_TEMPERATURE])
+            if user_input.get(FLOW_SENSOR_HUMIDITY):
+                sensors.append(user_input[FLOW_SENSOR_HUMIDITY])
+            if user_input.get(FLOW_SENSOR_CO2):
+                sensors.append(user_input[FLOW_SENSOR_CO2])
+            if user_input.get(FLOW_SENSOR_ILLUMINANCE):
+                sensors.append(user_input[FLOW_SENSOR_ILLUMINANCE])
+            if user_input.get(FLOW_SENSOR_POWER_CONSUMPTION):
+                sensors.append(user_input[FLOW_SENSOR_POWER_CONSUMPTION])
+            
             self.plant_info = {
                 ATTR_NAME: user_input[ATTR_NAME],
                 ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
                 ATTR_IS_NEW_PLANT: True,
                 "plant_emoji": user_input.get("plant_emoji", "⛺"),
                 "tent_id": tent_id,
-                "sensors": user_input.get("sensors", []),
+                "sensors": sensors,
                 "journal": {},
                 "maintenance_entries": [],
                 "created_at": datetime.now().isoformat(),
@@ -610,9 +623,29 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(
                 "plant_emoji", default="⛺"
             ): cv.string,
-            vol.Optional("sensors"): selector({
+            # Sensor selection with Plant-compatible naming
+            vol.Optional(FLOW_SENSOR_TEMPERATURE): selector({
                 "entity": {
-                    "multiple": True,
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
+            vol.Optional(FLOW_SENSOR_HUMIDITY): selector({
+                "entity": {
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
+            vol.Optional(FLOW_SENSOR_CO2): selector({
+                "entity": {
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
+            vol.Optional(FLOW_SENSOR_ILLUMINANCE): selector({
+                "entity": {
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
+            vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): selector({
+                "entity": {
                     "filter": [{"domain": "sensor"}]
                 }
             }),
@@ -622,131 +655,11 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="tent",
             data_schema=vol.Schema(data_schema),
             errors=errors,
+            description_placeholders={
+                "sensors_hint": "Select sensors that match your plant monitoring needs. "
+                                "This will make it easier to assign plants to this tent later."
+            }
         )
-
-        data_schema = {
-            vol.Required(ATTR_NAME): cv.string,
-            vol.Optional(
-                "plant_emoji", default=config_data.get("default_cycle_icon", "")
-            ): cv.string,
-            vol.Optional(
-                "growth_phase_aggregation",
-                default=config_data.get("default_growth_phase_aggregation", "min"),
-            ): vol.In(["min", "max"]),
-            vol.Optional(
-                "flowering_duration_aggregation",
-                default=config_data.get(
-                    "default_flowering_duration_aggregation", "mean"
-                ),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "pot_size_aggregation",
-                default=config_data.get("default_pot_size_aggregation", "mean"),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "water_capacity_aggregation",
-                default=config_data.get("default_water_capacity_aggregation", "mean"),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "temperature_aggregation",
-                default=config_data.get(
-                    "default_temperature_aggregation",
-                    DEFAULT_AGGREGATIONS["temperature"],
-                ),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "moisture_aggregation",
-                default=config_data.get(
-                    "default_moisture_aggregation", DEFAULT_AGGREGATIONS["moisture"]
-                ),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "conductivity_aggregation",
-                default=config_data.get(
-                    "default_conductivity_aggregation",
-                    DEFAULT_AGGREGATIONS["conductivity"],
-                ),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "illuminance_aggregation",
-                default=config_data.get(
-                    "default_illuminance_aggregation",
-                    DEFAULT_AGGREGATIONS["illuminance"],
-                ),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "humidity_aggregation",
-                default=config_data.get(
-                    "default_humidity_aggregation", DEFAULT_AGGREGATIONS["humidity"]
-                ),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "CO2_aggregation",
-                default=config_data.get(
-                    "default_CO2_aggregation", DEFAULT_AGGREGATIONS["CO2"]
-                ),
-            ): vol.In(AGGREGATION_METHODS),
-            # Erweiterte Aggregationsmethoden für DLI/PPFD
-            vol.Optional(
-                "ppfd_aggregation",
-                default=config_data.get(
-                    "default_ppfd_aggregation", DEFAULT_AGGREGATIONS["ppfd"]
-                ),
-            ): vol.In(AGGREGATION_METHODS_EXTENDED),
-            vol.Optional(
-                "dli_aggregation",
-                default=config_data.get(
-                    "default_dli_aggregation", DEFAULT_AGGREGATIONS["dli"]
-                ),
-            ): vol.In(AGGREGATION_METHODS_EXTENDED),
-            vol.Optional(
-                "total_integral_aggregation",
-                default=config_data.get(
-                    "default_total_integral_aggregation",
-                    DEFAULT_AGGREGATIONS["total_integral"],
-                ),
-            ): vol.In(AGGREGATION_METHODS_EXTENDED),
-            # Neue Aggregationen für die Diagnosesensoren
-            vol.Optional(
-                "moisture_consumption_aggregation",
-                default=config_data.get(
-                    "default_moisture_consumption_aggregation",
-                    DEFAULT_AGGREGATIONS["moisture_consumption"],
-                ),
-            ): vol.In(AGGREGATION_METHODS_EXTENDED),
-            vol.Optional(
-                "fertilizer_consumption_aggregation",
-                default=config_data.get(
-                    "default_fertilizer_consumption_aggregation",
-                    DEFAULT_AGGREGATIONS["fertilizer_consumption"],
-                ),
-            ): vol.In(AGGREGATION_METHODS_EXTENDED),
-            vol.Optional(
-                "total_water_consumption_aggregation",
-                default=config_data.get(
-                    "default_total_water_consumption_aggregation",
-                    DEFAULT_AGGREGATIONS["total_water_consumption"],
-                ),
-            ): vol.In(AGGREGATION_METHODS_EXTENDED),
-            vol.Optional(
-                "total_fertilizer_consumption_aggregation",
-                default=config_data.get(
-                    "default_total_fertilizer_consumption_aggregation",
-                    DEFAULT_AGGREGATIONS["total_fertilizer_consumption"],
-                ),
-            ): vol.In(AGGREGATION_METHODS_EXTENDED),
-            vol.Optional(
-                "power_consumption_aggregation",
-                default=config_data.get(
-                    "default_power_consumption_aggregation",
-                    DEFAULT_AGGREGATIONS["power_consumption"],
-                ),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "total_power_consumption_aggregation",
-                default=config_data.get(
-                    "default_total_power_consumption_aggregation",
-                    DEFAULT_AGGREGATIONS["total_power_consumption"],
                 ),
             ): vol.In(AGGREGATION_METHODS_EXTENDED),
             vol.Optional(
