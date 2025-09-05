@@ -2281,6 +2281,24 @@ class PlantDevice(Entity):
         return self._assigned_tent
 
     def get_tent_id(self) -> str:
+        """Get the assigned tent ID."""
+        return self._tent_id
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry, 
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """Delete device entry from device registry."""
+    _LOGGER.debug(
+        "async_remove_config_entry_device called for device %s (config: %s)", 
+        device_entry.id,
+        config_entry.data
+    )
+    
+    # Prüfe ob dies der Konfigurationsknoten ist
+    if config_entry.data.get("is_config", False):
         # Prüfe ob noch andere Plant/Cycle Einträge existieren
         for entry in hass.config_entries.async_entries(DOMAIN):
             if not entry.data.get("is_config", False):  # Wenn es ein Plant/Cycle ist
@@ -2329,5 +2347,3 @@ class PlantDevice(Entity):
     await hass.config_entries.async_remove(config_entry.entry_id)
     
     return True
-
-
