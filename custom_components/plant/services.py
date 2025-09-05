@@ -71,6 +71,8 @@ from .const import (
     SERVICE_ADD_WATERING,
     SERVICE_ADD_CONDUCTIVITY,
     SERVICE_ADD_PH,
+    SERVICE_CHANGE_TENT,
+    ATTR_TENT_ID,
 )
 from .plant_helpers import PlantHelper
 from .tent import Tent
@@ -171,6 +173,12 @@ ADD_PH_SCHEMA = vol.Schema({
 CREATE_TENT_SCHEMA = vol.Schema({
     vol.Required(ATTR_NAME): cv.string,
     vol.Optional("sensors", default=[]): vol.All(cv.ensure_list, [cv.string]),
+})
+
+# Schema for change_tent Service
+CHANGE_TENT_SCHEMA = vol.Schema({
+    vol.Required("entity_id"): cv.entity_id,
+    vol.Required(ATTR_TENT_ID): cv.string,
 })
 
 
@@ -1894,6 +1902,47 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         _LOGGER.info("Creating tent: %s with ID: %s", tent_name, tent_id)
         return {"success": True, "tent_id": tent_id, "message": f"Tent {tent_name} created successfully"}
     
+    async def change_tent(call: ServiceCall) -> None:
+        """Change the tent assignment for a plant."""
+        from .__init__ import PlantDevice
+        
+        entity_id = call.data.get("entity_id")
+        tent_id = call.data.get(ATTR_TENT_ID)
+        
+        # Find the plant entity
+        plant_entity = None
+        for entry_id in hass.data[DOMAIN]:
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if hasattr(plant, "entity_id") and plant.entity_id == entity_id:
+                    plant_entity = plant
+                    break
+        
+        if not plant_entity:
+            _LOGGER.error("Plant entity %s not found", entity_id)
+            raise HomeAssistantError(f"Plant entity {entity_id} not found")
+        
+        # Find the tent entity
+        tent_entity = None
+        for entry_id in hass.data[DOMAIN]:
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                tent = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if hasattr(tent, "device_type") and tent.device_type == "tent" and hasattr(tent, "tent_id") and tent.tent_id == tent_id:
+                    tent_entity = tent
+                    break
+        
+        if not tent_entity:
+            _LOGGER.error("Tent with ID %s not found", tent_id)
+            raise HomeAssistantError(f"Tent with ID {tent_id} not found")
+        
+        # Change the tent assignment
+        if isinstance(plant_entity, PlantDevice):
+            plant_entity.change_tent(tent_entity)
+            _LOGGER.info("Changed tent assignment for plant %s to tent %s", entity_id, tent_id)
+        else:
+            _LOGGER.error("Entity %s is not a PlantDevice", entity_id)
+            raise HomeAssistantError(f"Entity {entity_id} is not a PlantDevice")
+    
     # Register create_tent service
     hass.services.async_register(
         DOMAIN,
@@ -1901,6 +1950,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         create_tent,
         schema=CREATE_TENT_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL
+    )
+    
+    # Register change_tent service
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CHANGE_TENT,
+        change_tent,
+        schema=CHANGE_TENT_SCHEMA
     )
     
 
@@ -1922,4 +1979,5 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_EXPORT_PLANTS)
     hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PLANTS)
     hass.services.async_remove(DOMAIN, "create_tent")
+    hass.services.async_remove(DOMAIN, SERVICE_CHANGE_TENT)
  

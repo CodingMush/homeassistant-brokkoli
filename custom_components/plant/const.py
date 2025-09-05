@@ -465,6 +465,7 @@ ATTR_POSITION_HISTORY = "position_history"
 
 # Tent constants
 SERVICE_CREATE_TENT = "create_tent"
+SERVICE_CHANGE_TENT = "change_tent"
 ATTR_TENT_ID = "tent_id"
 ATTR_JOURNAL = "journal"
 ATTR_MAINTENANCE_ENTRIES = "maintenance_entries"
