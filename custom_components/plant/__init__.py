@@ -718,15 +718,11 @@ async def ws_set_main_image(
         _LOGGER.error("Error setting main image: %s", e)
         connection.send_error(msg["id"], "set_main_image_failed", str(e))
 
-
 class PlantDevice(Entity):
     """Base device for plants"""
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry) -> None:
         """Initialize the Plant/Cycle component."""
-        self._config = config
-        self._hass = hass
-        self._attr_name = config.data[FLOW_PLANT_INFO][ATTR_NAME]
         self._config_entries = []
         self._data_source = config.data[FLOW_PLANT_INFO].get(DATA_SOURCE)
         self._plant_id = None  # Neue Property für die ID
@@ -2262,6 +2258,9 @@ class PlantDevice(Entity):
 
     def assign_tent(self, tent: Tent) -> None:
         """Assign a tent to this plant and replace sensors."""
+        if tent is None:
+            raise ValueError("Tent cannot be None")
+        
         self._assigned_tent = tent
         self._tent_id = tent.tent_id
         tent_sensors = tent.get_sensors()
@@ -2269,6 +2268,9 @@ class PlantDevice(Entity):
 
     def change_tent(self, new_tent: Tent) -> None:
         """Change the assigned tent and update sensors."""
+        if new_tent is None:
+            raise ValueError("New tent cannot be None")
+            
         self._assigned_tent = new_tent
         self._tent_id = new_tent.tent_id
         tent_sensors = new_tent.get_sensors()
@@ -2279,23 +2281,6 @@ class PlantDevice(Entity):
         return self._assigned_tent
 
     def get_tent_id(self) -> str:
-        """Get the assigned tent ID."""
-        return self._tent_id
-
-
-async def async_remove_config_entry_device(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry, 
-    device_entry: dr.DeviceEntry,) -> bool:
-    """Delete device entry from device registry."""
-    _LOGGER.debug(
-        "async_remove_config_entry_device called for device %s (config: %s)", 
-        device_entry.id,
-        config_entry.data
-    )
-    
-    # Prüfe ob dies der Konfigurationsknoten ist
-    if config_entry.data.get("is_config", False):
         # Prüfe ob noch andere Plant/Cycle Einträge existieren
         for entry in hass.config_entries.async_entries(DOMAIN):
             if not entry.data.get("is_config", False):  # Wenn es ein Plant/Cycle ist
