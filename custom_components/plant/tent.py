@@ -233,10 +233,13 @@ class Tent(Entity):
             return
             
         data = dict(self._config.data)
-        data["sensors"] = self._sensors
-        data["journal"] = self._journal.to_dict()
-        data["maintenance_entries"] = [entry.to_dict() for entry in self._maintenance_entries]
-        data["updated_at"] = self._updated_at.isoformat()
+        plant_info = dict(data.get(FLOW_PLANT_INFO, {}))
+        # Persist tent attributes inside FLOW_PLANT_INFO to be consistent with loader
+        plant_info["sensors"] = self._sensors
+        plant_info["journal"] = self._journal.to_dict()
+        plant_info["maintenance_entries"] = [entry.to_dict() for entry in self._maintenance_entries]
+        plant_info["updated_at"] = self._updated_at.isoformat()
+        data[FLOW_PLANT_INFO] = plant_info
         
         # Update the config entry
         self._hass.config_entries.async_update_entry(self._config, data=data)

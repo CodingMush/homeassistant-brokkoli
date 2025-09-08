@@ -1870,78 +1870,126 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     )
     
     async def create_tent(call: ServiceCall) -> ServiceResponse:
-        """Create a new tent."""
+        """Create a new tent config entry and return entity/device identifiers."""
         from .__init__ import _get_next_id
         
         tent_name = call.data.get(ATTR_NAME)
         sensors = call.data.get("sensors", [])
         
-        # Generate a unique ID for the tent
-        tent_id = await _get_next_id(hass, "tent")
-        
-        # Create tent data
-        tent_data = {
-            FLOW_PLANT_INFO: {
-                ATTR_NAME: tent_name,
-                "name": tent_name,
-                ATTR_DEVICE_TYPE: "tent",
-                ATTR_IS_NEW_PLANT: True,
-                "plant_emoji": "⛺",
-                "tent_id": tent_id,
-                "sensors": sensors,
-                "journal": {},
-                "maintenance_entries": [],
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-            }
+        # Prepare tent info
+        tent_info = {
+            ATTR_NAME: tent_name,
+            "name": tent_name,
+            ATTR_DEVICE_TYPE: "tent",
+            ATTR_IS_NEW_PLANT: True,
+            "plant_emoji": "⛺",
+            # tent_id will be set if not provided by setup
+            "sensors": sensors,
+            "journal": {},
+            "maintenance_entries": [],
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
         }
         
-        # Create config entry for the tent
-        hass.config_entries.async_entries(DOMAIN)
+        # Generate a unique ID proactively (optional; setup will ensure it exists)
+        try:
+            tent_id = await _get_next_id(hass, "tent")
+            tent_info["tent_id"] = tent_id
+        except Exception:
+            tent_id = None
         
-        _LOGGER.info("Creating tent: %s with ID: %s", tent_name, tent_id)
-        return {"success": True, "tent_id": tent_id, "message": f"Tent {tent_name} created successfully"}
+        # Create the config entry via flow
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": "import"},
+            data={FLOW_PLANT_INFO: tent_info},
+        )
+        
+        if result["type"] != FlowResultType.CREATE_ENTRY:
+            _LOGGER.error("Failed to create tent: %s", result)
+            raise HomeAssistantError(
+                f"Failed to create new tent: {result.get('reason', 'unknown error')}"
+            )
+        
+        entry_id = result["result"].entry_id
+        _LOGGER.info("Created tent '%s' with entry_id=%s", tent_name, entry_id)
+        
+        # Try to resolve entity_id and device_id
+        await asyncio.sleep(1)
+        entity_registry = er.async_get(hass)
+        device_registry = dr.async_get(hass)
+        
+        entity_id = None
+        device_id = None
+        for entity in entity_registry.entities.values():
+            if entity.config_entry_id == entry_id and entity.domain == DOMAIN:
+                entity_id = entity.entity_id
+                device_id = entity.device_id
+                break
+        
+        # Fallback: read from in-memory objects
+        if not entity_id:
+            for _ in range(6):
+                if entry_id in hass.data.get(DOMAIN, {}):
+                    if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                        tent_obj = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                        if hasattr(tent_obj, "entity_id"):
+                            entity_id = tent_obj.entity_id
+                        if hasattr(tent_obj, "device_id"):
+                            device_id = tent_obj.device_id
+                        break
+                await asyncio.sleep(0.5)
+        
+        response = {"success": True, "message": f"Tent {tent_name} created successfully"}
+        if tent_id:
+            response["tent_id"] = tent_id
+        if entity_id:
+            response["entity_id"] = entity_id
+        if device_id:
+            response["device_id"] = device_id
+        return response
     
     async def change_tent(call: ServiceCall) -> None:
-        """Change the tent assignment for a plant."""
+        """Change the tent assignment for a plant and update its sensors."""
         from .__init__ import PlantDevice
         
         entity_id = call.data.get("entity_id")
         tent_id = call.data.get(ATTR_TENT_ID)
         
-        # Find the plant entity
+        if not entity_id or not tent_id:
+            raise HomeAssistantError("entity_id and tent_id are required")
+        
+        # Resolve plant entity
         plant_entity = None
-        for entry_id in hass.data[DOMAIN]:
+        for entry_id in hass.data.get(DOMAIN, {}):
             if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if hasattr(plant, "entity_id") and plant.entity_id == entity_id:
+                if getattr(plant, "entity_id", None) == entity_id:
                     plant_entity = plant
                     break
-        
         if not plant_entity:
-            _LOGGER.error("Plant entity %s not found", entity_id)
             raise HomeAssistantError(f"Plant entity {entity_id} not found")
         
-        # Find the tent entity
+        # Resolve tent by tent_id
         tent_entity = None
-        for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                tent = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if hasattr(tent, "device_type") and tent.device_type == "tent" and hasattr(tent, "tent_id") and tent.tent_id == tent_id:
-                    tent_entity = tent
-                    break
-        
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            plant_info = entry.data.get(FLOW_PLANT_INFO, {})
+            if plant_info.get(ATTR_DEVICE_TYPE) == "tent" and plant_info.get("tent_id") == tent_id:
+                # Use existing instantiated entity if available
+                if entry.entry_id in hass.data.get(DOMAIN, {}) and ATTR_PLANT in hass.data[DOMAIN][entry.entry_id]:
+                    tent_entity = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
+                else:
+                    # As a fallback, construct a Tent object bound to this entry
+                    tent_entity = Tent(hass, entry)
+                break
         if not tent_entity:
-            _LOGGER.error("Tent with ID %s not found", tent_id)
             raise HomeAssistantError(f"Tent with ID {tent_id} not found")
         
-        # Change the tent assignment
-        if isinstance(plant_entity, PlantDevice):
-            plant_entity.change_tent(tent_entity)
-            _LOGGER.info("Changed tent assignment for plant %s to tent %s", entity_id, tent_id)
-        else:
-            _LOGGER.error("Entity %s is not a PlantDevice", entity_id)
+        if not isinstance(plant_entity, PlantDevice):
             raise HomeAssistantError(f"Entity {entity_id} is not a PlantDevice")
+        
+        plant_entity.change_tent(tent_entity)
+        _LOGGER.info("Changed tent assignment for plant %s to tent %s", entity_id, tent_id)
     
     # Register create_tent service
     hass.services.async_register(

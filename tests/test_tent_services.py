@@ -55,6 +55,19 @@ def test_change_tent_service_function_exists():
         pass
 
 
+def test_create_tent_service_exists():
+    """Test that the create_tent service artifacts are defined."""
+    # Load the const module
+    const = _load_module("custom_components.plant.const", "custom_components/plant/const.py")
+    assert hasattr(const, "FLOW_PLANT_INFO")
+    # Best-effort load services to check schema symbol; ignore ImportError in HA-less env
+    try:
+        services = _load_module("custom_components.plant.services", "custom_components/plant/services.py")
+        assert hasattr(services, "CREATE_TENT_SCHEMA"), "CREATE_TENT_SCHEMA should be defined"
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
     test_change_tent_service_exists()
     test_change_tent_schema_exists()

@@ -1025,6 +1025,8 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         tent_sensors = tent_entity.get_sensors()
                         # Map tent sensors to plant sensor types
                         self._map_tent_sensors_to_plant(tent_sensors)
+                        # Persist tent assignment
+                        self.plant_info["assigned_tent"] = assigned_tent_id
 
                 plant_helper = PlantHelper(hass=self.hass)
                 plant_config = await plant_helper.get_plantbook_data(

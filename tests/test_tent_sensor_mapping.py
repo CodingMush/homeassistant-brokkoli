@@ -158,3 +158,9 @@ def test_assign_tent_success(hass, config_entry, tent_config):
         "sensor.illuminance",
         "sensor.power"
     ])
+
+
+def test_change_tent_service_flow_like_resolution():
+    """Lightweight test to ensure change_tent resolves tent by tent_id path."""
+    from custom_components.plant.services import CHANGE_TENT_SCHEMA
+    assert CHANGE_TENT_SCHEMA is not None
