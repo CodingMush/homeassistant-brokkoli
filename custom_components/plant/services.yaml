@@ -842,6 +842,27 @@ change_tent:
         text:
           type: text
 
+update_tent_sensors:
+  name: Update tent sensors
+  description: Updates the sensors associated with a tent.
+  fields:
+    tent_id:
+      name: Tent ID
+      description: The ID of the tent to update sensors for
+      example: "tent_12345"
+      required: true
+      selector:
+        text:
+          type: text
+    sensors:
+      name: Sensors
+      description: List of sensor entities to associate with the tent
+      required: true
+      selector:
+        entity:
+          domain: sensor
+          multiple: true
+
 create_tent:
   name: Create tent
   description: Creates a new tent for managing plant sensors.
