@@ -320,15 +320,25 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id, None)
         return True
 
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    # Prüfe den Gerätetyp
+    device_type = entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
+    
+    # Für Tents brauchen wir die Plattformen nicht entladen, da sie nie geladen wurden
+    if device_type == "tent":
+        unload_ok = True
+    else:
+        unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
         # Entferne zuerst die Daten
         hass.data[DOMAIN].pop(entry.entry_id)
-        hass.data[DATA_UTILITY].pop(entry.entry_id)
+        
+        # Entferne utility data nur für Plants und Cycles
+        if device_type != "tent" and DATA_UTILITY in hass.data:
+            hass.data[DATA_UTILITY].pop(entry.entry_id, None)
         
         # Wenn ein Cycle entfernt wird, aktualisiere alle Plant Cycle Selects
-        if FLOW_PLANT_INFO in entry.data and entry.data[FLOW_PLANT_INFO].get("device_type") == DEVICE_TYPE_CYCLE:
+        if device_type == DEVICE_TYPE_CYCLE:
             _LOGGER.debug("Unloading cycle entry, updating cycle selects")
             
             async def update_cycle_selects(_now=None):
