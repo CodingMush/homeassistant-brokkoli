@@ -28,6 +28,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import selector
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.selector import selector
 
@@ -611,41 +612,51 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             config_data = {}
 
         if user_input is not None:
-            # Generate a unique ID for the tent
-            from .__init__ import _get_next_id
-            tent_id = await _get_next_id(self.hass, DEVICE_TYPE_TENT)
-            
-            # Collect sensors from user input
-            sensors = []
-            if user_input.get(FLOW_SENSOR_TEMPERATURE):
-                sensors.append(user_input[FLOW_SENSOR_TEMPERATURE])
-            if user_input.get(FLOW_SENSOR_HUMIDITY):
-                sensors.append(user_input[FLOW_SENSOR_HUMIDITY])
-            if user_input.get(FLOW_SENSOR_CO2):
-                sensors.append(user_input[FLOW_SENSOR_CO2])
-            if user_input.get(FLOW_SENSOR_ILLUMINANCE):
-                sensors.append(user_input[FLOW_SENSOR_ILLUMINANCE])
-            if user_input.get(FLOW_SENSOR_POWER_CONSUMPTION):
-                sensors.append(user_input[FLOW_SENSOR_POWER_CONSUMPTION])
-            
-            self.plant_info = {
-                ATTR_NAME: user_input[ATTR_NAME],
-                ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
-                ATTR_IS_NEW_PLANT: True,
-                "plant_emoji": user_input.get("plant_emoji", "⛺"),
-                "tent_id": tent_id,
-                "sensors": sensors,
-                "journal": {},
-                "maintenance_entries": [],
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-            }
+            try:
+                # Basic validation
+                if not user_input.get(ATTR_NAME):
+                    errors[ATTR_NAME] = "required"
+                    raise ValueError("Tent name is required")
 
-            # Erstelle direkt den Entry ohne weitere Schritte
-            return self.async_create_entry(
-                title=self.plant_info[ATTR_NAME],
-                data={FLOW_PLANT_INFO: self.plant_info},
-            )
+                # Generate a unique ID for the tent
+                from .__init__ import _get_next_id
+                tent_id = await _get_next_id(self.hass, DEVICE_TYPE_TENT)
+                
+                # Collect sensors from user input
+                sensors = []
+                if user_input.get(FLOW_SENSOR_TEMPERATURE):
+                    sensors.append(user_input[FLOW_SENSOR_TEMPERATURE])
+                if user_input.get(FLOW_SENSOR_HUMIDITY):
+                    sensors.append(user_input[FLOW_SENSOR_HUMIDITY])
+                if user_input.get(FLOW_SENSOR_CO2):
+                    sensors.append(user_input[FLOW_SENSOR_CO2])
+                if user_input.get(FLOW_SENSOR_ILLUMINANCE):
+                    sensors.append(user_input[FLOW_SENSOR_ILLUMINANCE])
+                if user_input.get(FLOW_SENSOR_POWER_CONSUMPTION):
+                    sensors.append(user_input[FLOW_SENSOR_POWER_CONSUMPTION])
+                
+                self.plant_info = {
+                    ATTR_NAME: user_input[ATTR_NAME],
+                    ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
+                    ATTR_IS_NEW_PLANT: True,
+                    "plant_emoji": user_input.get("plant_emoji", "⛺"),
+                    "tent_id": tent_id,
+                    "sensors": sensors,
+                    "journal": {},
+                    "maintenance_entries": [],
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                }
+
+                # Erstelle direkt den Entry ohne weitere Schritte
+                return self.async_create_entry(
+                    title=self.plant_info[ATTR_NAME],
+                    data={FLOW_PLANT_INFO: self.plant_info},
+                )
+            except Exception as e:
+                _LOGGER.exception("Failed to create tent entry: %s", e)
+                errors["base"] = "unknown"
+                # fallthrough to show_form with errors
 
         # Get available sensors for selection
         sensor_entities = await self._get_sensor_entities()
