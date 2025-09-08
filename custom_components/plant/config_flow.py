@@ -660,27 +660,296 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                 "This will make it easier to assign plants to this tent later."
             }
         )
-                ),
-            ): vol.In(AGGREGATION_METHODS_EXTENDED),
+
+    async def async_step_plant(self, user_input=None):
+        """Handle plant configuration."""
+        errors = {}
+
+        # Load default configuration data
+        config_entry = None
+        for entry in self._async_current_entries():
+            if entry.data.get("is_config", False):
+                config_entry = entry
+                break
+
+        config_data = config_entry.data.get(FLOW_PLANT_INFO, {}) if config_entry else {}
+
+        if user_input is not None:
+            # Generate a unique ID for the plant
+            from .__init__ import _get_next_id
+            plant_id = await _get_next_id(self.hass, DEVICE_TYPE_PLANT)
+
+            # Check if a plant with the same name already exists
+            for entry in self._async_current_entries():
+                if entry.data.get("plant_info", {}).get(ATTR_NAME) == user_input[ATTR_NAME]:
+                    errors[ATTR_NAME] = "name_exists"
+                    return self.async_show_form(
+                        step_id="plant",
+                        data_schema=vol.Schema(data_schema),
+                        errors=errors,
+                    )
+
+            self.plant_info = {
+                ATTR_NAME: user_input[ATTR_NAME],
+                ATTR_STRAIN: user_input.get(ATTR_STRAIN, ""),
+                ATTR_BREEDER: user_input.get(ATTR_BREEDER, ""),
+                ATTR_DEVICE_TYPE: DEVICE_TYPE_PLANT,
+                ATTR_IS_NEW_PLANT: True,
+                "plant_emoji": user_input.get("plant_emoji", "🌱"),
+                "plant_id": plant_id,
+                "sensors": user_input.get("sensors", []),
+                "journal": {},
+                "maintenance_entries": [],
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+                "aggregations": {
+                    "temperature": user_input.get(
+                        "temperature_aggregation",
+                        config_data.get(
+                            "default_temperature_aggregation",
+                            DEFAULT_AGGREGATIONS["temperature"],
+                        ),
+                    ),
+                    "humidity": user_input.get(
+                        "humidity_aggregation",
+                        config_data.get(
+                            "default_humidity_aggregation",
+                            DEFAULT_AGGREGATIONS["humidity"],
+                        ),
+                    ),
+                    "co2": user_input.get(
+                        "co2_aggregation",
+                        config_data.get(
+                            "default_co2_aggregation",
+                            DEFAULT_AGGREGATIONS["co2"],
+                        ),
+                    ),
+                    "water_consumption": user_input.get(
+                        "water_consumption_aggregation",
+                        config_data.get(
+                            "default_water_consumption_aggregation",
+                            DEFAULT_AGGREGATIONS["water_consumption"],
+                        ),
+                    ),
+                    "total_integral": user_input.get(
+                        "total_integral_aggregation",
+                        config_data.get(
+                            "default_total_integral_aggregation",
+                            DEFAULT_AGGREGATIONS["total_integral"],
+                        ),
+                    ),
+                    "moisture_consumption": user_input.get(
+                        "moisture_consumption_aggregation",
+                        config_data.get(
+                            "default_moisture_consumption_aggregation",
+                            DEFAULT_AGGREGATIONS["moisture_consumption"],
+                        ),
+                    ),
+                    "fertilizer_consumption": user_input.get(
+                        "fertilizer_consumption_aggregation",
+                        config_data.get(
+                            "default_fertilizer_consumption_aggregation",
+                            DEFAULT_AGGREGATIONS["fertilizer_consumption"],
+                        ),
+                    ),
+                    "total_water_consumption": user_input.get(
+                        "total_water_consumption_aggregation",
+                        config_data.get(
+                            "default_total_water_consumption_aggregation",
+                            DEFAULT_AGGREGATIONS["total_water_consumption"],
+                        ),
+                    ),
+                    "total_fertilizer_consumption": user_input.get(
+                        "total_fertilizer_consumption_aggregation",
+                        config_data.get(
+                            "default_total_fertilizer_consumption_aggregation",
+                            DEFAULT_AGGREGATIONS["total_fertilizer_consumption"],
+                        ),
+                    ),
+                    "power_consumption": user_input.get(
+                        "power_consumption_aggregation",
+                        config_data.get(
+                            "default_power_consumption_aggregation",
+                            DEFAULT_AGGREGATIONS["power_consumption"],
+                        ),
+                    ),
+                    "total_power_consumption": user_input.get(
+                        "total_power_consumption_aggregation",
+                        config_data.get(
+                            "default_total_power_consumption_aggregation",
+                            DEFAULT_AGGREGATIONS["total_power_consumption"],
+                        ),
+                    ),
+                    "health": user_input.get(
+                        "health_aggregation",
+                        config_data.get(
+                            "default_health_aggregation", DEFAULT_AGGREGATIONS["health"]
+                        ),
+                    ),
+                    "ph": user_input.get(
+                        "ph_aggregation",
+                        config_data.get(
+                            "default_ph_aggregation", DEFAULT_AGGREGATIONS["ph"]
+                        ),
+                    ),
+                },
+            }
+
+            # Nutze PlantHelper für die Standard-Grenzwerte
+            plant_helper = PlantHelper(hass=self.hass)
+            plant_config = await plant_helper.generate_configentry(
+                config={
+                    ATTR_NAME: self.plant_info[ATTR_NAME],
+                    ATTR_STRAIN: "",
+                    ATTR_BREEDER: "",
+                    ATTR_SENSORS: {},
+                    "plant_emoji": self.plant_info.get("plant_emoji", ""),
+                    ATTR_DEVICE_TYPE: DEVICE_TYPE_CYCLE,
+                }
+            )
+
+            # Übernehme die Standard-Grenzwerte
+            self.plant_info.update(plant_config[FLOW_PLANT_INFO])
+
+            # Erstelle direkt den Entry ohne weitere Schritte
+            return self.async_create_entry(
+                title=self.plant_info[ATTR_NAME],
+                data={FLOW_PLANT_INFO: self.plant_info},
+            )
+
+        # Wenn der Aufruf vom Service kommt, nutzen wir die vorgegebenen Daten
+        if self.context.get("source_type") == "service":
+            return self.async_create_entry(
+                title=self.plant_info[ATTR_NAME],
+                data={FLOW_PLANT_INFO: self.plant_info},
+            )
+
+    async def _get_sensor_entities(self):
+        """Get available sensor entities for selection."""
+        # Get all entities from the entity registry
+        from homeassistant.helpers.entity_registry import async_get
+        entity_registry = async_get(self.hass)
+        
+        # Filter for sensor entities
+        sensor_entities = []
+        for entity in entity_registry.entities.values():
+            if entity.domain == "sensor":
+                sensor_entities.append(entity.entity_id)
+        
+        return sorted(sensor_entities)
+
+    async def async_step_tent(self, user_input=None):
+        """Handle tent configuration."""
+        errors = {}
+
+        # Hole die Default-Werte aus dem Konfigurationsknoten
+        config_entry = None
+        for entry in self._async_current_entries():
+            if entry.data.get("is_config", False):
+                config_entry = entry
+                break
+
+        if config_entry:
+            config_data = config_entry.data[FLOW_PLANT_INFO]
+        else:
+            config_data = {}
+
+        if user_input is not None:
+            # Generate a unique ID for the tent
+            from .__init__ import _get_next_id
+            tent_id = await _get_next_id(self.hass, DEVICE_TYPE_TENT)
+            
+            # Collect sensors from user input
+            sensors = []
+            if user_input.get(FLOW_SENSOR_TEMPERATURE):
+                sensors.append(user_input[FLOW_SENSOR_TEMPERATURE])
+            if user_input.get(FLOW_SENSOR_HUMIDITY):
+                sensors.append(user_input[FLOW_SENSOR_HUMIDITY])
+            if user_input.get(FLOW_SENSOR_CO2):
+                sensors.append(user_input[FLOW_SENSOR_CO2])
+            if user_input.get(FLOW_SENSOR_ILLUMINANCE):
+                sensors.append(user_input[FLOW_SENSOR_ILLUMINANCE])
+            if user_input.get(FLOW_SENSOR_POWER_CONSUMPTION):
+                sensors.append(user_input[FLOW_SENSOR_POWER_CONSUMPTION])
+            
+            self.plant_info = {
+                ATTR_NAME: user_input[ATTR_NAME],
+                ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
+                ATTR_IS_NEW_PLANT: True,
+                "plant_emoji": user_input.get("plant_emoji", "⛺"),
+                "tent_id": tent_id,
+                "sensors": sensors,
+                "journal": {},
+                "maintenance_entries": [],
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+            }
+
+            # Erstelle direkt den Entry ohne weitere Schritte
+            return self.async_create_entry(
+                title=self.plant_info[ATTR_NAME],
+                data={FLOW_PLANT_INFO: self.plant_info},
+            )
+
+        # Get available sensors for selection
+        sensor_entities = await self._get_sensor_entities()
+        
+        data_schema = {
+            # Basis-Informationen
+            vol.Required(ATTR_NAME): cv.string,
             vol.Optional(
-                "health_aggregation",
-                default=config_data.get(
-                    "default_health_aggregation", DEFAULT_AGGREGATIONS["health"]
-                ),
-            ): vol.In(AGGREGATION_METHODS),
-            vol.Optional(
-                "ph_aggregation",
-                default=config_data.get(
-                    "default_ph_aggregation", DEFAULT_AGGREGATIONS["ph"]
-                ),
-            ): vol.In(AGGREGATION_METHODS),
+                "plant_emoji", default="⛺"
+            ): cv.string,
+            # Sensor selection with Plant-compatible naming
+            vol.Optional(FLOW_SENSOR_TEMPERATURE): selector({
+                "entity": {
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
+            vol.Optional(FLOW_SENSOR_HUMIDITY): selector({
+                "entity": {
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
+            vol.Optional(FLOW_SENSOR_CO2): selector({
+                "entity": {
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
+            vol.Optional(FLOW_SENSOR_ILLUMINANCE): selector({
+                "entity": {
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
+            vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): selector({
+                "entity": {
+                    "filter": [{"domain": "sensor"}]
+                }
+            }),
         }
 
         return self.async_show_form(
-            step_id="cycle",
+            step_id="tent",
             data_schema=vol.Schema(data_schema),
             errors=errors,
+            description_placeholders={
+                "sensors_hint": "Select sensors that match your plant monitoring needs. "
+                                "This will make it easier to assign plants to this tent later."
+            }
         )
+
+    async def async_step_plant(self, user_input=None):
+        """Handle plant configuration."""
+        errors = {}
+
+        # Load default configuration data
+        config_entry = None
+        for entry in self._async_current_entries():
+            if entry.data.get("is_config", False):
+                config_entry = entry
+                break
+
+        config_data = config_entry.data.get(FLOW_PLANT_INFO, {}) if config_entry else {}
 
     async def async_step_plant(self, user_input=None):
         """Handle plant configuration."""
