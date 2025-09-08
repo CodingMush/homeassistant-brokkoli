@@ -1878,6 +1878,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def create_tent(call: ServiceCall) -> ServiceResponse:
         """Create a new tent config entry and return entity/device identifiers."""
         from .__init__ import _get_next_id
+        from homeassistant.data_entry_flow import UnknownFlow
         
         tent_name = call.data.get(ATTR_NAME)
         if not tent_name:
@@ -1920,11 +1921,17 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             config_data = {FLOW_PLANT_INFO: tent_info}
             
             # Initiate the import flow - it will complete immediately
-            await hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": SOURCE_IMPORT},
-                data=config_data,
-            )
+            # We expect this to raise UnknownFlow, but that's okay because the entry is created
+            try:
+                await hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": SOURCE_IMPORT},
+                    data=config_data,
+                )
+            except UnknownFlow:
+                # This is expected - import flows complete immediately and are removed
+                # The entry should have been created despite the exception
+                pass
             
             # Since import flows complete immediately, we need to find the created entry
             # by looking for the most recently created entry with our tent name
