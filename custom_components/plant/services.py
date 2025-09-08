@@ -261,6 +261,64 @@ async def update_tent_sensors(call: ServiceCall) -> ServiceResponse:
     return {"success": True, "tent_id": tent_id, "sensors": sensors}
 
 
+async def replace_sensor(call: ServiceCall) -> None:
+    """Replace a sensor for a plant entity."""
+    from .__init__ import PlantDevice
+    
+    meter_entity = call.data.get("meter_entity")
+    new_sensor = call.data.get("new_sensor")
+    
+    # Find the plant entity that owns this meter
+    plant_entity = None
+    for entry_id in hass.data[DOMAIN]:
+        entry = hass.data[DOMAIN][entry_id]
+        if isinstance(entry, PlantDevice):
+            # Check if this plant has the meter entity
+            if hasattr(entry, '_sensors'):
+                for sensor in entry._sensors:
+                    if sensor.entity_id == meter_entity:
+                        plant_entity = entry
+                        break
+        if plant_entity:
+            break
+    
+    if not plant_entity:
+        _LOGGER.error("Plant entity for meter %s not found", meter_entity)
+        return
+    
+    # Replace the sensor
+    if hasattr(plant_entity, 'replace_external_sensor'):
+        await plant_entity.replace_external_sensor(meter_entity, new_sensor)
+        _LOGGER.info("Replaced sensor %s with %s for plant %s", meter_entity, new_sensor, plant_entity.entity_id)
+    else:
+        _LOGGER.error("Plant entity %s does not have replace_external_sensor method", plant_entity.entity_id)
+
+
+async def remove_plant(call: ServiceCall) -> None:
+    """Remove a plant entity."""
+    from .__init__ import PlantDevice
+    
+    plant_entity_id = call.data.get("plant_entity")
+    
+    # Find the plant entity
+    plant_entity = None
+    target_entry_id = None
+    for entry_id in hass.data[DOMAIN]:
+        entry = hass.data[DOMAIN][entry_id]
+        if isinstance(entry, PlantDevice) and entry.entity_id == plant_entity_id:
+            plant_entity = entry
+            target_entry_id = entry_id
+            break
+    
+    if not plant_entity:
+        _LOGGER.error("Plant entity %s not found", plant_entity_id)
+        return
+    
+    # Remove the config entry
+    await hass.config_entries.async_remove(target_entry_id)
+    _LOGGER.info("Removed plant entity %s", plant_entity_id)
+
+
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for plant integration."""
 
