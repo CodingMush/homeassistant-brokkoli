@@ -188,429 +188,81 @@ UPDATE_TENT_SENSORS_SCHEMA = vol.Schema({
 })
 
 
+async def change_tent(call: ServiceCall) -> None:
+    """Change the tent assignment for a plant."""
+    from .__init__ import PlantDevice
+    
+    entity_id = call.data.get("entity_id")
+    tent_id = call.data.get(ATTR_TENT_ID)
+    
+    # Find the plant entity
+    plant_entity = None
+    for entry_id in hass.data[DOMAIN]:
+        entry = hass.data[DOMAIN][entry_id]
+        if isinstance(entry, PlantDevice) and entry.entity_id == entity_id:
+            plant_entity = entry
+            break
+    
+    if not plant_entity:
+        _LOGGER.error("Plant entity %s not found", entity_id)
+        return
+    
+    # Find the tent
+    tent_entity = None
+    for entry_id in hass.data[DOMAIN]:
+        entry = hass.data[DOMAIN][entry_id]
+        if isinstance(entry, Tent) and entry.tent_id == tent_id:
+            tent_entity = entry
+            break
+    
+    if not tent_entity:
+        _LOGGER.error("Tent with ID %s not found", tent_id)
+        return
+    
+    # Update the plant's tent assignment
+    plant_entity._tent_id = tent_id
+    
+    # Assign tent sensors to the plant
+    tent_entity.assign_to_plant(plant_entity)
+    
+    # Update the config entry
+    config_entry = plant_entity._config
+    if config_entry:
+        data = dict(config_entry.data)
+        data[FLOW_PLANT_INFO]["tent_id"] = tent_id
+        hass.config_entries.async_update_entry(config_entry, data=data)
+    
+    _LOGGER.info("Changed tent assignment for %s to %s", entity_id, tent_id)
+
+
+async def update_tent_sensors(call: ServiceCall) -> ServiceResponse:
+    """Update the sensors associated with a tent."""
+    tent_id = call.data.get(ATTR_TENT_ID)
+    sensors = call.data.get("sensors", [])
+    
+    # Find the tent
+    tent_entity = None
+    for entry_id in hass.data[DOMAIN]:
+        entry = hass.data[DOMAIN][entry_id]
+        if isinstance(entry, Tent) and entry.tent_id == tent_id:
+            tent_entity = entry
+            break
+    
+    if not tent_entity:
+        _LOGGER.error("Tent with ID %s not found", tent_id)
+        return {"success": False, "error": f"Tent with ID {tent_id} not found"}
+    
+    # Update tent sensors
+    tent_entity._sensors = sensors.copy()
+    tent_entity._updated_at = datetime.now()
+    tent_entity._update_config()
+    
+    _LOGGER.info("Updated sensors for tent %s: %s", tent_id, sensors)
+    return {"success": True, "tent_id": tent_id, "sensors": sensors}
+
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for plant integration."""
-
-    async def replace_sensor(call: ServiceCall) -> None:
-        """Replace a sensor entity within a plant device"""
-        meter_entity = call.data.get("meter_entity")
-        new_sensor = call.data.get("new_sensor")
-        found = False
-        for entry_id in hass.data[DOMAIN]:
-            if ATTR_SENSORS in hass.data[DOMAIN][entry_id]:
-                for sensor in hass.data[DOMAIN][entry_id][ATTR_SENSORS]:
-                    if sensor.entity_id == meter_entity:
-                        found = True
-                        break
-        if not found:
-            _LOGGER.warning(
-                "Refuse to update non-%s entities: %s", DOMAIN, meter_entity
-            )
-            return False
-        if new_sensor and new_sensor != "" and not new_sensor.startswith("sensor."):
-            _LOGGER.warning("%s is not a sensor", new_sensor)
-            return False
-
-        try:
-            meter = hass.states.get(meter_entity)
-        except AttributeError:
-            _LOGGER.error("Meter entity %s not found", meter_entity)
-            return False
-        if meter is None:
-            _LOGGER.error("Meter entity %s not found", meter_entity)
-            return False
-
-        if new_sensor and new_sensor != "":
-            try:
-                test = hass.states.get(new_sensor)
-            except AttributeError:
-                _LOGGER.error("New sensor entity %s not found", meter_entity)
-                return False
-            if test is None:
-                _LOGGER.error("New sensor entity %s not found", meter_entity)
-                return False
-        else:
-            new_sensor = None
-
-        _LOGGER.info(
-            "Going to replace the external sensor for %s with %s",
-            meter_entity,
-            new_sensor,
-        )
-        for key in hass.data[DOMAIN]:
-            if ATTR_SENSORS in hass.data[DOMAIN][key]:
-                meters = hass.data[DOMAIN][key][ATTR_SENSORS]
-                for meter in meters:
-                    if meter.entity_id == meter_entity:
-                        meter.replace_external_sensor(new_sensor)
-        return
-
-    async def remove_plant(call: ServiceCall) -> None:
-        """Remove a plant entity and all its associated entities."""
-        plant_entity = call.data.get("plant_entity")
-
-        found = False
-        target_entry_id = None
-        target_plant = None
-        for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if plant.entity_id == plant_entity:
-                    found = True
-                    target_entry_id = entry_id
-                    target_plant = plant
-                    break
-
-        if not found:
-            _LOGGER.warning(
-                "Refuse to remove non-%s entity: %s", DOMAIN, plant_entity
-            )
-            return False
-
-        # Prüfe ob die Plant einem Cycle zugeordnet ist und aktualisiere dessen Phase
-        device_registry = dr.async_get(hass)
-        plant_device = device_registry.async_get_device(
-            identifiers={(DOMAIN, target_plant.unique_id)}
-        )
-        
-        if plant_device and plant_device.via_device_id:
-            # Suche das Cycle Device
-            for device in device_registry.devices.values():
-                if device.id == plant_device.via_device_id:
-                    cycle_device = device
-                    # Finde den zugehörigen Cycle
-                    for entry_id in hass.data[DOMAIN]:
-                        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                            cycle = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                            if (cycle.device_type == DEVICE_TYPE_CYCLE and 
-                                cycle.unique_id == next(iter(cycle_device.identifiers))[1]):
-                                # Entferne die Plant aus dem Cycle
-                                cycle.remove_member_plant(plant_entity)
-                                # Aktualisiere Flowering Duration
-                                if cycle.flowering_duration:
-                                    await cycle.flowering_duration._update_cycle_duration()
-                                break
-                    break
-
-        # Entferne die Config Entry
-        await hass.config_entries.async_remove(target_entry_id)
-        return True
-
-    async def create_plant(call: ServiceCall) -> ServiceResponse:
-        """Create a new plant."""
-        try:
-            # Erstelle ein vollständiges plant_info Objekt
-            plant_info = {
-                ATTR_DEVICE_TYPE: DEVICE_TYPE_PLANT,
-                ATTR_NAME: call.data[ATTR_NAME],
-                ATTR_STRAIN: call.data[ATTR_STRAIN],
-                ATTR_BREEDER: call.data.get(ATTR_BREEDER, ""),
-                "growth_phase": call.data.get("growth_phase", DEFAULT_GROWTH_PHASE),
-                "plant_emoji": call.data.get("plant_emoji", "🌿"),
-                ATTR_IS_NEW_PLANT: True,
-            }
-
-            # Füge optionale Sensoren hinzu
-            if call.data.get(FLOW_SENSOR_TEMPERATURE):
-                plant_info[FLOW_SENSOR_TEMPERATURE] = call.data[FLOW_SENSOR_TEMPERATURE]
-            if call.data.get(FLOW_SENSOR_MOISTURE):
-                plant_info[FLOW_SENSOR_MOISTURE] = call.data[FLOW_SENSOR_MOISTURE]
-            if call.data.get(FLOW_SENSOR_CONDUCTIVITY):
-                plant_info[FLOW_SENSOR_CONDUCTIVITY] = call.data[FLOW_SENSOR_CONDUCTIVITY]
-            if call.data.get(FLOW_SENSOR_ILLUMINANCE):
-                plant_info[FLOW_SENSOR_ILLUMINANCE] = call.data[FLOW_SENSOR_ILLUMINANCE]
-            if call.data.get(FLOW_SENSOR_HUMIDITY):
-                plant_info[FLOW_SENSOR_HUMIDITY] = call.data[FLOW_SENSOR_HUMIDITY]
-            if call.data.get(FLOW_SENSOR_CO2):
-                plant_info[FLOW_SENSOR_CO2] = call.data[FLOW_SENSOR_CO2]
-            if call.data.get(FLOW_SENSOR_POWER_CONSUMPTION):
-                plant_info[FLOW_SENSOR_POWER_CONSUMPTION] = call.data[FLOW_SENSOR_POWER_CONSUMPTION]
-            if call.data.get(FLOW_SENSOR_PH):
-                plant_info[FLOW_SENSOR_PH] = call.data[FLOW_SENSOR_PH]
-
-            # Hole Daten von OpenPlantbook
-            plant_helper = PlantHelper(hass=hass)
-            plant_config = await plant_helper.get_plantbook_data({
-                ATTR_STRAIN: plant_info[ATTR_STRAIN],
-                ATTR_BREEDER: plant_info[ATTR_BREEDER]
-            })
-
-            if plant_config and plant_config.get(FLOW_PLANT_INFO, {}).get(DATA_SOURCE) == DATA_SOURCE_PLANTBOOK:
-                opb_info = plant_config[FLOW_PLANT_INFO]
-                # Füge den Namen mit Emoji hinzu
-                plant_emoji = plant_info.get("plant_emoji", "")
-                opb_info[ATTR_NAME] = plant_info[ATTR_NAME] + (f" {plant_emoji}" if plant_emoji else "")
-                opb_info["plant_emoji"] = plant_emoji
-                
-                # Übernehme die Sensorzuweisungen
-                for sensor_key in [FLOW_SENSOR_TEMPERATURE, FLOW_SENSOR_MOISTURE, FLOW_SENSOR_CONDUCTIVITY, 
-                                  FLOW_SENSOR_ILLUMINANCE, FLOW_SENSOR_HUMIDITY, FLOW_SENSOR_POWER_CONSUMPTION,
-                                  FLOW_SENSOR_PH, FLOW_SENSOR_CO2]:
-                    if sensor_key in plant_info:
-                        opb_info[sensor_key] = plant_info[sensor_key]
-                
-                # Übernehme andere wichtige Attribute
-                opb_info[ATTR_DEVICE_TYPE] = DEVICE_TYPE_PLANT
-                opb_info[ATTR_IS_NEW_PLANT] = True
-                opb_info["growth_phase"] = plant_info["growth_phase"]
-                
-                plant_info = opb_info
-            else:
-                # Wenn keine OpenPlantbook-Daten verfügbar sind, füge trotzdem das Emoji zum Namen hinzu
-                plant_emoji = plant_info.get("plant_emoji", "")
-                plant_info[ATTR_NAME] = plant_info[ATTR_NAME] + (f" {plant_emoji}" if plant_emoji else "")
-                
-                # Generiere Standard-Grenzwerte
-                default_config = await plant_helper.generate_configentry(
-                    config={
-                        ATTR_NAME: plant_info[ATTR_NAME],
-                        ATTR_STRAIN: plant_info[ATTR_STRAIN],
-                        ATTR_BREEDER: plant_info.get(ATTR_BREEDER, ""),
-                        ATTR_SENSORS: {},
-                        "plant_emoji": plant_info.get("plant_emoji", ""),
-                    }
-                )
-                
-                # Übernehme die Standard-Grenzwerte
-                plant_info.update(default_config[FLOW_PLANT_INFO])
-
-            # Erstelle die Config Entry direkt
-            _LOGGER.debug("Initialisiere Config Entry für Pflanze %s", plant_info[ATTR_NAME])
-            result = await hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "import"},
-                data={FLOW_PLANT_INFO: plant_info}
-            )
-
-            if result["type"] != FlowResultType.CREATE_ENTRY:
-                _LOGGER.error("Failed to create plant: %s", result)
-                raise HomeAssistantError(
-                    f"Failed to create new plant: {result.get('reason', 'unknown error')}"
-                )
-            
-            _LOGGER.debug("Config Entry erstellt mit ID: %s", result["result"].entry_id)
-            
-            # Verzögerung für die Entityerstellung
-            await asyncio.sleep(2)
-            
-            # Direkter Zugriff auf das PlantDevice-Objekt über den Entry
-            entry_id = result["result"].entry_id
-            
-            # Zugriff auf die PlantDevice-Instanz
-            for _ in range(10):  # Mehrere Versuche
-                if entry_id in hass.data.get(DOMAIN, {}):
-                    if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                        plant_device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                        device_id = plant_device.device_id
-                        _LOGGER.debug("Pflanze gefunden: %s mit entity_id: %s, device_id: %s", 
-                                      plant_device.name, plant_device.entity_id, device_id)
-                        return {
-                            "entity_id": plant_device.entity_id,
-                            "device_id": device_id
-                        }
-                await asyncio.sleep(0.5)
-            
-            # Wenn das nicht funktioniert, stattdessen im Entity Registry suchen
-            _LOGGER.debug("Suche im Entity Registry nach Config Entry ID: %s", entry_id)
-            entity_registry = er.async_get(hass)
-            device_registry = dr.async_get(hass)
-            
-            for entity in entity_registry.entities.values():
-                if entity.config_entry_id == entry_id and entity.domain == DOMAIN:
-                    _LOGGER.debug("Entity in Registry gefunden: %s", entity.entity_id)
-                    
-                    # Suche das zugehörige Device
-                    device_id = None
-                    if entity.device_id:
-                        device_id = entity.device_id
-                    
-                    return {
-                        "entity_id": entity.entity_id,
-                        "device_id": device_id
-                    }
-            
-            # Letzte Chance: Suche nach einem State mit den richtigen Attributen
-            _LOGGER.debug("Suche in allen States nach Pflanze mit Strain=%s, Breeder=%s", 
-                         plant_info.get(ATTR_STRAIN), plant_info.get(ATTR_BREEDER))
-            for state in hass.states.async_all():
-                if state.entity_id.startswith(f"{DOMAIN}."):
-                    state_attrs = state.attributes
-                    if (state_attrs.get("strain") == plant_info.get(ATTR_STRAIN) and 
-                        state_attrs.get("breeder") == plant_info.get(ATTR_BREEDER)):
-                        _LOGGER.debug("Passender State gefunden: %s", state.entity_id)
-                        
-                        # Suche das zugehörige Device
-                        device_id = None
-                        for entity in entity_registry.entities.values():
-                            if entity.entity_id == state.entity_id:
-                                device_id = entity.device_id
-                                break
-                        
-                        return {
-                            "entity_id": state.entity_id,
-                            "device_id": device_id
-                        }
-            
-            # Wenn wirklich nichts funktioniert, liefere eine Info-Antwort zurück
-            _LOGGER.warning("Konnte keine entity_id für die erstellte Pflanze finden!")
-            return {"info": "Pflanze wurde erstellt, entity_id konnte nicht ermittelt werden."}
-            
-        except Exception as e:
-            _LOGGER.exception("Error creating plant: %s", e)
-            raise HomeAssistantError(f"Error creating plant: {str(e)}")
-
-    async def create_cycle(call: ServiceCall) -> ServiceResponse:
-        """Create a new cycle via service call."""
-        try:
-            # Erstelle ein vollständiges cycle_info Objekt
-            cycle_info = {
-                ATTR_NAME: call.data.get(ATTR_NAME),
-                ATTR_DEVICE_TYPE: DEVICE_TYPE_CYCLE,
-                "plant_emoji": call.data.get("plant_emoji", "🔄"),
-                ATTR_IS_NEW_PLANT: True,
-            }
-
-            # Hole die Default-Werte aus dem Konfigurationsknoten
-            config_entry = None
-            for entry in hass.config_entries.async_entries(DOMAIN):
-                if entry.data.get("is_config", False):
-                    config_entry = entry
-                    break
-
-            if config_entry:
-                config_data = config_entry.data[FLOW_PLANT_INFO]
-                
-                # Füge Default-Aggregationsmethoden hinzu
-                cycle_info["growth_phase_aggregation"] = config_data.get("default_growth_phase_aggregation", "min")
-                cycle_info["flowering_duration_aggregation"] = config_data.get("default_flowering_duration_aggregation", "mean")
-                cycle_info["pot_size_aggregation"] = config_data.get("default_pot_size_aggregation", "mean")
-                cycle_info["water_capacity_aggregation"] = config_data.get("default_water_capacity_aggregation", "mean")
-                cycle_info["aggregations"] = {
-                    'temperature': config_data.get("default_temperature_aggregation", "mean"),
-                    'moisture': config_data.get("default_moisture_aggregation", "median"),
-                    'conductivity': config_data.get("default_conductivity_aggregation", "median"),
-                    'illuminance': config_data.get("default_illuminance_aggregation", "mean"),
-                    'humidity': config_data.get("default_humidity_aggregation", "mean"),
-                    'CO2': config_data.get("default_CO2_aggregation", "mean"),
-                    'ppfd': config_data.get("default_ppfd_aggregation", "original"),
-                    'dli': config_data.get("default_dli_aggregation", "original"),
-                    'total_integral': config_data.get("default_total_integral_aggregation", "original"),
-                    'moisture_consumption': config_data.get("default_moisture_consumption_aggregation", "original"),
-                    'fertilizer_consumption': config_data.get("default_fertilizer_consumption_aggregation", "original"),
-                    'total_water_consumption': config_data.get("default_total_water_consumption_aggregation", "original"),
-                    'total_fertilizer_consumption': config_data.get("default_total_fertilizer_consumption_aggregation", "original"),
-                    'power_consumption': config_data.get("default_power_consumption_aggregation", "mean"),
-                    'total_power_consumption': config_data.get("default_total_power_consumption_aggregation", "original"),
-                    'health': config_data.get("default_health_aggregation", "mean"),
-                }
-            
-            # Nutze PlantHelper für die Standard-Grenzwerte
-            plant_helper = PlantHelper(hass=hass)
-            cycle_config = await plant_helper.generate_configentry(
-                config={
-                    ATTR_NAME: cycle_info[ATTR_NAME],
-                    ATTR_STRAIN: "",
-                    ATTR_BREEDER: "",
-                    ATTR_SENSORS: {},
-                    "plant_emoji": cycle_info.get("plant_emoji", ""),
-                    ATTR_DEVICE_TYPE: DEVICE_TYPE_CYCLE,
-                }
-            )
-            
-            # Übernehme die Standard-Grenzwerte
-            cycle_info.update(cycle_config[FLOW_PLANT_INFO])
-            
-            # Erstelle die Config Entry direkt
-            _LOGGER.debug("Initialisiere Config Entry für Cycle %s", cycle_info[ATTR_NAME])
-            result = await hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "import"},
-                data={FLOW_PLANT_INFO: cycle_info}
-            )
-
-            if result["type"] != FlowResultType.CREATE_ENTRY:
-                _LOGGER.error("Failed to create cycle: %s", result)
-                raise HomeAssistantError(
-                    f"Failed to create cycle: {result.get('reason', 'unknown error')}"
-                )
-            
-            _LOGGER.debug("Config Entry erstellt mit ID: %s", result["result"].entry_id)
-            
-            # Aktualisiere alle Plant Cycle Selects
-            for entry_id in hass.data[DOMAIN]:
-                if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                    plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                    if plant.device_type == DEVICE_TYPE_PLANT and plant.cycle_select:
-                        plant.cycle_select._update_cycle_options()
-                        plant.cycle_select.async_write_ha_state()
-            
-            # Verzögerung für die Entityerstellung
-            await asyncio.sleep(2)
-            
-            # Direkter Zugriff auf das CycleDevice-Objekt über den Entry
-            entry_id = result["result"].entry_id
-            
-            # Zugriff auf die CycleDevice-Instanz
-            for _ in range(10):  # Mehrere Versuche
-                if entry_id in hass.data.get(DOMAIN, {}):
-                    if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                        cycle_device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                        device_id = cycle_device.device_id
-                        _LOGGER.debug("Cycle gefunden: %s mit entity_id: %s, device_id: %s", 
-                                      cycle_device.name, cycle_device.entity_id, device_id)
-                        return {
-                            "entity_id": cycle_device.entity_id,
-                            "device_id": device_id
-                        }
-                await asyncio.sleep(0.5)
-            
-            # Wenn das nicht funktioniert, stattdessen im Entity Registry suchen
-            _LOGGER.debug("Suche im Entity Registry nach Config Entry ID: %s", entry_id)
-            entity_registry = er.async_get(hass)
-            device_registry = dr.async_get(hass)
-            
-            for entity in entity_registry.entities.values():
-                if entity.config_entry_id == entry_id and entity.domain == DOMAIN:
-                    _LOGGER.debug("Entity in Registry gefunden: %s", entity.entity_id)
-                    
-                    # Suche das zugehörige Device
-                    device_id = None
-                    if entity.device_id:
-                        device_id = entity.device_id
-                    
-                    return {
-                        "entity_id": entity.entity_id,
-                        "device_id": device_id
-                    }
-            
-            # Letzte Chance: Suche nach einem State mit dem richtigen Namen
-            _LOGGER.debug("Suche in allen States nach Cycle mit Name=%s", cycle_info[ATTR_NAME])
-            for state in hass.states.async_all():
-                if state.entity_id.startswith(f"{DOMAIN}."):
-                    state_attrs = state.attributes
-                    if state_attrs.get("friendly_name") == cycle_info[ATTR_NAME]:
-                        _LOGGER.debug("Passender State gefunden: %s", state.entity_id)
-                        
-                        # Suche das zugehörige Device
-                        device_id = None
-                        for entity in entity_registry.entities.values():
-                            if entity.entity_id == state.entity_id:
-                                device_id = entity.device_id
-                                break
-                        
-                        return {
-                            "entity_id": state.entity_id,
-                            "device_id": device_id
-                        }
-            
-            # Wenn wirklich nichts funktioniert, liefere eine Info-Antwort zurück
-            _LOGGER.warning("Konnte keine entity_id für den erstellten Cycle finden!")
-            return {"info": "Cycle wurde erstellt, entity_id konnte nicht ermittelt werden."}
-            
-        except Exception as e:
-            _LOGGER.exception("Error creating cycle: %s", e)
-            raise HomeAssistantError(f"Error creating cycle: {str(e)}")
 
     async def move_to_cycle(call: ServiceCall) -> None:
         """Move plants to a cycle or remove them from cycle."""
@@ -782,7 +434,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             # Prüfe ob der Basis-Name bereits existiert (entweder als original_name oder in entity_id)
             while any(
                 (entity.original_name == test_name or 
-                 entity.entity_id == f"{DOMAIN}.{test_name.lower().replace(' ', '_')}")
+                    entity.entity_id == f"{DOMAIN}.{test_name.lower().replace(' ', '_')}")
                 for entity in entity_registry.entities.values()
                 if entity.domain == DOMAIN
             ):
@@ -873,7 +525,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     plant_device = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                     device_id = plant_device.device_id
                     _LOGGER.debug("Geklonte Pflanze gefunden: %s mit entity_id: %s, device_id: %s", 
-                                  plant_device.name, plant_device.entity_id, device_id)
+                                    plant_device.name, plant_device.entity_id, device_id)
                     return {
                         "entity_id": plant_device.entity_id,
                         "device_id": device_id
@@ -1320,7 +972,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             # Get the config entry to find the image download path
             config_entry = next(
                 (entry for entry in hass.config_entries.async_entries(DOMAIN) 
-                 if entry.data.get("is_config", False)), 
+                    if entry.data.get("is_config", False)), 
                 None
             )
             download_path = config_entry.data[FLOW_PLANT_INFO].get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH) if config_entry else DEFAULT_IMAGE_PATH
@@ -1335,7 +987,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         if plant.entity_id == plant_entity_id:
                             found_entry = next(
                                 (entry for entry in hass.config_entries.async_entries(DOMAIN) 
-                                 if entry.entry_id == entry_id), None
+                                    if entry.entry_id == entry_id), None
                             )
                             break
                 
@@ -1555,7 +1207,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         # Get the config entry to find the image download path
                         config_entry = next(
                             (entry for entry in hass.config_entries.async_entries(DOMAIN) 
-                             if entry.data.get("is_config", False)), 
+                                if entry.data.get("is_config", False)), 
                             None
                         )
                         download_path = config_entry.data[FLOW_PLANT_INFO].get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH) if config_entry else DEFAULT_IMAGE_PATH
@@ -1602,7 +1254,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                             # Get the config entry to find the image download path
                             config_entry = next(
                                 (entry for entry in hass.config_entries.async_entries(DOMAIN) 
-                                 if entry.data.get("is_config", False)), 
+                                    if entry.data.get("is_config", False)), 
                                 None
                             )
                             download_path = config_entry.data[FLOW_PLANT_INFO].get(FLOW_DOWNLOAD_PATH, DEFAULT_IMAGE_PATH) if config_entry else DEFAULT_IMAGE_PATH
@@ -1638,7 +1290,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                                                         _LOGGER.warning(f"Could not rename image {old_image}: {e}")
                                                         new_images.append(old_image)
                                                 else:
-                                                    new_images.append(old_image)
+                                                    new_images.append(old_name)
                                             else:
                                                 new_images.append(old_image)
                                         else:
@@ -1924,79 +1576,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         _LOGGER.info("Creating tent: %s with ID: %s", tent_name, tent_id)
         return {"success": True, "tent_id": tent_id, "message": f"Tent {tent_name} created successfully"}
-    
-    async def change_tent(call: ServiceCall) -> None:
-        """Change the tent assignment for a plant."""
-        from .__init__ import PlantDevice
-        
-        entity_id = call.data.get("entity_id")
-        tent_id = call.data.get(ATTR_TENT_ID)
-        
-        # Find the plant entity
-        plant_entity = None
-        for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if hasattr(plant, "entity_id") and plant.entity_id == entity_id:
-                    plant_entity = plant
-                    break
-        
-        if not plant_entity:
-            _LOGGER.error("Plant entity %s not found", entity_id)
-            raise HomeAssistantError(f"Plant entity {entity_id} not found")
-        
-        # Find the tent entity
-        tent_entity = None
-        for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                tent = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if hasattr(tent, "device_type") and tent.device_type == "tent" and hasattr(tent, "tent_id") and tent.tent_id == tent_id:
-                    tent_entity = tent
-                    break
-        
-        if not tent_entity:
-            _LOGGER.error("Tent with ID %s not found", tent_id)
-            raise HomeAssistantError(f"Tent with ID {tent_id} not found")
-        
-        # Change the tent assignment
-        if isinstance(plant_entity, PlantDevice):
-            plant_entity.change_tent(tent_entity)
-            _LOGGER.info("Changed tent assignment for plant %s to tent %s", entity_id, tent_id)
-        else:
-            _LOGGER.error("Entity %s is not a PlantDevice", entity_id)
-            raise HomeAssistantError(f"Entity {entity_id} is not a PlantDevice")
-    
-    async def update_tent_sensors(call: ServiceCall) -> ServiceResponse:
-        """Update the sensors for a tent."""
-        tent_id = call.data.get(ATTR_TENT_ID)
-        sensors = call.data.get("sensors", [])
-        
-        # Find the tent entity
-        tent_entity = None
-        for entry_id in hass.data[DOMAIN]:
-            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                tent = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if hasattr(tent, "device_type") and tent.device_type == "tent" and hasattr(tent, "tent_id") and tent.tent_id == tent_id:
-                    tent_entity = tent
-                    break
-        
-        if not tent_entity:
-            _LOGGER.error("Tent with ID %s not found", tent_id)
-            raise HomeAssistantError(f"Tent with ID {tent_id} not found")
-        
-        # Update the tent's sensors
-        # First remove all existing sensors
-        existing_sensors = tent_entity.get_sensors()
-        for sensor in existing_sensors:
-            tent_entity.remove_sensor(sensor)
-        
-        # Then add the new sensors
-        for sensor in sensors:
-            tent_entity.add_sensor(sensor)
-        
-        _LOGGER.info("Updated sensors for tent %s: %s", tent_id, sensors)
-        return {"success": True, "message": f"Updated sensors for tent {tent_id}"}
-    
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
