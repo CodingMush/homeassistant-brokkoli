@@ -11,7 +11,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.const import ATTR_NAME
 
-from .const import DOMAIN, FLOW_PLANT_INFO
+from .const import DOMAIN, FLOW_PLANT_INFO, DEVICE_TYPE_TENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class JournalEntry:
         self.content = content
         self.author = author
 
-    def to_dict(self) -> dict:
+    def to_dict(selfself) -> dict:
         """Convert journal entry to dictionary."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -152,13 +152,21 @@ class Tent(Entity):
         except ValueError:
             self._updated_at = datetime.now()
             
-        # Initialize device_id
-        self._device_id = None
+        # Initialize device_id from config or generate it
+        self._device_id = plant_info.get("device_id")
+        if self._device_id is None:
+            # Generate device ID if not present
+            device_registry = dr.async_get(self._hass)
+            device = device_registry.async_get_device(
+                identifiers={(DOMAIN, self.unique_id)}
+            )
+            if device:
+                self._device_id = device.id
 
     @property
     def device_type(self) -> str:
         """Return the device type."""
-        return "tent"
+        return DEVICE_TYPE_TENT
 
     @property
     def device_id(self) -> str:
@@ -260,6 +268,7 @@ class Tent(Entity):
         plant_info["journal"] = self._journal.to_dict()
         plant_info["maintenance_entries"] = [entry.to_dict() for entry in self._maintenance_entries]
         plant_info["updated_at"] = self._updated_at.isoformat()
+        plant_info["device_id"] = self._device_id  # Persist device_id
         data[FLOW_PLANT_INFO] = plant_info
         
         # Update the config entry

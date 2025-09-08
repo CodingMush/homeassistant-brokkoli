@@ -715,15 +715,15 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     if user_input.get(key):
                         self.plant_info[key] = user_input[key]
 
-                # Erstelle direkt den Entry ohne weitere Schritte
+                # Create entry directly
                 return self.async_create_entry(
                     title=self.plant_info[ATTR_NAME],
                     data={FLOW_PLANT_INFO: self.plant_info},
                 )
             except Exception as e:
-                _LOGGER.exception("Failed to create tent entry: %s", e)
+                _LOGGER.error("Failed to create tent entry: %s", e, exc_info=True)
                 errors["base"] = "unknown"
-                # fallthrough to show_form with errors
+                # Fall through to show_form with errors
 
         return self.async_show_form(
             step_id="tent",
