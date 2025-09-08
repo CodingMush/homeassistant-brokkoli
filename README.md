@@ -75,47 +75,47 @@ For the complete Brokkoli Suite, install these complementary components:
 - Check plant status and sensor readings
 - Monitor problem states when sensor values exceed thresholds
 
-## 📊 Sensor Management
+## 📊 Sensor management
 
-Sensors can be changed directly in the plant's configuration interface or dynamically via automations when plants are moved between rooms.
+Sensors can be changed directly in the plant configuration or dynamically via automations (e.g., when moving rooms).
 
-## 🎨 Brokkoli Suite Integration
+## 🎨 Brokkoli Suite
 
 Brokkoli Cannabis Management is the foundation of the Brokkoli Suite:
 
 ### [Brokkoli Card](https://github.com/dingausmwald/lovelace-brokkoli-card)
-- Individual cannabis plant cards
-- Area cards for spatial plant arrangement
-- List cards for tabular overview
-- Interactive plant positioning
+- Individual plant cards
+- Area cards for spatial arrangement
+- List views
+- Interactive positioning
 
 ### [Seedfinder Integration](https://github.com/dingausmwald/homeassistant-seedfinder)
-- Cannabis strain database access
-- Strain data fetching during setup
-- Strain imagery and basic information
+- Access to strain database
+- Data fetching during setup
+- Imagery and basic information
 - Growth phase definitions
 
 ## 🔧 Configuration
 
-### Problem Detection
-Customize which sensor violations trigger problem states:
+### Problem detection
+Choose which sensor violations should trigger problem states:
 
 1. Navigate to **Settings** → **Devices & Services** → **Plant Monitor**
 2. Select your plant device
 3. Click **Configure**
 4. Choose which threshold violations should trigger alerts
 
-### Strain Management
-Update cannabis strain and refresh data from Seedfinder:
+### Strain management
+Update strain and refresh data from Seedfinder:
 
 1. Go to cannabis plant device configuration
 2. Enter the exact strain name (Seedfinder PID format)
 3. Enable "Force refresh" to update all data including images
 4. Strain changes take effect immediately
 
-## 📱 Available Services
+## 📱 Available services
 
-The integration provides various services to interact with your cannabis plants:
+The integration provides the following services:
 
 - `plant.replace_sensor` - Replace sensors for a plant
 - `plant.create_plant` - Create a new plant
@@ -131,29 +131,29 @@ The integration provides various services to interact with your cannabis plants:
 - `plant.export_plants` - Export plant configurations
 - `plant.import_plants` - Import plant configurations
 
-These services are integrated into the [Brokkoli Card](https://github.com/dingausmwald/lovelace-brokkoli-card) interface for convenient operation, or can be used directly in automations and scripts.
+These services are integrated into the [Brokkoli Card](https://github.com/dingausmwald/lovelace-brokkoli-card) and can also be used directly in automations/scripts.
 
 ## 🆘 Troubleshooting
 
-### Sensor Values Not Updating
-If old sensor values persist after cannabis plant reconfiguration:
-- Use the `replace_sensor` service instead of removing/re-adding plants
+### Sensor values not updating
+If old values persist after reconfiguration:
+- Use `replace_sensor` service instead of removing/adding plants
 
-### Strain Not Found
-- Ensure exact strain name matching Seedfinder PID format
-- Check that Seedfinder integration is properly configured
+### Strain not found
+- Ensure exact Seedfinder PID format
+- Verify Seedfinder integration is configured
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit pull requests, report issues, or suggest improvements.
+Contributions are welcome! Please open PRs, issues, or suggestions.
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+MIT License
 
 ## ☕ Support
 
-If you find this project helpful, consider supporting its development:
+If this project helps you, consider supporting development:
 
 <a href="https://buymeacoffee.com/dingausmwald" target="_blank">
 <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px !important;">

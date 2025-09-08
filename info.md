@@ -1,20 +1,18 @@
 # Brokkoli Plant Management for Home Assistant
 
-> **Note**
-> 
-> This project is based on the work of [@Olen](https://github.com/Olen) and his "Alternative plants component" integration.
-> 
-> All credit for the original development goes to the original author.
+Note: This project builds on the work of [@Olen](https://github.com/Olen) ("Alternative plants component").
 
-This integration can automatically fetch data from [Seedfinder](https://github.com/dingausmwald/homeassistant-seedfinder) if you are a registered user. Registration is free.
+This integration can fetch strain data via the optional [Seedfinder integration](https://github.com/dingausmwald/homeassistant-seedfinder).
 
-# BREAKING CHANGES
+## Breaking changes
 
->**Warning**
->
-> **This integration is *not* compatible with the original plant integration in HA.**
+This integration is not compatible with Home Assistant’s original plant integration.
 
-Plants are set up in the UI and all configuration of your plants can be managed there or by automations and scripts.
+Plants are fully set up via the UI; all configuration can be managed there or automated via scripts/automations.
 
-This Brokkoli integration is available as a beta release in HACS through this repository.
+Available as a beta in HACS via this repository.
+
+---
+
+Deutsch (kurz): Nicht kompatibel mit der originalen HA-Plant-Integration. Einrichtung über die UI, optionale Seedfinder-Anbindung. Beta via HACS.
 
