@@ -190,6 +190,25 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.plant_info = {}
         self.error = None
 
+    async def async_step_import(self, import_config):
+        """Handle imported configuration (service or YAML initiated)."""
+        try:
+            # Expect { FLOW_PLANT_INFO: {...} }
+            if import_config and FLOW_PLANT_INFO in import_config:
+                plant_info = dict(import_config[FLOW_PLANT_INFO])
+            else:
+                plant_info = dict(import_config or {})
+
+            # Some callers pass raw plant_info; normalize
+            if FLOW_PLANT_INFO not in import_config:
+                import_config = {FLOW_PLANT_INFO: plant_info}
+
+            title = plant_info.get(ATTR_NAME, "Plant Device")
+            return self.async_create_entry(title=title, data=import_config)
+        except Exception as e:
+            _LOGGER.exception("Failed in async_step_import: %s", e)
+            return self.async_abort(reason="import_failed")
+
     def _get_available_tents(self):
         """Get a list of available tents for selection."""
         tents = []
