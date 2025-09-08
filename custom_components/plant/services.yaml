@@ -862,7 +862,7 @@ create_tent:
         entity:
           domain: sensor
           device_class: illuminance
-        example: "sensor.grow_tent_illuminance"
+      example: "sensor.grow_tent_illuminance"
     humidity_sensor:
       name: Humidity Sensor
       description: Humidity sensor for the tent
@@ -871,7 +871,7 @@ create_tent:
         entity:
           domain: sensor
           device_class: humidity
-        example: "sensor.grow_tent_humidity"
+      example: "sensor.grow_tent_humidity"
     co2_sensor:
       name: CO2 Sensor
       description: CO2 sensor for the tent
@@ -880,7 +880,7 @@ create_tent:
         entity:
           domain: sensor
           device_class: carbon_dioxide
-        example: "sensor.grow_tent_co2"
+      example: "sensor.grow_tent_co2"
     power_consumption_sensor:
       name: Power Consumption Sensor
       description: Power consumption sensor for the tent
@@ -889,7 +889,7 @@ create_tent:
         entity:
           domain: sensor
           device_class: power
-        example: "sensor.grow_tent_power"
+      example: "sensor.grow_tent_power"
     ph_sensor:
       name: pH Sensor
       description: pH sensor for the tent
@@ -897,4 +897,4 @@ create_tent:
       selector:
         entity:
           domain: sensor
-        example: "sensor.grow_tent_ph"
+      example: "sensor.grow_tent_ph"
