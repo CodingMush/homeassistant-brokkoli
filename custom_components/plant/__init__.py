@@ -185,15 +185,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Prüfe ob bereits eine ID existiert
     device_type = entry.data[FLOW_PLANT_INFO].get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
     
-    # Erstelle PlantDevice oder Tent basierend auf dem Gerätetyp
-    if device_type == "tent":
-        # Für Tents erstellen wir ein Tent-Objekt
-        from .tent import Tent
-        plant = Tent(hass, entry)
-    else:
-        # Für Plants und Cycles verwenden wir PlantDevice
-        plant = PlantDevice(hass, entry)
-    
     id_key = f"{device_type}_id"
     
     if id_key not in entry.data[FLOW_PLANT_INFO]:
@@ -204,12 +195,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         data[FLOW_PLANT_INFO][id_key] = new_id
         hass.config_entries.async_update_entry(entry, data=data)
     
-    # Setze die ID (entweder die existierende oder neue)
+    # Erstelle PlantDevice oder Tent basierend auf dem Gerätetyp
     if device_type == "tent":
-        # For tents, we need to update the tent_info in the config entry
-        # The Tent class will read this value during initialization
-        pass  # The tent_id is already in entry.data[FLOW_PLANT_INFO][id_key]
+        # Für Tents erstellen wir ein Tent-Objekt
+        from .tent import Tent
+        plant = Tent(hass, entry)
     else:
+        # Für Plants und Cycles verwenden wir PlantDevice
+        plant = PlantDevice(hass, entry)
         plant._plant_id = entry.data[FLOW_PLANT_INFO].get(id_key)
 
     # Korrekte Device-Registrierung
