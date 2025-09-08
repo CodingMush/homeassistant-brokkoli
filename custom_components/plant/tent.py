@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers import device_registry as dr
+from homeassistant.const import ATTR_NAME
 
 from .const import DOMAIN, FLOW_PLANT_INFO
 
@@ -110,7 +111,7 @@ class Tent(Entity):
         self._config = config
         plant_info = config.data.get(FLOW_PLANT_INFO, {})
         self._tent_id = plant_info.get("tent_id")
-        self._name = plant_info.get("name", plant_info.get("ATTR_NAME", "Unnamed Tent"))
+        self._name = plant_info.get("name", plant_info.get(ATTR_NAME, "Unnamed Tent"))
         # List of sensor entity IDs; if not present, derive from typed keys for backward compatibility
         self._sensors: List[str] = plant_info.get("sensors", [])
         if not self._sensors:
@@ -177,6 +178,8 @@ class Tent(Entity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID for the tent."""
+        if self._tent_id is None:
+            return f"tent_unnamed"
         return f"tent_{self._tent_id}"
 
     @property

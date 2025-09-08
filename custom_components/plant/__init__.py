@@ -205,7 +205,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.config_entries.async_update_entry(entry, data=data)
     
     # Setze die ID (entweder die existierende oder neue)
-    plant._plant_id = entry.data[FLOW_PLANT_INFO].get(id_key)
+    if device_type == "tent":
+        plant._tent_id = entry.data[FLOW_PLANT_INFO].get(id_key)
+    else:
+        plant._plant_id = entry.data[FLOW_PLANT_INFO].get(id_key)
 
     # Korrekte Device-Registrierung
     device_registry = dr.async_get(hass)
