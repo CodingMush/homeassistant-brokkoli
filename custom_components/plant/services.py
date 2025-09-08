@@ -1922,69 +1922,53 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             )
             _LOGGER.debug("create_tent import flow result: %s", result)
             if result.get("type") == FlowResultType.CREATE_ENTRY:
+                # The flow completed successfully and created an entry
                 entry = result["result"]
             else:
-                # Fallback: drive the user flow programmatically
-                user_flow = await hass.config_entries.flow.async_init(
-                    DOMAIN, context={"source": "user"}
-                )
-                flow_id = user_flow["flow_id"]
-                # Step 1: choose device type tent
-                step = await hass.config_entries.flow.async_configure(
-                    flow_id, {ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT}
-                )
-                # Step 2: tent step with minimal required fields
-                tent_user_input = {ATTR_NAME: tent_name}
-                step = await hass.config_entries.flow.async_configure(
-                    flow_id, tent_user_input
-                )
-                if step.get("type") != FlowResultType.CREATE_ENTRY:
-                    _LOGGER.error("Tent user flow did not create entry: %s", step)
-                    raise HomeAssistantError(
-                        f"Failed to create tent via user flow: {step.get('reason', 'unknown')}"
-                    )
-                entry = step["result"]
+                # This shouldn't happen with import flows, but handle it gracefully
+                _LOGGER.error("Tent import flow did not create entry: %s", result)
+                raise HomeAssistantError("Failed to create tent via import flow")
+            entry_id = entry.entry_id
+            _LOGGER.info("Created tent '%s' with entry_id=%s", tent_name, entry_id)
+            
+            # Try to resolve entity_id and device_id
+            # Wait a bit for the entry to be fully set up
+            await asyncio.sleep(2)
+            entity_registry = er.async_get(hass)
+            device_registry = dr.async_get(hass)
+            
+            entity_id = None
+            device_id = None
+            for entity_reg in entity_registry.entities.values():
+                if entity_reg.config_entry_id == entry_id and entity_reg.domain == DOMAIN:
+                    entity_id = entity_reg.entity_id
+                    device_id = entity_reg.device_id
+                    break
+            
+            # Fallback: read from in-memory objects
+            if not entity_id:
+                for _ in range(6):
+                    if entry_id in hass.data.get(DOMAIN, {}):
+                        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                            tent_obj = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                            if hasattr(tent_obj, "entity_id"):
+                                entity_id = tent_obj.entity_id
+                            if hasattr(tent_obj, "device_id"):
+                                device_id = tent_obj.device_id
+                            break
+                    await asyncio.sleep(0.5)
+            
+            response = {"success": True, "message": f"Tent {tent_name} created successfully"}
+            if tent_id:
+                response["tent_id"] = tent_id
+            if entity_id:
+                response["entity_id"] = entity_id
+            if device_id:
+                response["device_id"] = device_id
+            return response
         except Exception as e:
             _LOGGER.exception("Error creating tent entry: %s", e)
             raise HomeAssistantError(f"Failed to create tent: {e}")
-        
-        entry_id = entry.entry_id
-        _LOGGER.info("Created tent '%s' with entry_id=%s", tent_name, entry_id)
-        
-        # Try to resolve entity_id and device_id
-        await asyncio.sleep(1)
-        entity_registry = er.async_get(hass)
-        device_registry = dr.async_get(hass)
-        
-        entity_id = None
-        device_id = None
-        for entity_reg in entity_registry.entities.values():
-            if entity_reg.config_entry_id == entry_id and entity_reg.domain == DOMAIN:
-                entity_id = entity_reg.entity_id
-                device_id = entity_reg.device_id
-                break
-        
-        # Fallback: read from in-memory objects
-        if not entity_id:
-            for _ in range(6):
-                if entry_id in hass.data.get(DOMAIN, {}):
-                    if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                        tent_obj = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                        if hasattr(tent_obj, "entity_id"):
-                            entity_id = tent_obj.entity_id
-                        if hasattr(tent_obj, "device_id"):
-                            device_id = tent_obj.device_id
-                        break
-                await asyncio.sleep(0.5)
-        
-        response = {"success": True, "message": f"Tent {tent_name} created successfully"}
-        if tent_id:
-            response["tent_id"] = tent_id
-        if entity_id:
-            response["entity_id"] = entity_id
-        if device_id:
-            response["device_id"] = device_id
-        return response
     
     async def change_tent(call: ServiceCall) -> None:
         """Change the tent assignment for a plant and update its sensors."""
