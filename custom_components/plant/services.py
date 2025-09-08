@@ -49,6 +49,7 @@ from .const import (
     FLOW_SENSOR_CO2,
     DEVICE_TYPE_CYCLE,
     DEVICE_TYPE_PLANT,
+    DEVICE_TYPE_TENT,
     SERVICE_CLONE_PLANT,
     ATTR_IS_NEW_PLANT,
     ATTR_DEVICE_TYPE,
@@ -169,7 +170,7 @@ ADD_PH_SCHEMA = vol.Schema({
     vol.Required("value"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=14.0)),
 })
 
-# Schema for create_tent Service (typed sensor fields)
+# Schema for create_tent Service (typed sensor fields). Accept legacy 'sensors' to avoid UI errors, but ignore it.
 CREATE_TENT_SCHEMA = vol.Schema({
     vol.Required(ATTR_NAME): cv.string,
     vol.Optional(FLOW_SENSOR_ILLUMINANCE): cv.entity_id,
@@ -177,6 +178,7 @@ CREATE_TENT_SCHEMA = vol.Schema({
     vol.Optional(FLOW_SENSOR_CO2): cv.entity_id,
     vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): cv.entity_id,
     vol.Optional(FLOW_SENSOR_PH): cv.entity_id,
+    vol.Optional("sensors", default=[]): vol.All(cv.ensure_list, [cv.string]),
 })
 
 # Schema for change_tent Service
