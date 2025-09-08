@@ -39,12 +39,12 @@ def test_create_tent_implementation():
         with open("custom_components/plant/services.py", "r", encoding="utf-8") as f:
             content = f.read()
         
-        # Check that the create_tent function uses async_create_entry instead of async_init
-        if "async_create_entry" in content and "hass.config_entries.async_create_entry" in content:
-            print("✓ create_tent function uses direct entry creation")
+        # Check that the create_tent function uses the correct approach
+        if "hass.config_entries.flow.async_init" in content and "SOURCE_IMPORT" in content:
+            print("✓ create_tent function uses correct flow initialization")
             return True
         else:
-            print("✗ create_tent function still uses flow initialization")
+            print("✗ create_tent function doesn't use correct flow initialization")
             return False
     except Exception as e:
         print(f"✗ Error checking create_tent implementation: {e}")

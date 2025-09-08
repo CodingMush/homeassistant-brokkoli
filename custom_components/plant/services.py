@@ -1914,18 +1914,30 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             tent_id = None
         
         try:
-            # Directly create the config entry instead of using flow
-            # This avoids the UnknownFlow error with import flows that complete immediately
+            # Use import flow but handle it correctly without trying to access the result
+            # Import flows complete immediately, so we just need to initiate it
             from homeassistant.config_entries import SOURCE_IMPORT
             config_data = {FLOW_PLANT_INFO: tent_info}
             
-            # Create the entry directly
-            entry = hass.config_entries.async_create_entry(
-                domain=DOMAIN,
-                title=tent_name,
+            # Initiate the import flow - it will complete immediately
+            await hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": SOURCE_IMPORT},
                 data=config_data,
-                source=SOURCE_IMPORT,
             )
+            
+            # Since import flows complete immediately, we need to find the created entry
+            # by looking for the most recently created entry with our tent name
+            entry = None
+            for check_entry in hass.config_entries.async_entries(DOMAIN):
+                if (check_entry.title == tent_name and 
+                    check_entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_NAME) == tent_name and
+                    check_entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT):
+                    entry = check_entry
+                    break
+            
+            if not entry:
+                raise HomeAssistantError("Failed to find created tent entry")
             
             _LOGGER.info("Created tent '%s' with entry_id=%s", tent_name, entry.entry_id)
             
