@@ -900,30 +900,49 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(
                 "plant_emoji", default="⛺"
             ): cv.string,
-            # Sensor selection with Plant-compatible naming
+            # Sensor selection with Plant-compatible naming and specific filters
             vol.Optional(FLOW_SENSOR_TEMPERATURE): selector({
                 "entity": {
-                    "filter": [{"domain": "sensor"}]
+                    "filter": [
+                        {"domain": "sensor", "device_class": "temperature"},
+                        {"domain": "sensor", "unit_of_measurement": "°C"},
+                        {"domain": "sensor", "unit_of_measurement": "°F"},
+                        {"domain": "sensor", "unit_of_measurement": "K"}
+                    ]
                 }
             }),
             vol.Optional(FLOW_SENSOR_HUMIDITY): selector({
                 "entity": {
-                    "filter": [{"domain": "sensor"}]
+                    "filter": [
+                        {"domain": "sensor", "device_class": "humidity"},
+                        {"domain": "sensor", "unit_of_measurement": "%"}
+                    ]
                 }
             }),
             vol.Optional(FLOW_SENSOR_CO2): selector({
                 "entity": {
-                    "filter": [{"domain": "sensor"}]
+                    "filter": [
+                        {"domain": "sensor", "device_class": "carbon_dioxide"},
+                        {"domain": "sensor", "unit_of_measurement": "ppm"}
+                    ]
                 }
             }),
             vol.Optional(FLOW_SENSOR_ILLUMINANCE): selector({
                 "entity": {
-                    "filter": [{"domain": "sensor"}]
+                    "filter": [
+                        {"domain": "sensor", "device_class": "illuminance"},
+                        {"domain": "sensor", "unit_of_measurement": "lx"},
+                        {"domain": "sensor", "unit_of_measurement": "lux"}
+                    ]
                 }
             }),
             vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): selector({
                 "entity": {
-                    "filter": [{"domain": "sensor"}]
+                    "filter": [
+                        {"domain": "sensor", "device_class": "power"},
+                        {"domain": "sensor", "unit_of_measurement": "W"},
+                        {"domain": "sensor", "unit_of_measurement": "kW"}
+                    ]
                 }
             }),
         }
