@@ -1875,15 +1875,16 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         tent_name = call.data.get(ATTR_NAME)
         sensors = call.data.get("sensors", [])
+        if not tent_name:
+            raise HomeAssistantError("name is required")
         
         # Prepare tent info
         tent_info = {
             ATTR_NAME: tent_name,
             "name": tent_name,
-            ATTR_DEVICE_TYPE: "tent",
+            ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
             ATTR_IS_NEW_PLANT: True,
             "plant_emoji": "⛺",
-            # tent_id will be set if not provided by setup
             "sensors": sensors,
             "journal": {},
             "maintenance_entries": [],
@@ -1893,25 +1894,47 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         # Generate a unique ID proactively (optional; setup will ensure it exists)
         try:
-            tent_id = await _get_next_id(hass, "tent")
+            tent_id = await _get_next_id(hass, DEVICE_TYPE_TENT)
             tent_info["tent_id"] = tent_id
         except Exception:
             tent_id = None
         
-        # Create the config entry via flow
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": "import"},
-            data={FLOW_PLANT_INFO: tent_info},
-        )
-        
-        if result["type"] != FlowResultType.CREATE_ENTRY:
-            _LOGGER.error("Failed to create tent: %s", result)
-            raise HomeAssistantError(
-                f"Failed to create new tent: {result.get('reason', 'unknown error')}"
+        try:
+            # First try: import flow path (single-step)
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "import"},
+                data={FLOW_PLANT_INFO: tent_info},
             )
+            _LOGGER.debug("create_tent import flow result: %s", result)
+            if result.get("type") == FlowResultType.CREATE_ENTRY:
+                entry = result["result"]
+            else:
+                # Fallback: drive the user flow programmatically
+                user_flow = await hass.config_entries.flow.async_init(
+                    DOMAIN, context={"source": "user"}
+                )
+                flow_id = user_flow["flow_id"]
+                # Step 1: choose device type tent
+                step = await hass.config_entries.flow.async_configure(
+                    flow_id, {ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT}
+                )
+                # Step 2: tent step with minimal required fields
+                tent_user_input = {ATTR_NAME: tent_name}
+                step = await hass.config_entries.flow.async_configure(
+                    flow_id, tent_user_input
+                )
+                if step.get("type") != FlowResultType.CREATE_ENTRY:
+                    _LOGGER.error("Tent user flow did not create entry: %s", step)
+                    raise HomeAssistantError(
+                        f"Failed to create tent via user flow: {step.get('reason', 'unknown')}"
+                    )
+                entry = step["result"]
+        except Exception as e:
+            _LOGGER.exception("Error creating tent entry: %s", e)
+            raise HomeAssistantError(f"Failed to create tent: {e}")
         
-        entry_id = result["result"].entry_id
+        entry_id = entry.entry_id
         _LOGGER.info("Created tent '%s' with entry_id=%s", tent_name, entry_id)
         
         # Try to resolve entity_id and device_id
@@ -1921,10 +1944,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         entity_id = None
         device_id = None
-        for entity in entity_registry.entities.values():
-            if entity.config_entry_id == entry_id and entity.domain == DOMAIN:
-                entity_id = entity.entity_id
-                device_id = entity.device_id
+        for entity_reg in entity_registry.entities.values():
+            if entity_reg.config_entry_id == entry_id and entity_reg.domain == DOMAIN:
+                entity_id = entity_reg.entity_id
+                device_id = entity_reg.device_id
                 break
         
         # Fallback: read from in-memory objects
