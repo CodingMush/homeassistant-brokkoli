@@ -641,31 +641,28 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 from .__init__ import _get_next_id
                 tent_id = await _get_next_id(self.hass, DEVICE_TYPE_TENT)
                 
-                # Collect sensors from user input
-                sensors = []
-                if user_input.get(FLOW_SENSOR_TEMPERATURE):
-                    sensors.append(user_input[FLOW_SENSOR_TEMPERATURE])
-                if user_input.get(FLOW_SENSOR_HUMIDITY):
-                    sensors.append(user_input[FLOW_SENSOR_HUMIDITY])
-                if user_input.get(FLOW_SENSOR_CO2):
-                    sensors.append(user_input[FLOW_SENSOR_CO2])
-                if user_input.get(FLOW_SENSOR_ILLUMINANCE):
-                    sensors.append(user_input[FLOW_SENSOR_ILLUMINANCE])
-                if user_input.get(FLOW_SENSOR_POWER_CONSUMPTION):
-                    sensors.append(user_input[FLOW_SENSOR_POWER_CONSUMPTION])
-                
                 self.plant_info = {
                     ATTR_NAME: user_input[ATTR_NAME],
                     ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
                     ATTR_IS_NEW_PLANT: True,
                     "plant_emoji": user_input.get("plant_emoji", "⛺"),
                     "tent_id": tent_id,
-                    "sensors": sensors,
                     "journal": {},
                     "maintenance_entries": [],
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
                 }
+
+                # Persist typed sensor fields
+                for key in (
+                    FLOW_SENSOR_ILLUMINANCE,
+                    FLOW_SENSOR_HUMIDITY,
+                    FLOW_SENSOR_CO2,
+                    FLOW_SENSOR_POWER_CONSUMPTION,
+                    FLOW_SENSOR_PH,
+                ):
+                    if user_input.get(key):
+                        self.plant_info[key] = user_input[key]
 
                 # Erstelle direkt den Entry ohne weitere Schritte
                 return self.async_create_entry(
@@ -677,39 +674,52 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
                 # fallthrough to show_form with errors
 
-        # Get available sensors for selection
-        sensor_entities = await self._get_sensor_entities()
-        
         data_schema = {
             # Basis-Informationen
             vol.Required(ATTR_NAME): cv.string,
             vol.Optional(
                 "plant_emoji", default="⛺"
             ): cv.string,
-            # Sensor selection with Plant-compatible naming
-            vol.Optional(FLOW_SENSOR_TEMPERATURE): selector({
+            # Typed sensor selectors
+            vol.Optional(FLOW_SENSOR_ILLUMINANCE): selector({
                 "entity": {
-                    "filter": [{"domain": "sensor"}]
+                    "filter": [
+                        {"domain": "sensor", "device_class": "illuminance"},
+                        {"domain": "sensor", "unit_of_measurement": "lx"},
+                        {"domain": "sensor", "unit_of_measurement": "lux"}
+                    ]
                 }
             }),
             vol.Optional(FLOW_SENSOR_HUMIDITY): selector({
                 "entity": {
-                    "filter": [{"domain": "sensor"}]
+                    "filter": [
+                        {"domain": "sensor", "device_class": "humidity"},
+                        {"domain": "sensor", "unit_of_measurement": "%"}
+                    ]
                 }
             }),
             vol.Optional(FLOW_SENSOR_CO2): selector({
                 "entity": {
-                    "filter": [{"domain": "sensor"}]
-                }
-            }),
-            vol.Optional(FLOW_SENSOR_ILLUMINANCE): selector({
-                "entity": {
-                    "filter": [{"domain": "sensor"}]
+                    "filter": [
+                        {"domain": "sensor", "device_class": "carbon_dioxide"},
+                        {"domain": "sensor", "unit_of_measurement": "ppm"}
+                    ]
                 }
             }),
             vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): selector({
                 "entity": {
-                    "filter": [{"domain": "sensor"}]
+                    "filter": [
+                        {"domain": "sensor", "device_class": "power"},
+                        {"domain": "sensor", "unit_of_measurement": "W"},
+                        {"domain": "sensor", "unit_of_measurement": "kW"}
+                    ]
+                }
+            }),
+            vol.Optional(FLOW_SENSOR_PH): selector({
+                "entity": {
+                    "filter": [
+                        {"domain": "sensor"}
+                    ]
                 }
             }),
         }

@@ -169,10 +169,14 @@ ADD_PH_SCHEMA = vol.Schema({
     vol.Required("value"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=14.0)),
 })
 
-# Schema for create_tent Service
+# Schema for create_tent Service (typed sensor fields)
 CREATE_TENT_SCHEMA = vol.Schema({
     vol.Required(ATTR_NAME): cv.string,
-    vol.Optional("sensors", default=[]): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(FLOW_SENSOR_ILLUMINANCE): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_HUMIDITY): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_CO2): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): cv.entity_id,
+    vol.Optional(FLOW_SENSOR_PH): cv.entity_id,
 })
 
 # Schema for change_tent Service
@@ -1874,7 +1878,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         from .__init__ import _get_next_id
         
         tent_name = call.data.get(ATTR_NAME)
-        sensors = call.data.get("sensors", [])
         if not tent_name:
             raise HomeAssistantError("name is required")
         
@@ -1885,12 +1888,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
             ATTR_IS_NEW_PLANT: True,
             "plant_emoji": "⛺",
-            "sensors": sensors,
             "journal": {},
             "maintenance_entries": [],
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
         }
+        # Store typed sensor fields if provided
+        for key in (
+            FLOW_SENSOR_ILLUMINANCE,
+            FLOW_SENSOR_HUMIDITY,
+            FLOW_SENSOR_CO2,
+            FLOW_SENSOR_POWER_CONSUMPTION,
+            FLOW_SENSOR_PH,
+        ):
+            if call.data.get(key):
+                tent_info[key] = call.data[key]
         
         # Generate a unique ID proactively (optional; setup will ensure it exists)
         try:
