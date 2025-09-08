@@ -206,7 +206,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Setze die ID (entweder die existierende oder neue)
     if device_type == "tent":
-        plant._tent_id = entry.data[FLOW_PLANT_INFO].get(id_key)
+        # For tents, we need to update the tent_info in the config entry
+        # The Tent class will read this value during initialization
+        pass  # The tent_id is already in entry.data[FLOW_PLANT_INFO][id_key]
     else:
         plant._plant_id = entry.data[FLOW_PLANT_INFO].get(id_key)
 

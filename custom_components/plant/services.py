@@ -1914,22 +1914,20 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             tent_id = None
         
         try:
-            # First try: import flow path (single-step)
-            result = await hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "import"},
-                data={FLOW_PLANT_INFO: tent_info},
+            # Directly create the config entry instead of using flow
+            # This avoids the UnknownFlow error with import flows that complete immediately
+            from homeassistant.config_entries import SOURCE_IMPORT
+            config_data = {FLOW_PLANT_INFO: tent_info}
+            
+            # Create the entry directly
+            entry = hass.config_entries.async_create_entry(
+                domain=DOMAIN,
+                title=tent_name,
+                data=config_data,
+                source=SOURCE_IMPORT,
             )
-            _LOGGER.debug("create_tent import flow result: %s", result)
-            if result.get("type") == FlowResultType.CREATE_ENTRY:
-                # The flow completed successfully and created an entry
-                entry = result["result"]
-            else:
-                # This shouldn't happen with import flows, but handle it gracefully
-                _LOGGER.error("Tent import flow did not create entry: %s", result)
-                raise HomeAssistantError("Failed to create tent via import flow")
-            entry_id = entry.entry_id
-            _LOGGER.info("Created tent '%s' with entry_id=%s", tent_name, entry_id)
+            
+            _LOGGER.info("Created tent '%s' with entry_id=%s", tent_name, entry.entry_id)
             
             # Try to resolve entity_id and device_id
             # Wait a bit for the entry to be fully set up
@@ -1940,7 +1938,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             entity_id = None
             device_id = None
             for entity_reg in entity_registry.entities.values():
-                if entity_reg.config_entry_id == entry_id and entity_reg.domain == DOMAIN:
+                if entity_reg.config_entry_id == entry.entry_id and entity_reg.domain == DOMAIN:
                     entity_id = entity_reg.entity_id
                     device_id = entity_reg.device_id
                     break
@@ -1948,9 +1946,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             # Fallback: read from in-memory objects
             if not entity_id:
                 for _ in range(6):
-                    if entry_id in hass.data.get(DOMAIN, {}):
-                        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                            tent_obj = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                    if entry.entry_id in hass.data.get(DOMAIN, {}):
+                        if ATTR_PLANT in hass.data[DOMAIN][entry.entry_id]:
+                            tent_obj = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
                             if hasattr(tent_obj, "entity_id"):
                                 entity_id = tent_obj.entity_id
                             if hasattr(tent_obj, "device_id"):
