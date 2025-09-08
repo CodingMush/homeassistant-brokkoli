@@ -686,14 +686,24 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Basic validation
                 if not user_input.get(ATTR_NAME):
                     errors[ATTR_NAME] = "required"
-                    raise ValueError("Tent name is required")
+                    return self.async_show_form(
+                        step_id="tent",
+                        data_schema=vol.Schema(data_schema),
+                        errors=errors,
+                        description_placeholders={
+                            "sensors_hint": "Select sensors that match your plant monitoring needs. "
+                                            "This will make it easier to assign plants to this tent later."
+                        }
+                    )
 
                 # Generate a unique ID for the tent
                 from .__init__ import _get_next_id
                 tent_id = await _get_next_id(self.hass, DEVICE_TYPE_TENT)
+                _LOGGER.debug("Generated tent_id: %s", tent_id)
                 
                 self.plant_info = {
                     ATTR_NAME: user_input[ATTR_NAME],
+                    "name": user_input[ATTR_NAME],
                     ATTR_DEVICE_TYPE: DEVICE_TYPE_TENT,
                     ATTR_IS_NEW_PLANT: True,
                     "plant_emoji": user_input.get("plant_emoji", "⛺"),
@@ -702,6 +712,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "maintenance_entries": [],
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat(),
+                    "device_id": None,  # Will be set by the system
                 }
 
                 # Persist typed sensor fields
@@ -716,14 +727,25 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self.plant_info[key] = user_input[key]
 
                 # Create entry directly
+                _LOGGER.debug("Creating tent entry with plant_info: %s", self.plant_info)
                 return self.async_create_entry(
                     title=self.plant_info[ATTR_NAME],
                     data={FLOW_PLANT_INFO: self.plant_info},
                 )
             except Exception as e:
                 _LOGGER.error("Failed to create tent entry: %s", e, exc_info=True)
+                _LOGGER.error("Tent info: %s", self.plant_info)
                 errors["base"] = "unknown"
-                # Fall through to show_form with errors
+                # Show form with errors
+                return self.async_show_form(
+                    step_id="tent",
+                    data_schema=vol.Schema(data_schema),
+                    errors=errors,
+                    description_placeholders={
+                        "sensors_hint": "Select sensors that match your plant monitoring needs. "
+                                        "This will make it easier to assign plants to this tent later."
+                    }
+                )
 
         return self.async_show_form(
             step_id="tent",

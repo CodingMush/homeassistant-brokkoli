@@ -103,6 +103,7 @@ from .const import (
     DEFAULT_GROWTH_PHASE,
     DEVICE_TYPE_PLANT,
     DEVICE_TYPE_CYCLE,
+    DEVICE_TYPE_TENT,
     ATTR_DEVICE_TYPE,
     ICON_DEVICE_PLANT,
     ICON_DEVICE_CYCLE,
@@ -172,7 +173,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         
         return True
 
-    # Normale Plant/Cycle Initialisierung fortsetzen
+    # Normale Plant/Cycle/Tent Initialisierung fortsetzen
     plant_data = entry.data[FLOW_PLANT_INFO]
     
     hass.data.setdefault(DOMAIN, {})
@@ -185,7 +186,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Prüfe ob bereits eine ID existiert
     device_type = entry.data[FLOW_PLANT_INFO].get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
     
-    id_key = f"{device_type}_id"
+    # Für Tents verwenden wir "tent_id", für andere "plant_id"
+    id_key = "tent_id" if device_type == DEVICE_TYPE_TENT else "plant_id"
     
     if id_key not in entry.data[FLOW_PLANT_INFO]:
         # Generiere neue ID nur wenn keine existiert
@@ -196,10 +198,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.config_entries.async_update_entry(entry, data=data)
     
     # Erstelle PlantDevice oder Tent basierend auf dem Gerätetyp
-    if device_type == "tent":
+    if device_type == DEVICE_TYPE_TENT:
         # Für Tents erstellen wir ein Tent-Objekt
         from .tent import Tent
         plant = Tent(hass, entry)
+        # Setze die tent_id direkt
+        plant._tent_id = entry.data[FLOW_PLANT_INFO].get(id_key)
     else:
         # Für Plants und Cycles verwenden wir PlantDevice
         plant = PlantDevice(hass, entry)
@@ -212,10 +216,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         **plant.device_info
     )
 
+    # Set the device_id on the plant object
+    if hasattr(plant, '_device_id'):
+        plant._device_id = device.id
+
     hass.data[DOMAIN][entry.entry_id][ATTR_PLANT] = plant
 
     # Für Tents brauchen wir keine Sensor-Plattformen
-    if device_type != "tent":
+    if device_type != DEVICE_TYPE_TENT:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     plant_entities = [
@@ -228,16 +236,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Add the rest of the entities to device registry together with plant
     device_id = plant.device_id
+    if device_id is None:
+        # Fallback to get device_id from the device registry
+        device_registry = dr.async_get(hass)
+        device = device_registry.async_get_device(
+            identifiers={(DOMAIN, plant.unique_id)}
+        )
+        if device:
+            device_id = device.id
     await _plant_add_to_device_registry(hass, plant_entities, device_id)
     
     # Für Tents nur die Haupt-Entity registrieren
-    if device_type != "tent":
+    if device_type != DEVICE_TYPE_TENT:
         await _plant_add_to_device_registry(hass, plant.integral_entities, device_id)
         await _plant_add_to_device_registry(hass, plant.threshold_entities, device_id)
         await _plant_add_to_device_registry(hass, plant.meter_entities, device_id)
 
     # Set up utility sensor (nur für Plants und Cycles)
-    if device_type != "tent":
+    if device_type != DEVICE_TYPE_TENT:
         hass.data.setdefault(DATA_UTILITY, {})
         hass.data[DATA_UTILITY].setdefault(entry.entry_id, {})
         hass.data[DATA_UTILITY][entry.entry_id].setdefault(DATA_TARIFF_SENSORS, [])
@@ -256,7 +272,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Lets add the dummy sensors automatically if we are testing stuff
     # Nur für Plants und Cycles
-    if device_type != "tent" and USE_DUMMY_SENSORS is True:
+    if device_type != DEVICE_TYPE_TENT and USE_DUMMY_SENSORS is True:
         for sensor in plant.meter_entities:
             if sensor.external_sensor is None:
                 await hass.services.async_call(
@@ -274,7 +290,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Setze das Flag zurück nach vollständigem Setup
     # Nur für Plants und Cycles
-    if device_type != "tent" and entry.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+    if device_type != DEVICE_TYPE_TENT and entry.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
         data = dict(entry.data)
         data[FLOW_PLANT_INFO][ATTR_IS_NEW_PLANT] = False
         hass.config_entries.async_update_entry(entry, data=data)
