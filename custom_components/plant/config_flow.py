@@ -374,6 +374,31 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             config_data = {}
 
+        # Build form schema
+        data_schema = {
+            vol.Required(ATTR_NAME): cv.string,
+            vol.Optional(
+                "plant_emoji",
+                default=config_data.get("default_cycle_icon", "🔄"),
+            ): cv.string,
+            vol.Optional(
+                "growth_phase_aggregation",
+                default=config_data.get("default_growth_phase_aggregation", "min"),
+            ): cv.string,
+            vol.Optional(
+                "flowering_duration_aggregation",
+                default=config_data.get("default_flowering_duration_aggregation", "mean"),
+            ): cv.string,
+            vol.Optional(
+                "pot_size_aggregation",
+                default=config_data.get("default_pot_size_aggregation", "mean"),
+            ): cv.string,
+            vol.Optional(
+                "water_capacity_aggregation",
+                default=config_data.get("default_water_capacity_aggregation", "mean"),
+            ): cv.string,
+        }
+
         if user_input is not None:
             self.plant_info = {
                 ATTR_NAME: user_input[ATTR_NAME],
@@ -547,6 +572,13 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 title=self.plant_info[ATTR_NAME],
                 data={FLOW_PLANT_INFO: self.plant_info},
             )
+
+        # Otherwise, show the cycle form
+        return self.async_show_form(
+            step_id="cycle",
+            data_schema=vol.Schema(data_schema),
+            errors=errors,
+        )
 
     async def _get_sensor_entities(self):
         """Get available sensor entities for selection."""
