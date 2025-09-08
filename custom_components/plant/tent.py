@@ -111,7 +111,25 @@ class Tent(Entity):
         plant_info = config.data.get(FLOW_PLANT_INFO, {})
         self._tent_id = plant_info.get("tent_id")
         self._name = plant_info.get("name", plant_info.get("ATTR_NAME", "Unnamed Tent"))
-        self._sensors: List[str] = plant_info.get("sensors", [])  # List of sensor entity IDs
+        # List of sensor entity IDs; if not present, derive from typed keys for backward compatibility
+        self._sensors: List[str] = plant_info.get("sensors", [])
+        if not self._sensors:
+            derived_sensors: List[str] = []
+            for key in (
+                "temperature_sensor",
+                "moisture_sensor",
+                "conductivity_sensor",
+                "illuminance_sensor",
+                "humidity_sensor",
+                "co2_sensor",
+                "power_consumption_sensor",
+                "ph_sensor",
+            ):
+                sensor_id = plant_info.get(key)
+                if sensor_id:
+                    derived_sensors.append(sensor_id)
+            if derived_sensors:
+                self._sensors = derived_sensors
         self._journal = Journal.from_dict(plant_info.get("journal", {}))
         self._maintenance_entries: List[MaintenanceEntry] = []
         
