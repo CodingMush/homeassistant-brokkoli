@@ -52,6 +52,7 @@ from .const import (
     ATTR_OPTIONS,
     ATTR_SEARCH_FOR,
     ATTR_SELECT,
+    ATTR_PLANT,
     ATTR_SENSORS,
     ATTR_STRAIN,
     ATTR_BREEDER,
