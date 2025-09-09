@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers import device_registry as dr
-from homeassistant.const import ATTR_NAME
+from homeassistant.const import ATTR_NAME, STATE_OK
 
 from .const import (
     DOMAIN, 
@@ -217,6 +217,67 @@ class Tent(Entity):
         if self._tent_id is None:
             return f"tent_unnamed"
         return f"tent_{self._tent_id}"
+
+    @property
+    def state(self) -> str:
+        """Return the state of the tent."""
+        return STATE_OK
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        # Format maintenance entries for display
+        maintenance_list = []
+        for entry in self._maintenance_entries:
+            maintenance_list.append({
+                "timestamp": entry.timestamp.isoformat(),
+                "description": entry.description,
+                "performed_by": entry.performed_by,
+                "cost": entry.cost,
+            })
+        
+        # Format journal entries for display
+        journal_list = []
+        for entry in self._journal.entries:
+            journal_list.append({
+                "timestamp": entry.timestamp.isoformat(),
+                "content": entry.content,
+                "author": entry.author,
+            })
+        
+        # Get sensor details
+        sensor_details = []
+        for sensor_id in self._sensors:
+            # Try to get sensor state from Home Assistant
+            sensor_state = None
+            try:
+                state = self._hass.states.get(sensor_id)
+                if state:
+                    sensor_state = {
+                        "state": state.state,
+                        "unit": state.attributes.get("unit_of_measurement", ""),
+                        "device_class": state.attributes.get("device_class", ""),
+                    }
+            except Exception:
+                pass
+            
+            sensor_details.append({
+                "entity_id": sensor_id,
+                "state": sensor_state,
+            })
+        
+        return {
+            "tent_id": self._tent_id,
+            "sensors": self._sensors,
+            "sensor_details": sensor_details,
+            "maintenance_entries": maintenance_list,
+            "journal_entries": journal_list,
+            "created_at": self._created_at.isoformat(),
+            "updated_at": self._updated_at.isoformat(),
+            "sensor_count": len(self._sensors),
+            "maintenance_count": len(self._maintenance_entries),
+            "journal_entry_count": len(self._journal.entries),
+        }
 
     @property
     def device_info(self) -> dict:
