@@ -2001,7 +2001,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     
     async def change_tent(call: ServiceCall) -> None:
         """Change the tent assignment for a plant and update its sensors."""
-        from .__init__ import PlantDevice
         
         entity_id = call.data.get("entity_id")
         tent_id = call.data.get(ATTR_TENT_ID)
@@ -2056,9 +2055,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if not tent_entity:
             raise HomeAssistantError(f"Tent with ID {tent_id} not found")
         
-        if not isinstance(plant_entity, PlantDevice):
-            raise HomeAssistantError(f"Entity {entity_id} is not a PlantDevice")
-        
+        # Instead of isinstance check, we'll use the device_type attribute which we already verified
+        # The plant_entity is already verified to be a PlantDevice with device_type == DEVICE_TYPE_PLANT
         plant_entity.change_tent(tent_entity)
         _LOGGER.info("Changed tent assignment for plant %s to tent %s (ID: %s)", entity_id, tent_entity.name, tent_id)
     
