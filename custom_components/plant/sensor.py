@@ -91,6 +91,8 @@ from .const import (
     UNIT_DLI,
     UNIT_PPFD,
     DEVICE_TYPE_CYCLE,
+    DEVICE_TYPE_PLANT,
+    DEVICE_TYPE_TENT,
     DEFAULT_AGGREGATIONS,
     ATTR_IS_NEW_PLANT,
     ATTR_NORMALIZE_MOISTURE,
@@ -120,7 +122,7 @@ async def async_setup_entry(
     plant = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
 
     # Erstelle die Standard-Sensoren für Plants
-    if plant.device_type == "plant":
+    if plant.device_type == DEVICE_TYPE_PLANT:
         # Standard Sensoren erstellen
         pcurb = PlantCurrentIlluminance(hass, entry, plant)
         pcurc = PlantCurrentConductivity(hass, entry, plant)
@@ -243,7 +245,7 @@ async def async_setup_entry(
         plant.add_dli(dli=pdli)
 
         # Füge zuerst den Total Power Consumption Sensor hinzu
-        if plant.device_type == "plant":
+        if plant.device_type == DEVICE_TYPE_PLANT:
             total_power_consumption = PlantTotalPowerConsumption(hass, entry, plant)
             async_add_entities([total_power_consumption])
 
