@@ -2015,7 +2015,7 @@ class PlantTotalWaterConsumption(RestoreSensor):
         except (TypeError, ValueError):
             pass
 
-    async def add_manual_watering(
+    def add_manual_watering(
         self, amount_liters: float, note: str | None = None
     ) -> None:
         """Add a manual watering amount to the total and persist it."""
@@ -2069,7 +2069,9 @@ class PlantTotalWaterConsumption(RestoreSensor):
             self.async_write_ha_state()
 
 
-class PlantTotalFertilizerConsumption(RestoreSensor):
+class PlantCurrentFertilizerConsumption(RestoreSensor):
+    """Sensor to track fertilizer consumption based on conductivity drop."""
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -2080,13 +2082,10 @@ class PlantTotalFertilizerConsumption(RestoreSensor):
         self._hass = hass
         self._config = config
         self._plant = plant_device
-        self._attr_name = f"{plant_device.name} Total {READING_FERTILIZER_CONSUMPTION}"
-        self._attr_unique_id = f"{config.entry_id}-total-fertilizer-consumption"
+        self._attr_name = f"{plant_device.name} {READING_FERTILIZER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-fertilizer-consumption"
         self._attr_native_unit_of_measurement = UNIT_CONDUCTIVITY
         self._attr_icon = ICON_FERTILIZER_CONSUMPTION
-        self._attr_entity_category = (
-            EntityCategory.DIAGNOSTIC
-        )  # Füge Entity-Kategorie hinzu
         self._history = []
         self._last_update = None
         self._attr_native_value = 0  # Starte immer bei 0
@@ -2096,11 +2095,6 @@ class PlantTotalFertilizerConsumption(RestoreSensor):
         if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
             self._attr_native_value = 0
             self._history = []
-
-    @property
-    def entity_category(self) -> str:
-        """The entity category"""
-        return EntityCategory.DIAGNOSTIC
 
     @property
     def device_info(self) -> dict:
@@ -2154,15 +2148,12 @@ class PlantTotalFertilizerConsumption(RestoreSensor):
                 if current_value > self._last_value:  # Nur positive Änderungen
                     increase = current_value - self._last_value
                     self._attr_native_value += round(
-                        increase,
-                        self._plant.decimals_for("total_fertilizer_consumption"),
+                        increase, self._plant.decimals_for("fertilizer_consumption")
                     )
 
             # Speichere aktuellen Wert für nächste Berechnung
             self._last_value = current_value
             self.async_write_ha_state()
-            self._last_value = current_value
-            self._last_time = current_time
 
         except (TypeError, ValueError):
             pass
