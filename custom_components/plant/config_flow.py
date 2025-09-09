@@ -638,47 +638,46 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "plant_emoji", default="⛺"
             ): cv.string,
             # Typed sensor selectors
-            vol.Optional(FLOW_SENSOR_ILLUMINANCE): selector({
-                "entity": {
-                    "filter": [
-                        {"domain": "sensor", "device_class": "illuminance"},
-                        {"domain": "sensor", "unit_of_measurement": "lx"},
-                        {"domain": "sensor", "unit_of_measurement": "lux"}
-                    ]
+            vol.Optional(FLOW_SENSOR_ILLUMINANCE): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.ILLUMINANCE,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
                 }
-            }),
-            vol.Optional(FLOW_SENSOR_HUMIDITY): selector({
-                "entity": {
-                    "filter": [
-                        {"domain": "sensor", "device_class": "humidity"},
-                        {"domain": "sensor", "unit_of_measurement": "%"}
-                    ]
+            ),
+            vol.Optional(FLOW_SENSOR_HUMIDITY): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
                 }
-            }),
-            vol.Optional(FLOW_SENSOR_CO2): selector({
-                "entity": {
-                    "filter": [
-                        {"domain": "sensor", "device_class": "carbon_dioxide"},
-                        {"domain": "sensor", "unit_of_measurement": "ppm"}
-                    ]
+            ),
+            vol.Optional(FLOW_SENSOR_CO2): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.CO2,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
                 }
-            }),
-            vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): selector({
-                "entity": {
-                    "filter": [
-                        {"domain": "sensor", "device_class": "power"},
-                        {"domain": "sensor", "unit_of_measurement": "W"},
-                        {"domain": "sensor", "unit_of_measurement": "kW"}
-                    ]
+            ),
+            vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.POWER,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
                 }
-            }),
-            vol.Optional(FLOW_SENSOR_PH): selector({
-                "entity": {
-                    "filter": [
-                        {"domain": "sensor"}
-                    ]
+            ),
+            vol.Optional(FLOW_SENSOR_PH): selector(
+                {
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.PH,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
                 }
-            }),
+            ),
         }
 
         if user_input is not None:
