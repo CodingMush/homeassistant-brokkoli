@@ -51,20 +51,27 @@ async def async_setup_entry(
     plant = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
     entities = []
     
-    # Growth Phase Select für alle Devices
-    growth_phase_select = PlantGrowthPhaseSelect(hass, entry, plant)
-    entities.append(growth_phase_select)
-    plant.add_growth_phase_select(growth_phase_select)
+    if plant.device_type != DEVICE_TYPE_TENT:
+        # Growth Phase Select und Treatment Select nur für Plants und Cycles, nicht für Tents
+        # Growth Phase Select für Plants und Cycles
+        growth_phase_select = PlantGrowthPhaseSelect(hass, entry, plant)
+        entities.append(growth_phase_select)
+        plant.add_growth_phase_select(growth_phase_select)
 
-    # Treatment Select für alle Devices
-    treatment_select = PlantTreatmentSelect(hass, entry, plant)
-    entities.append(treatment_select)
-    plant.add_treatment_select(treatment_select)
+        # Treatment Select für Plants und Cycles
+        treatment_select = PlantTreatmentSelect(hass, entry, plant)
+        entities.append(treatment_select)
+        plant.add_treatment_select(treatment_select)
 
-    # Cycle Select nur für Plants, nicht für Cycles
-    if plant.device_type == DEVICE_TYPE_PLANT:
-        cycle_select = PlantCycleSelect(hass, entry, plant)
-        entities.append(cycle_select)
+        # Cycle Select nur für Plants, nicht für Cycles
+        if plant.device_type == DEVICE_TYPE_PLANT:
+            cycle_select = PlantCycleSelect(hass, entry, plant)
+            entities.append(cycle_select)
+    else:
+        # Für Tents erstellen wir einen Maintenance Select
+        from .tent_select import TentMaintenanceSelect
+        maintenance_select = TentMaintenanceSelect(hass, entry, plant)
+        entities.append(maintenance_select)
     
     async_add_entities(entities)
 

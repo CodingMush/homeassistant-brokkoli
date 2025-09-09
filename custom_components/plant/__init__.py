@@ -224,11 +224,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id][ATTR_PLANT] = plant
 
     # Für Tents brauchen wir keine Sensor-Plattformen
-    if device_type != DEVICE_TYPE_TENT:
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    else:
-        # Für Tents nur die TEXT und SELECT Plattformen laden für Journal, Maintenance und Select
-        await hass.config_entries.async_forward_entry_setups(entry, [Platform.TEXT, Platform.SELECT])
+    # Tents verwenden die gleichen Plattformen wie Plants/Cycles, aber mit unterschiedlichen Entities
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     plant_entities = [
         plant,
@@ -336,11 +333,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Prüfe den Gerätetyp
     device_type = entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
     
-    # Für Tents brauchen wir die Plattformen nicht entladen, da sie nie geladen wurden
-    if device_type == DEVICE_TYPE_TENT:
-        unload_ok = await hass.config_entries.async_forward_entry_unload(entry, Platform.TEXT) and await hass.config_entries.async_forward_entry_unload(entry, Platform.SELECT)
-    else:
-        unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
         # Entferne zuerst die Daten
