@@ -811,6 +811,10 @@ class PlantDevice(Entity):
         self.min_fertilizer_consumption = None
         self.max_power_consumption = None
         self.min_power_consumption = None
+        
+        # pH Thresholds
+        self.max_ph = None
+        self.min_ph = None
 
         self.sensor_moisture = None
         self.sensor_temperature = None
@@ -1575,6 +1579,68 @@ class PlantDevice(Entity):
         if self.sensor_power_consumption is None:
             self.sensor_power_consumption = current
 
+    def add_thresholds(
+        self,
+        max_moisture: Entity | None = None,
+        min_moisture: Entity | None = None,
+        max_temperature: Entity | None = None,
+        min_temperature: Entity | None = None,
+        max_conductivity: Entity | None = None,
+        min_conductivity: Entity | None = None,
+        max_illuminance: Entity | None = None,
+        min_illuminance: Entity | None = None,
+        max_humidity: Entity | None = None,
+        min_humidity: Entity | None = None,
+        max_CO2: Entity | None = None,
+        min_CO2: Entity | None = None,
+        max_dli: Entity | None = None,
+        min_dli: Entity | None = None,
+        max_water_consumption: Entity | None = None,
+        min_water_consumption: Entity | None = None,
+        max_fertilizer_consumption: Entity | None = None,
+        min_fertilizer_consumption: Entity | None = None,
+        max_power_consumption: Entity | None = None,
+        min_power_consumption: Entity | None = None,
+        max_ph: Entity | None = None,
+        min_ph: Entity | None = None,
+    ) -> None:
+        """Add the threshold entities."""
+        self.max_moisture = max_moisture
+        self.min_moisture = min_moisture
+        self.max_temperature = max_temperature
+        self.min_temperature = min_temperature
+        self.max_conductivity = max_conductivity
+        self.min_conductivity = min_conductivity
+        self.max_illuminance = max_illuminance
+        self.min_illuminance = min_illuminance
+        self.max_humidity = max_humidity
+        self.min_humidity = min_humidity
+        self.max_CO2 = max_CO2
+        self.min_CO2 = min_CO2
+        self.max_dli = max_dli
+        self.min_dli = min_dli
+        self.max_water_consumption = max_water_consumption
+        self.min_water_consumption = min_water_consumption
+        self.max_fertilizer_consumption = max_fertilizer_consumption
+        self.min_fertilizer_consumption = min_fertilizer_consumption
+        self.max_power_consumption = max_power_consumption
+        self.min_power_consumption = min_power_consumption
+        self.max_ph = max_ph
+        self.min_ph = min_ph
+
+    def add_calculations(
+        self,
+        ppfd: Entity | None = None,
+        total_integral: Entity | None = None,
+        moisture_consumption: Entity | None = None,
+        fertilizer_consumption: Entity | None = None,
+    ) -> None:
+        """Add the calculation entities."""
+        self.ppfd = ppfd
+        self.total_integral = total_integral
+        self.moisture_consumption = moisture_consumption
+        self.fertilizer_consumption = fertilizer_consumption
+
     def get_tent_name(self) -> str:
         """Get the name of the assigned tent."""
         if self._assigned_tent:
@@ -1773,6 +1839,13 @@ class PlantDevice(Entity):
                         self.power_consumption_status = STATE_OK
                 except (ValueError, TypeError):
                     pass
+
+        # Set the state
+        self._attr_state = new_state
+        if not known_state:
+            self._attr_state = STATE_UNKNOWN
+
+    def update_kwh_price(self, new_price) -> None:
         """Update the kWh price."""
         self._kwh_price = new_price
         # Aktualisiere den Energiekosten-Sensor wenn vorhanden
