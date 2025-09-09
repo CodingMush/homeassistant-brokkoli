@@ -233,7 +233,10 @@ async def async_setup_entry(
 
         # Jetzt können wir add_calculations aufrufen
         plant.add_calculations(
-            pcurppfd, pintegral, moisture_consumption, fertilizer_consumption
+            ppfd=pcurppfd,
+            total_integral=pintegral,
+            moisture_consumption=moisture_consumption,
+            fertilizer_consumption=fertilizer_consumption,
         )
         # Füge die Total Consumption Sensoren hinzu
         plant.total_water_consumption = total_water_consumption
@@ -245,25 +248,30 @@ async def async_setup_entry(
         plant.add_dli(dli=pdli)
 
         # Füge zuerst den Total Power Consumption Sensor hinzu
-        if plant.device_type == DEVICE_TYPE_PLANT:
-            total_power_consumption = PlantTotalPowerConsumption(hass, entry, plant)
-            async_add_entities([total_power_consumption])
+        total_power_consumption = PlantTotalPowerConsumption(hass, entry, plant)
+        async_add_entities([total_power_consumption])
 
-            # Weise den externen Sensor zu
-            if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_POWER_CONSUMPTION):
-                total_power_consumption.replace_external_sensor(
-                    entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_POWER_CONSUMPTION]
-                )
-
-            # Dann erst den Current Power Consumption Sensor erstellen
-            pcurp = PlantCurrentPowerConsumption(hass, entry, plant)
-            async_add_entities([pcurp])
-
-            # Jetzt können wir beide Sensoren der Plant hinzufügen
-            plant.add_power_consumption_sensors(
-                current=pcurp, total=total_power_consumption
+        # Weise den externen Sensor zu
+        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_POWER_CONSUMPTION):
+            total_power_consumption.replace_external_sensor(
+                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_POWER_CONSUMPTION]
             )
-    if plant.device_type == DEVICE_TYPE_CYCLE:
+
+        # Dann erst den Current Power Consumption Sensor erstellen
+        pcurp = PlantCurrentPowerConsumption(hass, entry, plant)
+        async_add_entities([pcurp])
+
+        # Jetzt können wir beide Sensoren der Plant hinzufügen
+        plant.add_power_consumption_sensors(
+            current=pcurp, total=total_power_consumption
+        )
+
+        # Füge Energiekosten-Sensor hinzu
+        energy_cost = PlantEnergyCost(hass, entry, plant)
+        plant.energy_cost = energy_cost
+        async_add_entities([energy_cost])
+
+    elif plant.device_type == DEVICE_TYPE_CYCLE:
         cycle_sensors = {}
 
         # Basis-Sensoren
@@ -334,12 +342,6 @@ async def async_setup_entry(
             total=cycle_sensors["total_power_consumption"],
         )
 
-    # Füge Energiekosten-Sensor hinzu
-    if plant.device_type == "plant":
-        energy_cost = PlantEnergyCost(hass, entry, plant)
-        plant.energy_cost = energy_cost
-        async_add_entities([energy_cost])
-
     return True
 
 
@@ -360,6 +362,7 @@ class PlantCurrentStatus(RestoreSensor):
         self._config = config
         self._default_state = 0
         self._plant = plantdevice
+        self._external_sensor = None  # Initialize _external_sensor attribute
         self.entity_id = async_generate_entity_id(
             f"{DOMAIN}.{{}}", self.name, current_ids={}
         )
@@ -426,11 +429,12 @@ class PlantCurrentStatus(RestoreSensor):
         """Modify the external sensor"""
         _LOGGER.info("Setting %s external sensor to %s", self.entity_id, new_sensor)
         self._external_sensor = new_sensor
-        async_track_state_change_event(
-            self._hass,
-            [self._external_sensor],
-            self._state_changed_event,
-        )
+        if new_sensor:
+            async_track_state_change_event(
+                self._hass,
+                [self._external_sensor],
+                self._state_changed_event,
+            )
 
         self.async_write_ha_state()
 
@@ -445,6 +449,15 @@ class PlantCurrentStatus(RestoreSensor):
         if state:
             if "external_sensor" in state.attributes:
                 self.replace_external_sensor(state.attributes["external_sensor"])
+            # Fallback: if we have an _external_sensor from __init__ but no state attribute, 
+            # make sure we're tracking it
+            elif hasattr(self, '_external_sensor') and self._external_sensor:
+                # Re-register the state change listener
+                async_track_state_change_event(
+                    self._hass,
+                    [self._external_sensor],
+                    self._state_changed_event,
+                )
 
         async_dispatcher_connect(
             self._hass, DATA_UPDATED, self._schedule_immediate_update
@@ -477,10 +490,9 @@ class PlantCurrentStatus(RestoreSensor):
                 self._attr_icon = new_state.attributes[ATTR_ICON]
 
         if (
-            self.external_sensor
+            self._external_sensor
             and new_state
-            and new_state.state != STATE_UNKNOWN
-            and new_state.state != STATE_UNAVAILABLE
+            and new_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
         ):
             self._attr_native_value = self._apply_rounding(new_state.state)
             if ATTR_UNIT_OF_MEASUREMENT in new_state.attributes:
@@ -488,24 +500,38 @@ class PlantCurrentStatus(RestoreSensor):
                     ATTR_UNIT_OF_MEASUREMENT
                 ]
         else:
-            self._attr_native_value = self._default_state
+            # Only set to default if we don't have an external sensor
+            if not self._external_sensor:
+                self._attr_native_value = self._default_state
 
     async def async_update(self) -> None:
         """Set state and unit to the parent sensor state and unit"""
-        if self.external_sensor:
+        if self._external_sensor:
             try:
-                state = self._hass.states.get(self.external_sensor)
-                if state:
+                state = self._hass.states.get(self._external_sensor)
+                if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                     self._attr_native_value = self._apply_rounding(state.state)
                     if ATTR_UNIT_OF_MEASUREMENT in state.attributes:
                         self._attr_native_unit_of_measurement = state.attributes[
                             ATTR_UNIT_OF_MEASUREMENT
                         ]
+                elif state:
+                    # State is known but unavailable/unknown
+                    self._attr_native_value = self._default_state
+                else:
+                    # Sensor not found
+                    _LOGGER.debug(
+                        "External sensor %s not found for %s, setting to default: %s",
+                        self._external_sensor,
+                        self.entity_id,
+                        self._default_state,
+                    )
+                    self._attr_native_value = self._default_state
             except AttributeError:
                 _LOGGER.debug(
                     "Unknown external sensor for %s: %s, setting to default: %s",
                     self.entity_id,
-                    self.external_sensor,
+                    self._external_sensor,
                     self._default_state,
                 )
                 self._attr_native_value = self._default_state
@@ -513,8 +539,8 @@ class PlantCurrentStatus(RestoreSensor):
                 _LOGGER.debug(
                     "Unknown external value for %s: %s = %s, setting to default: %s",
                     self.entity_id,
-                    self.external_sensor,
-                    self._hass.states.get(self.external_sensor).state,
+                    self._external_sensor,
+                    self._hass.states.get(self._external_sensor).state if self._hass.states.get(self._external_sensor) else "None",
                     self._default_state,
                 )
                 self._attr_native_value = self._default_state
@@ -525,28 +551,6 @@ class PlantCurrentStatus(RestoreSensor):
                 self._default_state,
             )
             self._attr_native_value = self._default_state
-
-
-class PlantCurrentIlluminance(PlantCurrentStatus):
-    """Entity class for the current illuminance meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_ILLUMINANCE}"
-        self._attr_unique_id = f"{config.entry_id}-current-illuminance"
-        self._attr_has_entity_name = False
-        self._attr_icon = ICON_ILLUMINANCE
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
-            FLOW_SENSOR_ILLUMINANCE
-        )
-        self._attr_native_unit_of_measurement = LIGHT_LUX
-        super().__init__(hass, config, plantdevice)
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
         return SensorDeviceClass.ILLUMINANCE
 
     def sensor_type(self) -> str | None:
@@ -880,6 +884,79 @@ class PlantCurrentCO2(PlantCurrentStatus):
         return SensorDeviceClass.CO2
 
 
+class PlantCurrentPh(PlantCurrentStatus):
+    """Entity class for the current pH meter"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_PH}"
+        self._attr_unique_id = f"{config.entry_id}-current-ph"
+        self._attr_has_entity_name = False
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_PH)
+        self._attr_icon = ICON_PH
+        self._attr_native_unit_of_measurement = None  # pH hat keine Einheit
+        self._default_state = 7.0  # Neutraler pH-Wert als Default
+        super().__init__(hass, config, plantdevice)
+
+    def sensor_type(self) -> str | None:
+        return "ph"
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return DEVICE_CLASS_PH  # Verwende unsere eigene Device Class
+
+    async def set_manual_value(self, value: float) -> None:
+        """Set a manual pH measurement (0-14)."""
+        try:
+            if value is None:
+                return
+            # clamp plausible pH range
+            if value < 0:
+                value = 0
+            if value > 14:
+                value = 14
+            self._attr_native_value = float(value)
+            self.async_write_ha_state()
+        except (TypeError, ValueError):
+            return
+
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
+        self._attr_icon = ICON_HUMIDITY
+        self._attr_native_unit_of_measurement = PERCENTAGE
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return SensorDeviceClass.HUMIDITY
+
+
+class PlantCurrentCO2(PlantCurrentStatus):
+    def sensor_type(self) -> str | None:
+        return "CO2"
+    """Entity class for the current CO2 meter"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_CO2}"
+        self._attr_unique_id = f"{config.entry_id}-current-CO2"
+        self._attr_has_entity_name = False
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2)
+        self._attr_icon = ICON_CO2
+        self._attr_native_unit_of_measurement = "ppm"
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return SensorDeviceClass.CO2
+
+
 class PlantCurrentPpfd(PlantCurrentStatus):
     """Entity reporting current PPFD calculated from LX"""
 
@@ -893,7 +970,7 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         self._attr_unit_of_measurement = UNIT_PPFD
         self._attr_native_unit_of_measurement = UNIT_PPFD
         self._plant = plantdevice
-        self._external_sensor = self._plant.sensor_illuminance.entity_id
+        self._external_sensor = self._plant.sensor_illuminance.entity_id if self._plant.sensor_illuminance else None
         self._attr_icon = ICON_PPFD
         super().__init__(hass, config, plantdevice)
         self._follow_unit = False
@@ -937,14 +1014,22 @@ class PlantCurrentPpfd(PlantCurrentStatus):
 
         return value
 
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+        
+        # Make sure we're tracking the illuminance sensor
+        if self._plant.sensor_illuminance:
+            self.replace_external_sensor(self._plant.sensor_illuminance.entity_id)
+
     async def async_update(self) -> None:
         """Run on every update to allow for changes from the GUI and service call"""
         if not self.hass.states.get(self.entity_id):
             return
-        if self.external_sensor != self._plant.sensor_illuminance.entity_id:
+        if self._plant.sensor_illuminance and self._external_sensor != self._plant.sensor_illuminance.entity_id:
             self.replace_external_sensor(self._plant.sensor_illuminance.entity_id)
-        if self.external_sensor:
-            external_sensor = self.hass.states.get(self.external_sensor)
+        if self._external_sensor:
+            external_sensor = self.hass.states.get(self._external_sensor)
             if external_sensor:
                 self._attr_native_value = self.ppfd(external_sensor.state)
             else:
@@ -957,10 +1042,10 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         """Run on every update to allow for changes from the GUI and service call"""
         if not self.hass.states.get(self.entity_id):
             return
-        if self._external_sensor != self._plant.sensor_illuminance.entity_id:
+        if self._plant.sensor_illuminance and self._external_sensor != self._plant.sensor_illuminance.entity_id:
             self.replace_external_sensor(self._plant.sensor_illuminance.entity_id)
-        if self.external_sensor:
-            external_sensor = self.hass.states.get(self.external_sensor)
+        if self._external_sensor:
+            external_sensor = self.hass.states.get(self._external_sensor)
             if external_sensor:
                 self._attr_native_value = self.ppfd(external_sensor.state)
             else:
@@ -1555,11 +1640,12 @@ class PlantCurrentMoistureConsumption(RestoreSensor):
                 self._attr_native_value = 0
 
         # Track moisture sensor changes
-        async_track_state_change_event(
-            self._hass,
-            [self._plant.sensor_moisture.entity_id],
-            self._state_changed_event,
-        )
+        if self._plant.sensor_moisture:
+            async_track_state_change_event(
+                self._hass,
+                [self._plant.sensor_moisture.entity_id],
+                self._state_changed_event,
+            )
 
     @callback
     def _state_changed_event(self, event):
@@ -1590,6 +1676,92 @@ class PlantCurrentMoistureConsumption(RestoreSensor):
                         self._history[i][1] < self._history[i - 1][1]
                     ):  # Only negative changes
                         drop = self._history[i - 1][1] - self._history[i][1]
+                        drops.append(drop)
+
+                # Calculate total water consumption
+                total_drop = sum(drops)
+                total_consumption = total_drop * self._plant.water_capacity.native_value
+                self._attr_native_value = round(total_consumption, 2)
+                self._last_update = current_time
+
+        except (TypeError, ValueError):
+            return  # Ignore invalid state changes
+
+
+class PlantCurrentPowerConsumption(RestoreSensor):
+    """Power consumption sensor for a plant."""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__()
+        self._hass = hass
+        self._config = config
+        self._plant = plantdevice
+        self._attr_name = f"{plantdevice.name} {READING_POWER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-current-power-consumption"
+        self._attr_has_entity_name = False
+        self._attr_icon = ICON_POWER_CONSUMPTION
+        self._attr_native_unit_of_measurement = "W"  # Watt statt kWh
+        self._attr_device_class = SensorDeviceClass.POWER  # POWER statt ENERGY
+        self._attr_state_class = (
+            SensorStateClass.MEASUREMENT
+        )  # MEASUREMENT statt TOTAL_INCREASING
+        self._last_value = None
+        self._last_time = None
+        self._attr_native_value = 0  # Starte immer bei 0
+
+        # Bei Neuerstellung explizit auf 0 setzen
+        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            self._attr_native_value = 0
+            self._last_value = None
+            self._last_time = None
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    @property
+    def should_poll(self) -> bool:
+        """Return True as we want to poll for updates."""
+        return True
+
+    async def async_update(self) -> None:
+        """Update the sensor."""
+        if not self._plant.total_power_consumption:
+            return
+
+        try:
+            state = self._hass.states.get(self._plant.total_power_consumption.entity_id)
+            if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                return
+
+            current_value = float(state.state)
+            current_time = dt_util.utcnow()
+
+            # Berechne aktuelle Leistung in Watt
+            if self._last_value is not None and self._last_time is not None:
+                time_diff = (current_time - self._last_time).total_seconds()
+                if time_diff > 0:
+                    # Umrechnung von kWh/s in Watt
+                    power = (
+                        (current_value - self._last_value) * 3600 * 1000
+                    ) / time_diff
+                    self._attr_native_value = max(
+                        0, round(power, self._plant.decimals_for("power_consumption"))
+                    )
+
+            # Speichere aktuelle Werte für nächste Berechnung
+            self._last_value = current_value
+            self._last_time = current_time
+
+        except (TypeError, ValueError):
+            pass
+
                         drops.append(drop)
 
                 total_drop = sum(drops)
@@ -1793,11 +1965,12 @@ class PlantTotalWaterConsumption(RestoreSensor):
                 self._attr_native_value = 0
 
         # Track moisture sensor changes
-        async_track_state_change_event(
-            self._hass,
-            [self._plant.sensor_moisture.entity_id],
-            self._state_changed_event,
-        )
+        if self._plant.sensor_moisture:
+            async_track_state_change_event(
+                self._hass,
+                [self._plant.sensor_moisture.entity_id],
+                self._state_changed_event,
+            )
 
     @callback
     def _state_changed_event(self, event):
@@ -1994,79 +2167,6 @@ class PlantTotalFertilizerConsumption(RestoreSensor):
             # Speichere aktuellen Wert für nächste Berechnung
             self._last_value = current_value
             self.async_write_ha_state()
-
-        except (TypeError, ValueError):
-            pass
-
-
-class PlantCurrentPowerConsumption(RestoreSensor):
-    """Power consumption sensor for a plant."""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__()
-        self._hass = hass
-        self._config = config
-        self._plant = plantdevice
-        self._attr_name = f"{plantdevice.name} {READING_POWER_CONSUMPTION}"
-        self._attr_unique_id = f"{config.entry_id}-current-power-consumption"
-        self._attr_has_entity_name = False
-        self._attr_icon = ICON_POWER_CONSUMPTION
-        self._attr_native_unit_of_measurement = "W"  # Watt statt kWh
-        self._attr_device_class = SensorDeviceClass.POWER  # POWER statt ENERGY
-        self._attr_state_class = (
-            SensorStateClass.MEASUREMENT
-        )  # MEASUREMENT statt TOTAL_INCREASING
-        self._last_value = None
-        self._last_time = None
-        self._attr_native_value = 0  # Starte immer bei 0
-
-        # Bei Neuerstellung explizit auf 0 setzen
-        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = 0
-            self._last_value = None
-            self._last_time = None
-
-    @property
-    def device_info(self) -> dict:
-        """Return device info."""
-        return {
-            "identifiers": {(DOMAIN, self._plant.unique_id)},
-        }
-
-    @property
-    def should_poll(self) -> bool:
-        """Return True as we want to poll for updates."""
-        return True
-
-    async def async_update(self) -> None:
-        """Update the sensor."""
-        if not self._plant.total_power_consumption:
-            return
-
-        try:
-            state = self._hass.states.get(self._plant.total_power_consumption.entity_id)
-            if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-                return
-
-            current_value = float(state.state)
-            current_time = dt_util.utcnow()
-
-            # Berechne aktuelle Leistung in Watt
-            if self._last_value is not None and self._last_time is not None:
-                time_diff = (current_time - self._last_time).total_seconds()
-                if time_diff > 0:
-                    # Umrechnung von kWh/s in Watt
-                    power = (
-                        (current_value - self._last_value) * 3600 * 1000
-                    ) / time_diff
-                    self._attr_native_value = max(
-                        0, round(power, self._plant.decimals_for("power_consumption"))
-                    )
-
-            # Speichere aktuelle Werte für nächste Berechnung
             self._last_value = current_value
             self._last_time = current_time
 
@@ -2082,104 +2182,6 @@ class PlantTotalPowerConsumption(RestoreSensor):
         hass: HomeAssistant,
         config: ConfigEntry,
         plant_device: Entity,
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__()
-        self._hass = hass
-        self._config = config
-        self._plant = plant_device
-        self._attr_name = f"{plant_device.name} Total {READING_POWER_CONSUMPTION}"
-        self._attr_unique_id = f"{config.entry_id}-total-power-consumption"
-        self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
-            FLOW_SENSOR_POWER_CONSUMPTION
-        )
-        self._attr_icon = ICON_POWER_CONSUMPTION
-        self._attr_native_unit_of_measurement = "kWh"
-        self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-        self._attr_entity_category = (
-            EntityCategory.DIAGNOSTIC
-        )  # Füge Entity-Kategorie hinzu
-        self._last_value = None
-        self._attr_native_value = 0  # Starte immer bei 0
-
-        # Bei Neuerstellung explizit auf 0 setzen
-        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = 0
-            self._last_value = None
-
-    @property
-    def entity_category(self) -> str:
-        """The entity category"""
-        return EntityCategory.DIAGNOSTIC
-
-    @property
-    def device_info(self) -> dict:
-        """Return device info."""
-        return {
-            "identifiers": {(DOMAIN, self._plant.unique_id)},
-        }
-
-    @property
-    def external_sensor(self) -> str:
-        """The external sensor we are tracking"""
-        return self._external_sensor
-
-    def replace_external_sensor(self, new_sensor: str | None) -> None:
-        """Modify the external sensor"""
-        _LOGGER.info("Setting %s external sensor to %s", self.entity_id, new_sensor)
-        self._external_sensor = new_sensor
-
-    @property
-    def should_poll(self) -> bool:
-        """Return True as we want to poll for updates."""
-        return True
-
-    async def async_added_to_hass(self) -> None:
-        """Handle entity which will be added."""
-        await super().async_added_to_hass()
-
-        # Restore previous state
-        last_state = await self.async_get_last_state()
-        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            try:
-                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-                    self._attr_native_value = float(last_state.state)
-            except (TypeError, ValueError):
-                self._attr_native_value = 0
-
-    async def async_update(self) -> None:
-        """Update the sensor."""
-        if self._external_sensor:
-            external_state = self.hass.states.get(self._external_sensor)
-            if external_state and external_state.state not in (
-                STATE_UNKNOWN,
-                STATE_UNAVAILABLE,
-            ):
-                try:
-                    current_value = float(external_state.state)
-
-                    # Berechne nur die Differenz seit dem letzten Wert
-                    if self._last_value is not None:
-                        if current_value > self._last_value:  # Nur positive Änderungen
-                            increase = current_value - self._last_value
-                            self._attr_native_value += round(
-                                increase,
-                                self._plant.decimals_for("total_power_consumption"),
-                            )
-
-                    # Speichere aktuellen Wert für nächste Berechnung
-                    self._last_value = current_value
-                    self.async_write_ha_state()
-
-                except (TypeError, ValueError):
-                    pass
-        else:
-            self._attr_native_value = 0
-            self.async_write_ha_state()
-
-
 # Neue Klasse für Energiekosten
 class PlantEnergyCost(RestoreSensor):
     """Sensor für die Energiekosten."""
@@ -2238,41 +2240,75 @@ class PlantEnergyCost(RestoreSensor):
             self._attr_native_value = 0.0
 
 
-class PlantCurrentPh(PlantCurrentStatus):
-    """Entity class for the current pH meter"""
+class PlantTotalPowerConsumption(RestoreSensor):
+    """Sensor for the total power consumption."""
 
     def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        plant_device: Entity,
     ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_PH}"
-        self._attr_unique_id = f"{config.entry_id}-current-ph"
+        """Initialize the sensor."""
+        super().__init__()
+        self._hass = hass
+        self._config = config
+        self._plant = plant_device
+        self._attr_name = f"{plant_device.name} Total {READING_POWER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-total-power-consumption"
         self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_PH)
-        self._attr_icon = ICON_PH
-        self._attr_native_unit_of_measurement = None  # pH hat keine Einheit
-        self._default_state = 7.0  # Neutraler pH-Wert als Default
-        super().__init__(hass, config, plantdevice)
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
+            FLOW_SENSOR_POWER_CONSUMPTION
+        )
+        self._attr_icon = ICON_POWER_CONSUMPTION
+        self._attr_native_unit_of_measurement = "kWh"
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_entity_category = (
+            EntityCategory.DIAGNOSTIC
+        )  # Füge Entity-Kategorie hinzu
+        self._last_value = None
+        self._attr_native_value = 0  # Starte immer bei 0
 
-    def sensor_type(self) -> str | None:
-        return "ph"
+        # Bei Neuerstellung explizit auf 0 setzen
+        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            self._attr_native_value = 0
+            self._last_value = None
 
     @property
-    def device_class(self) -> str:
-        """Device class"""
-        return DEVICE_CLASS_PH  # Verwende unsere eigene Device Class
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
 
-    async def set_manual_value(self, value: float) -> None:
-        """Set a manual pH measurement (0-14)."""
-        try:
-            if value is None:
-                return
-            # clamp plausible pH range
-            if value < 0:
-                value = 0
-            if value > 14:
-                value = 14
-            self._attr_native_value = float(value)
-            self.async_write_ha_state()
-        except (TypeError, ValueError):
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        state = await self.async_get_last_state()
+        if state:
+            try:
+                self._attr_native_value = float(state.state)
+            except (TypeError, ValueError):
+                self._attr_native_value = 0.0
+
+    async def async_update(self) -> None:
+        """Update the sensor."""
+        if not self._plant.total_power_consumption:
+            self._attr_native_value = 0.0
             return
+
+        try:
+            total_power = float(self._plant.total_power_consumption.state)
+            self._attr_native_value = round(
+                total_power * self._plant.kwh_price,
+                self._plant.decimals_for("energy_cost"),
+            )
+        except (TypeError, ValueError):
+            self._attr_native_value = 0.0
