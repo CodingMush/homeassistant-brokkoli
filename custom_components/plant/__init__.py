@@ -226,6 +226,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Für Tents brauchen wir keine Sensor-Plattformen
     if device_type != DEVICE_TYPE_TENT:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    else:
+        # Für Tents nur die TEXT Plattform laden für Journal und Maintenance
+        await hass.config_entries.async_forward_entry_setup(entry, Platform.TEXT)
 
     plant_entities = [
         plant,
@@ -334,8 +337,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     device_type = entry.data.get(FLOW_PLANT_INFO, {}).get(ATTR_DEVICE_TYPE, DEVICE_TYPE_PLANT)
     
     # Für Tents brauchen wir die Plattformen nicht entladen, da sie nie geladen wurden
-    if device_type == "tent":
-        unload_ok = True
+    if device_type == DEVICE_TYPE_TENT:
+        unload_ok = await hass.config_entries.async_forward_entry_unload(entry, Platform.TEXT)
     else:
         unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
@@ -344,7 +347,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
         
         # Entferne utility data nur für Plants und Cycles
-        if device_type != "tent" and DATA_UTILITY in hass.data:
+        if device_type != DEVICE_TYPE_TENT and DATA_UTILITY in hass.data:
             hass.data[DATA_UTILITY].pop(entry.entry_id, None)
         
         # Wenn ein Cycle entfernt wird, aktualisiere alle Plant Cycle Selects
@@ -1918,393 +1921,60 @@ class PlantDevice(Entity):
             new_state = STATE_UNKNOWN
 
         self._attr_state = new_state
-        self.update_registry()
+        self.async_write_ha_state()
 
     @property
-    def data_source(self) -> str | None:
-        """Currently unused. For future use"""
-        return None
-
-    def update_registry(self) -> None:
-        """Update registry with correct data"""
-        if self._device_id is None:
-            device_registry = dr.async_get(self._hass)
-            device = device_registry.async_get_device(
-                identifiers={(DOMAIN, self.unique_id)}
-            )
-            if device:
-                self._device_id = device.id
-
-    async def async_added_to_hass(self) -> None:
-        """When entity is added to hass."""
-        self.update_registry()
-        # Die Wiederherstellung der Member Plants erfolgt jetzt direkt in der PlantGrowthPhaseSelect Klasse
+    def state(self) -> str:
+        """Return the state of the plant."""
+        if not self.plant_complete:
+            return STATE_UNKNOWN
+        return self._attr_state
 
     @property
     def icon(self) -> str:
-        """Return the icon."""
-        if self.device_type == DEVICE_TYPE_CYCLE:
-            return ICON_DEVICE_CYCLE
-        return ICON_DEVICE_PLANT
-
-    def add_member_plant(self, plant_entity_id: str) -> None:
-        """Add a plant to the cycle."""
-        if plant_entity_id not in self._member_plants:
-            self._member_plants.append(plant_entity_id)
-            self._update_cycle_attributes()
-            self._update_median_sensors()
-            
-            # Aktualisiere Growth Phase sofort
-            if self.growth_phase_select:
-                # Aktualisiere das member_plants Attribut direkt in den extra_state_attributes
-                if hasattr(self.growth_phase_select, '_attr_extra_state_attributes'):
-                    self.growth_phase_select._attr_extra_state_attributes["member_plants"] = self._member_plants.copy()
-                
-                # Stelle sicher, dass die Änderungen in den Attributen gespeichert werden
-                self.growth_phase_select.async_write_ha_state()
-                self._hass.async_create_task(
-                    self.growth_phase_select._update_cycle_phase()
-                )
-            
-            # Aktualisiere die Flowering Duration
-            if self.flowering_duration:
-                self._hass.async_create_task(
-                    self.flowering_duration._update_cycle_duration()
-                )
-            
-            # Aktualisiere die Pot Size
-            if self.pot_size:
-                self._hass.async_create_task(
-                    self.pot_size._update_cycle_pot_size()
-                )
-                
-            # Aktualisiere die Water Capacity
-            if self.water_capacity:
-                self._hass.async_create_task(
-                    self.water_capacity._update_cycle_water_capacity()
-                )
-                
-            # Aktualisiere den Health-Wert
-            if self.health_number:
-                self._hass.async_create_task(
-                    self.health_number._update_cycle_health()
-                )
-
-    def remove_member_plant(self, plant_entity_id: str) -> None:
-        """Remove a plant from the cycle."""
-        if plant_entity_id in self._member_plants:
-            self._member_plants.remove(plant_entity_id)
-            self._update_cycle_attributes()
-            self._update_median_sensors()
-            
-            # Aktualisiere Growth Phase sofort
-            if self.growth_phase_select:
-                # Aktualisiere das member_plants Attribut direkt in den extra_state_attributes
-                if hasattr(self.growth_phase_select, '_attr_extra_state_attributes'):
-                    self.growth_phase_select._attr_extra_state_attributes["member_plants"] = self._member_plants.copy()
-                
-                # Stelle sicher, dass die Änderungen in den Attributen gespeichert werden
-                self.growth_phase_select.async_write_ha_state()
-                self._hass.async_create_task(
-                    self.growth_phase_select._update_cycle_phase()
-                )
-            
-            # Aktualisiere die Flowering Duration
-            if self.flowering_duration:
-                self._hass.async_create_task(
-                    self.flowering_duration._update_cycle_duration()
-                )
-            
-            # Aktualisiere die Pot Size
-            if self.pot_size:
-                self._hass.async_create_task(
-                    self.pot_size._update_cycle_pot_size()
-                )
-                
-            # Aktualisiere die Water Capacity
-            if self.water_capacity:
-                self._hass.async_create_task(
-                    self.water_capacity._update_cycle_water_capacity()
-                )
-                
-            # Aktualisiere den Health-Wert
-            if self.health_number:
-                self._hass.async_create_task(
-                    self.health_number._update_cycle_health()
-                )
-
-    def _update_median_sensors(self) -> None:
-        """Aktualisiere die Median-Werte für alle Sensoren."""
-        if not self._member_plants:
-            return
-
-        # Dictionary für die Sensor-Werte
-        sensor_values = {
-            'temperature': [], 
-            'moisture': [],
-            'conductivity': [], 
-            'illuminance': [],
-            'humidity': [],
-            'CO2': [],
-            'ppfd': [],
-            'dli': [],
-            'total_integral': [],
-            'moisture_consumption': [],
-            'total_water_consumption': [],  # Füge Total Water hinzu
-            'fertilizer_consumption': [],
-            'total_fertilizer_consumption': [],  # Füge Total Fertilizer hinzu
-            'power_consumption': [],
-            'total_power_consumption': []  # Füge Total Power hinzu
-        }
-
-        for plant_id in self._member_plants:
-            plant = None
-            # Suche die Plant Entity
-            for entry_id in self._hass.data[DOMAIN]:
-                if ATTR_PLANT in self._hass.data[DOMAIN][entry_id]:
-                    if self._hass.data[DOMAIN][entry_id][ATTR_PLANT].entity_id == plant_id:
-                        plant = self._hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                        break
-
-            if not plant:
-                _LOGGER.warning("Could not find plant %s", plant_id)
-                continue
-
-            # Sammle die Sensor-Werte für alle Sensor-Typen
-            sensors_to_check = {
-                'temperature': plant.sensor_temperature,
-                'moisture': plant.sensor_moisture,
-                'conductivity': plant.sensor_conductivity,
-                'illuminance': plant.sensor_illuminance,
-                'humidity': plant.sensor_humidity,
-                'CO2': plant.sensor_CO2,
-                'ppfd': plant.ppfd,
-                'dli': plant.dli,
-                'total_integral': plant.total_integral,
-                'moisture_consumption': plant.moisture_consumption,
-                'total_water_consumption': plant.total_water_consumption,  # Füge Total Water hinzu
-                'fertilizer_consumption': plant.fertilizer_consumption,
-                'total_fertilizer_consumption': plant.total_fertilizer_consumption,  # Füge Total Fertilizer hinzu
-                'power_consumption': plant.sensor_power_consumption,
-                'total_power_consumption': plant.total_power_consumption  # Füge Total Power hinzu
-            }
-
-            for sensor_type, sensor in sensors_to_check.items():
-                if sensor and hasattr(sensor, 'state') and sensor.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None):
-                    try:
-                        # Für DLI/PPFD/total_integral/consumption speichern wir auch den Sensor selbst
-                        if sensor_type in ['ppfd', 'dli', 'total_integral', 
-                                         'moisture_consumption', 'total_water_consumption',
-                                         'fertilizer_consumption', 'total_fertilizer_consumption',
-                                         'power_consumption', 'total_power_consumption']:
-                            sensor_values[sensor_type].append((float(sensor.state), sensor))
-                        else:
-                            sensor_values[sensor_type].append(float(sensor.state))
-                    except (TypeError, ValueError) as ex:
-                        _LOGGER.debug("Could not convert %s value %s: %s",
-                                    sensor_type, sensor.state, ex)
-                        continue
-
-        # Berechne Aggregate
-        for sensor_type, values in sensor_values.items():
-            if values:
-                aggregation_method = self._plant_info.get('aggregations', {}).get(
-                    sensor_type, DEFAULT_AGGREGATIONS.get(sensor_type, AGGREGATION_MEDIAN)
-                )
-
-                # Spezielle Behandlung für Sensoren mit Original-Berechnung
-                if sensor_type in ['ppfd', 'dli', 'total_integral', 
-                                 'moisture_consumption', 'total_water_consumption',
-                                 'fertilizer_consumption', 'total_fertilizer_consumption',
-                                 'power_consumption', 'total_power_consumption'] and aggregation_method == AGGREGATION_ORIGINAL:
-                    # Bei Original-Berechnung nehmen wir den ersten gültigen Sensor
-                    if values:
-                        self._median_sensors[sensor_type] = values[0] if isinstance(values[0], (int, float)) else values[0][0]
-
-                # Für alle anderen Fälle extrahieren wir nur die Werte
-                if sensor_type in ['ppfd', 'dli', 'total_integral', 
-                                 'moisture_consumption', 'total_water_consumption',
-                                 'fertilizer_consumption', 'total_fertilizer_consumption',
-                                 'power_consumption', 'total_power_consumption']:
-                    values = [v[0] for v in values]  # Extrahiere nur die Werte, nicht die Sensoren
-
-                if aggregation_method == AGGREGATION_MEAN:
-                    value = sum(values) / len(values)
-                elif aggregation_method == AGGREGATION_MIN:
-                    value = min(values)
-                elif aggregation_method == AGGREGATION_MAX:
-                    value = max(values)
-                else:  # AGGREGATION_MEDIAN
-                    sorted_values = sorted(values)
-                    n = len(sorted_values)
-                    if n % 2 == 0:
-                        value = (sorted_values[n//2 - 1] + sorted_values[n//2]) / 2
-                    else:
-                        value = sorted_values[n//2]
-
-                # Runde die Werte entsprechend zentraler Dezimal-Konfiguration
-                try:
-                    decimals = self.decimals_for(sensor_type)
-                except Exception:
-                    decimals = 2
-                self._median_sensors[sensor_type] = round(value, decimals)
-
-    def _update_cycle_attributes(self) -> None:
-        """Update cycle attributes based on member plants."""
-        if self.device_type != DEVICE_TYPE_CYCLE:
-            return
-
-        # Initialisiere leere Listen für alle Attribute
-        attributes = {
-            "member_count": [],
-            "strain": [],
-            "breeder": [],
-            "type": [],
-            "feminized": [],
-            "timestamp": [],
-            "pid": [],
-            "effects": [],
-            "smell": [],
-            "taste": [],
-            "phenotype": [],
-            "hunger": [],
-            "growth_stretch": [],
-            "flower_stretch": [],
-            "mold_resistance": [],
-            "difficulty": [],
-            "yield": [],
-            "notes": [],
-            "website": [],
-            "infotext1": [],
-            "infotext2": [],
-            "lineage": [],
-        }
-
-        # Sammle die Attribute aller Member Plants
-        member_count = len(self._member_plants)
-        for plant_id in self._member_plants:
-            found = False
-            for entry_id in self._hass.data[DOMAIN]:
-                if ATTR_PLANT in self._hass.data[DOMAIN][entry_id]:
-                    plant = self._hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                    if plant.entity_id == plant_id:
-                        found = True
-                        # Füge die Werte zu den entsprechenden Listen hinzu
-                        attributes["member_count"].append(str(member_count))
-                        for attr in [key for key in attributes.keys() if key != "member_count"]:
-                            value = plant._plant_info.get(attr, "")
-                            attributes[attr].append(str(value) if value else "")
-                        break
-            
-            # Wenn die Plant nicht gefunden wurde, füge leere Strings hinzu
-            if not found:
-                attributes["member_count"].append(str(member_count))
-                for attr in [key for key in attributes.keys() if key != "member_count"]:
-                    attributes[attr].append("")
-
-        # Aktualisiere die Plant Info
-        # Setze member_count direkt als Integer
-        self._plant_info["member_count"] = member_count
-        
-        # Aktualisiere die restlichen Attribute
-        for attr, values in [(key, val) for key, val in attributes.items() if key != "member_count"]:
-            # Nur wenn mindestens ein nicht-leerer Wert existiert
-            if any(value.strip() for value in values):
-                self._plant_info[attr] = " | ".join(values)
-            else:
-                self._plant_info[attr] = ""
-
-        self.async_write_ha_state()
-
-    def add_cycle_select(self, cycle_select: Entity) -> None:
-        """Füge den Cycle Select Helper hinzu."""
-        self.cycle_select = cycle_select
-
-    def add_pot_size(self, pot_size) -> None:
-        """Fügt den Pot Size Helper hinzu."""
-        self.pot_size = pot_size
-
-    def add_water_capacity(self, water_capacity) -> None:
-        """Add water capacity entity."""
-        self.water_capacity = water_capacity
-
-    def add_treatment_select(self, treatment_select: Entity) -> None:
-        """Add the treatment select entity."""
-        self.treatment_select = treatment_select
-
-    def add_health_number(self, health_number: Entity) -> None:
-        """Add the health number entity."""
-        self.health_number = health_number
-
-    def add_journal(self, journal: Entity) -> None:
-        """Add the journal text entity."""
-        self.journal = journal
-        
-    def add_location_history(self, location_history: Entity) -> None:
-        """Add the location history text entity."""
-        self.location_history = location_history
+        """Return the icon to use in the frontend."""
+        return "mdi:help-circle"  # Default icon
 
     @property
     def name(self) -> str:
-        """Return the name with emojis for the device."""
-        name = self._plant_info[ATTR_NAME]
-        # Füge das Emoji hinzu, falls eines gesetzt ist
-        plant_emoji = self._plant_info.get('plant_emoji')
-        if plant_emoji and plant_emoji not in name:
-            name = f"{name} {plant_emoji}"
-        return name
+        """Return the name of the plant."""
+        return self._plant_info.get(ATTR_NAME, "Unknown")
 
     @property
-    def _name(self) -> str:
-        """Return the clean name without emojis for entities."""
-        name = self._plant_info[ATTR_NAME]
-        # Entferne das Emoji falls vorhanden
-        plant_emoji = self._plant_info.get('plant_emoji')
-        if plant_emoji and plant_emoji in name:
-            name = name.replace(f" {plant_emoji}", "")
-        return name
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._config.entry_id
 
-    @property
-    def has_entity_name(self) -> bool:
-        """Return False to use raw entity names without device prefix."""
-        return False
+    def add_journal(self, journal_entity) -> None:
+        """Add the journal entity."""
+        self.journal = journal_entity
 
-    def add_power_consumption_sensors(self, current, total):
-        """Add power consumption sensors."""
-        self.sensor_power_consumption = current
+    def add_location_history(self, location_entity) -> None:
+        """Add the location history entity."""
+        self.location_history = location_entity
+
+    def add_power_consumption_sensors(self, current: Entity, total: Entity) -> None:
+        """Add the power consumption sensors."""
+        self.power_consumption = current
         self.total_power_consumption = total
+        if self.sensor_power_consumption is None:
+            self.sensor_power_consumption = current
 
-    @property
-    def kwh_price(self) -> float:
-        """Return the current kWh price."""
-        return self._kwh_price
+    def get_tent_name(self) -> str:
+        """Get the name of the assigned tent."""
+        if self._assigned_tent:
+            return self._assigned_tent.name
+        return "None"
 
-    def update_kwh_price(self, new_price: float) -> None:
-        """Update the kWh price."""
-        self._kwh_price = new_price
-        # Aktualisiere den Energiekosten-Sensor wenn vorhanden
-        if hasattr(self, 'energy_cost') and self.energy_cost:
-            self.energy_cost.async_schedule_update_ha_state(True)
-
-    def assign_tent(self, tent: Tent) -> None:
-        """Assign a tent to this plant and replace sensors."""
-        if tent is None:
-            raise ValueError("Tent cannot be None")
-        
+    def assign_tent(self, tent) -> None:
+        """Assign a tent to this plant."""
         self._assigned_tent = tent
-        self._tent_id = tent.tent_id
-        tent_sensors = tent.get_sensors()
-        self.replace_sensors(tent_sensors)
+        self._tent_id = tent.tent_id if tent else None
 
-    def change_tent(self, new_tent: Tent) -> None:
-        """Change the assigned tent and update sensors."""
-        if new_tent is None:
-            raise ValueError("New tent cannot be None")
-            
+    def change_tent(self, new_tent) -> None:
+        """Change the assigned tent."""
         self._assigned_tent = new_tent
-        self._tent_id = new_tent.tent_id
-        tent_sensors = new_tent.get_sensors()
-        self.replace_sensors(tent_sensors)
+        self._tent_id = new_tent.tent_id if new_tent else None
 
     def replace_sensors(self, tent_sensors: list) -> None:
         """Replace the plant's sensors with those from a tent.
@@ -2313,10 +1983,12 @@ class PlantDevice(Entity):
             tent_sensors: List of sensor entity IDs from the tent
         """
         if not tent_sensors:
-            _LOGGER.debug("No sensors to replace for plant %s", self.name)
+            _LOGGER.debug("No sensors provided for replacement")
             return
             
-        # Map tent sensors to plant sensor types using consistent naming with Plant components
+        _LOGGER.debug("Replacing sensors for plant %s with: %s", self.name, tent_sensors)
+        
+        # Create a mapping of sensor types to entity IDs based on device class or unit
         sensor_mapping = {}
         for sensor_entity_id in tent_sensors:
             # Get the sensor state to determine its type
@@ -2333,60 +2005,42 @@ class PlantDevice(Entity):
             device_class = sensor_state.attributes.get("device_class")
             unit_of_measurement = sensor_state.attributes.get("unit_of_measurement", "")
             
-            # Log sensor information for debugging
-            _LOGGER.debug("Mapping sensor %s: device_class=%s, unit_of_measurement=%s", 
-                         sensor_entity_id, device_class, unit_of_measurement)
-            
-            # Map to plant sensor types using consistent naming with Plant components
+            # Map to plant sensor types
             if device_class == "temperature" or unit_of_measurement in ["°C", "°F", "K"]:
-                sensor_mapping[FLOW_SENSOR_TEMPERATURE] = sensor_entity_id
-                _LOGGER.debug("Mapped %s to temperature sensor", sensor_entity_id)
-            elif device_class == "humidity" or unit_of_measurement == "%":
-                # Check if it's air humidity or soil moisture based on entity name
-                if "soil" in sensor_entity_id.lower() or "moisture" in sensor_entity_id.lower():
-                    sensor_mapping[FLOW_SENSOR_MOISTURE] = sensor_entity_id
-                    _LOGGER.debug("Mapped %s to moisture sensor", sensor_entity_id)
-                else:
-                    sensor_mapping[FLOW_SENSOR_HUMIDITY] = sensor_entity_id
-                    _LOGGER.debug("Mapped %s to humidity sensor", sensor_entity_id)
-            elif device_class == "illuminance" or unit_of_measurement in ["lx", "lux"]:
-                sensor_mapping[FLOW_SENSOR_ILLUMINANCE] = sensor_entity_id
-                _LOGGER.debug("Mapped %s to illuminance sensor", sensor_entity_id)
+                sensor_mapping["temperature_sensor"] = sensor_entity_id
+            elif device_class == "moisture" or unit_of_measurement in ["%", "RH"]:
+                sensor_mapping["moisture_sensor"] = sensor_entity_id
             elif device_class == "conductivity" or unit_of_measurement == "µS/cm":
-                sensor_mapping[FLOW_SENSOR_CONDUCTIVITY] = sensor_entity_id
-                _LOGGER.debug("Mapped %s to conductivity sensor", sensor_entity_id)
-            elif device_class == "carbon_dioxide" or "co2" in sensor_entity_id.lower() or unit_of_measurement == "ppm":
-                sensor_mapping[FLOW_SENSOR_CO2] = sensor_entity_id
-                _LOGGER.debug("Mapped %s to CO2 sensor", sensor_entity_id)
-            elif device_class == "power" or "power" in sensor_entity_id.lower() or unit_of_measurement in ["W", "kW"]:
-                sensor_mapping[FLOW_SENSOR_POWER_CONSUMPTION] = sensor_entity_id
-                _LOGGER.debug("Mapped %s to power consumption sensor", sensor_entity_id)
+                sensor_mapping["conductivity_sensor"] = sensor_entity_id
+            elif device_class == "illuminance" or unit_of_measurement in ["lx", "lux"]:
+                sensor_mapping["illuminance_sensor"] = sensor_entity_id
+            elif device_class == "humidity" or unit_of_measurement == "%":
+                sensor_mapping["humidity_sensor"] = sensor_entity_id
+            elif device_class == "carbon_dioxide" or unit_of_measurement == "ppm":
+                sensor_mapping["co2_sensor"] = sensor_entity_id
+            elif device_class == "power" or unit_of_measurement in ["W", "kW"]:
+                sensor_mapping["power_consumption_sensor"] = sensor_entity_id
             elif device_class == "ph" or "ph" in sensor_entity_id.lower() or unit_of_measurement.lower() in ["ph", "pH"]:
-                sensor_mapping[FLOW_SENSOR_PH] = sensor_entity_id
-                _LOGGER.debug("Mapped %s to pH sensor", sensor_entity_id)
+                sensor_mapping["ph_sensor"] = sensor_entity_id
             else:
-                _LOGGER.warning("Could not map sensor %s: device_class=%s, unit_of_measurement=%s", 
-                               sensor_entity_id, device_class, unit_of_measurement)
+                _LOGGER.debug("Unknown sensor type for %s: device_class=%s, unit=%s", 
+                            sensor_entity_id, device_class, unit_of_measurement)
         
         # Replace sensors using the existing replace_external_sensor method
         sensor_entities = {
-            FLOW_SENSOR_TEMPERATURE: self.sensor_temperature,
-            FLOW_SENSOR_MOISTURE: self.sensor_moisture,
-            FLOW_SENSOR_CONDUCTIVITY: self.sensor_conductivity,
-            FLOW_SENSOR_ILLUMINANCE: self.sensor_illuminance,
-            FLOW_SENSOR_HUMIDITY: self.sensor_humidity,
-            FLOW_SENSOR_CO2: self.sensor_CO2,
-            FLOW_SENSOR_POWER_CONSUMPTION: self.sensor_power_consumption,
-            FLOW_SENSOR_PH: self.sensor_ph,
+            "temperature_sensor": self.sensor_temperature,
+            "moisture_sensor": self.sensor_moisture,
+            "conductivity_sensor": self.sensor_conductivity,
+            "illuminance_sensor": self.sensor_illuminance,
+            "humidity_sensor": self.sensor_humidity,
+            "co2_sensor": self.sensor_CO2,
+            "power_consumption_sensor": self.sensor_power_consumption,
+            "ph_sensor": self.sensor_ph,
         }
-        
-        # Log the sensor mapping for debugging
-        _LOGGER.debug("Sensor mapping for plant %s: %s", self.name, sensor_mapping)
         
         replaced_sensors = {}
         for sensor_key, sensor_entity in sensor_entities.items():
             if sensor_entity and sensor_key in sensor_mapping:
-                _LOGGER.debug("Replacing %s with %s", sensor_key, sensor_mapping[sensor_key])
                 sensor_entity.replace_external_sensor(sensor_mapping[sensor_key])
                 replaced_sensors[sensor_key] = sensor_mapping[sensor_key]
             elif sensor_entity:
@@ -2413,78 +2067,14 @@ class PlantDevice(Entity):
         """Get the assigned tent ID."""
         return self._tent_id
 
-    def get_tent_name(self) -> str:
-        """Get the assigned tent name."""
-        if self._tent_id is None:
-            return None
-        
-        # Find the tent by tent_id
-        for entry in self._hass.config_entries.async_entries(DOMAIN):
-            plant_info = entry.data.get(FLOW_PLANT_INFO, {})
-            if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT and plant_info.get("tent_id") == self._tent_id:
-                return plant_info.get(ATTR_NAME, "Unnamed Tent")
-        return None
+    @property
+    def kwh_price(self) -> float:
+        """Return the current kWh price."""
+        return self._kwh_price
 
-
-async def async_remove_config_entry_device(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry, 
-    device_entry: dr.DeviceEntry,
-) -> bool:
-    """Delete device entry from device registry."""
-    _LOGGER.debug(
-        "async_remove_config_entry_device called for device %s (config: %s)", 
-        device_entry.id,
-        config_entry.data
-    )
-    
-    # Prüfe ob dies der Konfigurationsknoten ist
-    if config_entry.data.get("is_config", False):
-        # Prüfe ob noch andere Plant/Cycle Einträge existieren
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            if not entry.data.get("is_config", False):  # Wenn es ein Plant/Cycle ist
-                _LOGGER.warning(
-                    "Cannot remove configuration node while plants/cycles exist. "
-                    "Please remove all plants and cycles first."
-                )
-                return False
-    
-    device_registry = dr.async_get(hass)
-    
-    # Wenn das Device eine Plant ist und einem Cycle zugeordnet ist
-    if device_entry.via_device_id:
-        _LOGGER.debug("Removing plant device with via_device_id %s", device_entry.via_device_id)
-        # Finde die Plant Entity
-        entity_registry = er.async_get(hass)
-        plant_entity_id = None
-        for entity_entry in entity_registry.entities.values():
-            if entity_entry.device_id == device_entry.id and entity_entry.domain == DOMAIN:
-                plant_entity_id = entity_entry.entity_id
-                break
-                
-        if plant_entity_id:
-            # Suche das Cycle Device
-            for device in device_registry.devices.values():
-                if device.id == device_entry.via_device_id:
-                    cycle_device = device
-                    # Finde den zugehörigen Cycle
-                    for entry_id in hass.data[DOMAIN]:
-                        if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
-                            cycle = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                            if (cycle.device_type == DEVICE_TYPE_CYCLE and 
-                                cycle.unique_id == next(iter(cycle_device.identifiers))[1]):
-                                # Entferne die Plant aus dem Cycle
-                                cycle.remove_member_plant(plant_entity_id)
-                                # Aktualisiere Flowering Duration
-                                if cycle.flowering_duration:
-                                    await cycle.flowering_duration._update_cycle_duration()
-                                break
-                    break
-    
-    # Entferne das Device
-    device_registry.async_remove_device(device_entry.id)
-    
-    # Entferne dann die Config Entry
-    await hass.config_entries.async_remove(config_entry.entry_id)
-    
-    return True
+    def update_kwh_price(self, new_price: float) -> None:
+        """Update the kWh price."""
+        self._kwh_price = new_price
+        # Aktualisiere den Energiekosten-Sensor wenn vorhanden
+        if hasattr(self, 'energy_cost') and self.energy_cost:
+            self.energy_cost.async_schedule_update_ha_state(True)

@@ -162,6 +162,10 @@ class Tent(Entity):
         self._journal = Journal.from_dict(plant_info.get("journal", {}))
         self._maintenance_entries: List[MaintenanceEntry] = []
         
+        # Text entities for journal and maintenance
+        self._journal_text_entity = None
+        self._maintenance_text_entity = None
+        
         # Load maintenance entries from config
         maintenance_data = plant_info.get("maintenance_entries", [])
         for entry_data in maintenance_data:
@@ -374,6 +378,14 @@ class Tent(Entity):
             "created_at": self._created_at.isoformat(),
             "updated_at": self._updated_at.isoformat(),
         }
+
+    def add_journal_text_entity(self, entity) -> None:
+        """Add the journal text entity."""
+        self._journal_text_entity = entity
+
+    def add_maintenance_text_entity(self, entity) -> None:
+        """Add the maintenance text entity."""
+        self._maintenance_text_entity = entity
 
     @classmethod
     def from_dict(cls, hass: HomeAssistant, data: dict) -> Tent:
