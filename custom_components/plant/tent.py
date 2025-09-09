@@ -1,3 +1,107 @@
+"""Tent class for managing sensors in Home Assistant plant integration."""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime
+from typing import List, Optional
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.entity import Entity
+from homeassistant.helpers import device_registry as dr
+from homeassistant.const import ATTR_NAME
+
+from .const import DOMAIN, FLOW_PLANT_INFO, DEVICE_TYPE_TENT
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class JournalEntry:
+    """Represents a single journal entry."""
+
+    def __init__(self, content: str, author: str = "System") -> None:
+        """Initialize the journal entry."""
+        self.timestamp = datetime.now()
+        self.content = content
+        self.author = author
+
+    def to_dict(self) -> dict:
+        """Convert journal entry to dictionary."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "content": self.content,
+            "author": self.author,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> JournalEntry:
+        """Create journal entry from dictionary."""
+        entry = cls(data["content"], data.get("author", "System"))
+        entry.timestamp = datetime.fromisoformat(data["timestamp"])
+        return entry
+
+
+class Journal:
+    """Represents a journal for documenting events."""
+
+    def __init__(self) -> None:
+        """Initialize the journal."""
+        self.entries: List[JournalEntry] = []
+
+    def add_entry(self, entry: JournalEntry) -> None:
+        """Add an entry to the journal."""
+        self.entries.append(entry)
+
+    def get_entries(self) -> List[JournalEntry]:
+        """Get all journal entries."""
+        return self.entries.copy()
+
+    def to_dict(self) -> dict:
+        """Convert journal to dictionary."""
+        return {
+            "entries": [entry.to_dict() for entry in self.entries]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Journal:
+        """Create journal from dictionary."""
+        journal = cls()
+        if data:
+            journal.entries = [JournalEntry.from_dict(entry_data) for entry_data in data.get("entries", [])]
+        return journal
+
+
+class MaintenanceEntry:
+    """Represents a maintenance entry."""
+
+    def __init__(self, description: str, performed_by: str = "System", cost: float = 0.0) -> None:
+        """Initialize the maintenance entry."""
+        self.timestamp = datetime.now()
+        self.description = description
+        self.performed_by = performed_by
+        self.cost = cost
+
+    def to_dict(self) -> dict:
+        """Convert maintenance entry to dictionary."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "description": self.description,
+            "performed_by": self.performed_by,
+            "cost": self.cost,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> MaintenanceEntry:
+        """Create maintenance entry from dictionary."""
+        entry = cls(
+            data["description"],
+            data.get("performed_by", "System"),
+            data.get("cost", 0.0)
+        )
+        entry.timestamp = datetime.fromisoformat(data["timestamp"])
+        return entry
+
+
 class Tent(Entity):
     """Representation of a Tent that manages sensors."""
 
@@ -165,7 +269,6 @@ class Tent(Entity):
         plant_info["maintenance_entries"] = [entry.to_dict() for entry in self._maintenance_entries]
         plant_info["updated_at"] = self._updated_at.isoformat()
         plant_info["device_id"] = self._device_id  # Persist device_id
-        plant_info["tent_id"] = self._tent_id  # Ensure tent_id is persisted
         data[FLOW_PLANT_INFO] = plant_info
         
         # Update the config entry

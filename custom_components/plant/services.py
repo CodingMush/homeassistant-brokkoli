@@ -76,7 +76,6 @@ from .const import (
     ATTR_TENT_ID,
 )
 from .plant_helpers import PlantHelper
-from .tent import Tent
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -188,6 +187,8 @@ CHANGE_TENT_SCHEMA = vol.Schema({
 })
 
 
+async def async_setup_services(hass: HomeAssistant) -> None:
+    """Set up services for plant integration."""
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for plant integration."""
@@ -2012,12 +2013,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         tent_entity = None
         for entry in hass.config_entries.async_entries(DOMAIN):
             plant_info = entry.data.get(FLOW_PLANT_INFO, {})
-            if plant_info.get(ATTR_DEVICE_TYPE) == "tent" and plant_info.get("tent_id") == tent_id:
+            if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT and plant_info.get("tent_id") == tent_id:
                 # Use existing instantiated entity if available
                 if entry.entry_id in hass.data.get(DOMAIN, {}) and ATTR_PLANT in hass.data[DOMAIN][entry.entry_id]:
                     tent_entity = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
                 else:
                     # As a fallback, construct a Tent object bound to this entry
+                    from .tent import Tent
                     tent_entity = Tent(hass, entry)
                 break
         if not tent_entity:
@@ -2028,42 +2030,46 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         plant_entity.change_tent(tent_entity)
         _LOGGER.info("Changed tent assignment for plant %s to tent %s", entity_id, tent_id)
-    
-    # Register create_tent service
-    hass.services.async_register(
-        DOMAIN,
-        "create_tent",
-        create_tent,
-        schema=CREATE_TENT_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL
-    )
-    
-    # Register change_tent service
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_CHANGE_TENT,
-        change_tent,
-        schema=CHANGE_TENT_SCHEMA
-    )
-    
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
-    """Unload Plant services."""
-    hass.services.async_remove(DOMAIN, SERVICE_REPLACE_SENSOR)
-    hass.services.async_remove(DOMAIN, SERVICE_REMOVE_PLANT)
-    hass.services.async_remove(DOMAIN, SERVICE_CREATE_PLANT)
-    hass.services.async_remove(DOMAIN, SERVICE_CREATE_CYCLE)
-    hass.services.async_remove(DOMAIN, SERVICE_MOVE_TO_CYCLE)
-    hass.services.async_remove(DOMAIN, SERVICE_REMOVE_CYCLE)
-    hass.services.async_remove(DOMAIN, SERVICE_MOVE_TO_AREA)
-    hass.services.async_remove(DOMAIN, SERVICE_ADD_IMAGE)
-    hass.services.async_remove(DOMAIN, SERVICE_ADD_WATERING)
-    hass.services.async_remove(DOMAIN, SERVICE_ADD_CONDUCTIVITY)
-    hass.services.async_remove(DOMAIN, SERVICE_ADD_PH)
-    hass.services.async_remove(DOMAIN, SERVICE_CHANGE_POSITION) 
-    hass.services.async_remove(DOMAIN, SERVICE_EXPORT_PLANTS)
-    hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PLANTS)
-    hass.services.async_remove(DOMAIN, "create_tent")
-    hass.services.async_remove(DOMAIN, SERVICE_CHANGE_TENT)
- 
+    """Unload services for plant integration."""
+    # Remove all registered services
+    if hass.services.has_service(DOMAIN, SERVICE_REPLACE_SENSOR):
+        hass.services.async_remove(DOMAIN, SERVICE_REPLACE_SENSOR)
+    if hass.services.has_service(DOMAIN, SERVICE_REMOVE_PLANT):
+        hass.services.async_remove(DOMAIN, SERVICE_REMOVE_PLANT)
+    if hass.services.has_service(DOMAIN, SERVICE_CREATE_PLANT):
+        hass.services.async_remove(DOMAIN, SERVICE_CREATE_PLANT)
+    if hass.services.has_service(DOMAIN, SERVICE_CREATE_CYCLE):
+        hass.services.async_remove(DOMAIN, SERVICE_CREATE_CYCLE)
+    if hass.services.has_service(DOMAIN, SERVICE_MOVE_TO_CYCLE):
+        hass.services.async_remove(DOMAIN, SERVICE_MOVE_TO_CYCLE)
+    if hass.services.has_service(DOMAIN, SERVICE_REMOVE_CYCLE):
+        hass.services.async_remove(DOMAIN, SERVICE_REMOVE_CYCLE)
+    if hass.services.has_service(DOMAIN, SERVICE_CLONE_PLANT):
+        hass.services.async_remove(DOMAIN, SERVICE_CLONE_PLANT)
+    if hass.services.has_service(DOMAIN, SERVICE_MOVE_TO_AREA):
+        hass.services.async_remove(DOMAIN, SERVICE_MOVE_TO_AREA)
+    if hass.services.has_service(DOMAIN, SERVICE_ADD_IMAGE):
+        hass.services.async_remove(DOMAIN, SERVICE_ADD_IMAGE)
+    if hass.services.has_service(DOMAIN, SERVICE_ADD_WATERING):
+        hass.services.async_remove(DOMAIN, SERVICE_ADD_WATERING)
+    if hass.services.has_service(DOMAIN, SERVICE_ADD_CONDUCTIVITY):
+        hass.services.async_remove(DOMAIN, SERVICE_ADD_CONDUCTIVITY)
+    if hass.services.has_service(DOMAIN, SERVICE_ADD_PH):
+        hass.services.async_remove(DOMAIN, SERVICE_ADD_PH)
+    if hass.services.has_service(DOMAIN, SERVICE_CHANGE_POSITION):
+        hass.services.async_remove(DOMAIN, SERVICE_CHANGE_POSITION)
+    if hass.services.has_service(DOMAIN, SERVICE_EXPORT_PLANTS):
+        hass.services.async_remove(DOMAIN, SERVICE_EXPORT_PLANTS)
+    if hass.services.has_service(DOMAIN, SERVICE_IMPORT_PLANTS):
+        hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PLANTS)
+    if hass.services.has_service(DOMAIN, "update_plant_attributes"):
+        hass.services.async_remove(DOMAIN, "update_plant_attributes")
+    if hass.services.has_service(DOMAIN, "create_tent"):
+        hass.services.async_remove(DOMAIN, "create_tent")
+    if hass.services.has_service(DOMAIN, SERVICE_CHANGE_TENT):
+        hass.services.async_remove(DOMAIN, SERVICE_CHANGE_TENT)
+
+    _LOGGER.info("Unloaded all plant services")
