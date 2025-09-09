@@ -1988,6 +1988,15 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             _LOGGER.exception("Error creating tent entry: %s", e)
             raise HomeAssistantError(f"Failed to create tent: {e}")
     
+    # Register the create_tent service
+    hass.services.async_register(
+        DOMAIN,
+        "create_tent",
+        create_tent,
+        schema=CREATE_TENT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL
+    )
+    
     async def change_tent(call: ServiceCall) -> None:
         """Change the tent assignment for a plant and update its sensors."""
         from .__init__ import PlantDevice
