@@ -2001,6 +2001,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     
     async def change_tent(call: ServiceCall) -> None:
         """Change the tent assignment for a plant and update its sensors."""
+        _LOGGER.info("change_tent service called with data: %s", call.data)
         
         entity_id = call.data.get("entity_id")
         tent_id = call.data.get(ATTR_TENT_ID)
@@ -2008,6 +2009,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         if not entity_id or (not tent_id and not tent_name):
             raise HomeAssistantError("entity_id and either tent_id or tent_name are required")
+        
+        _LOGGER.debug("Looking for plant entity: %s", entity_id)
         
         # Resolve plant entity
         plant_entity = None
@@ -2020,6 +2023,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     # We can't import PlantDevice due to circular imports, so we check the device_type attribute
                     if hasattr(plant, "device_type") and plant.device_type == DEVICE_TYPE_PLANT:
                         plant_entity = plant
+                        _LOGGER.debug("Found plant entity: %s", plant_entity.name)
                         break
         if not plant_entity:
             raise HomeAssistantError(f"Plant entity {entity_id} not found")
@@ -2030,30 +2034,43 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         # If tent_name is provided, find the corresponding tent_id first
         if tent_name and not tent_id:
+            _LOGGER.debug("Looking for tent by name: %s", tent_name)
             for entry in hass.config_entries.async_entries(DOMAIN):
                 plant_info = entry.data.get(FLOW_PLANT_INFO, {})
                 if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT and plant_info.get(ATTR_NAME) == tent_name:
                     tent_id = plant_info.get("tent_id")
                     tent_id_found = tent_id
+                    _LOGGER.debug("Found tent ID %s for name %s", tent_id, tent_name)
                     break
             
             if not tent_id_found:
                 raise HomeAssistantError(f"Tent with name '{tent_name}' not found")
         
         # Resolve tent by tent_id
+        _LOGGER.debug("Looking for tent by ID: %s", tent_id)
         for entry in hass.config_entries.async_entries(DOMAIN):
             plant_info = entry.data.get(FLOW_PLANT_INFO, {})
             if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT and plant_info.get("tent_id") == tent_id:
                 # Use existing instantiated entity if available
                 if entry.entry_id in hass.data.get(DOMAIN, {}) and ATTR_PLANT in hass.data[DOMAIN][entry.entry_id]:
                     tent_entity = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
+                    _LOGGER.debug("Found existing tent entity: %s", tent_entity.name)
                 else:
                     # As a fallback, construct a Tent object bound to this entry
                     from .tent import Tent
                     tent_entity = Tent(hass, entry)
+                    _LOGGER.debug("Created new tent entity: %s", tent_entity.name)
                 break
         if not tent_entity:
             raise HomeAssistantError(f"Tent with ID {tent_id} not found")
+        
+        # Log information about the operation
+        _LOGGER.info("Changing tent assignment for plant %s (%s) to tent %s (%s)", 
+                    plant_entity.name, entity_id, tent_entity.name, tent_id)
+        
+        # Get tent sensors before changing
+        tent_sensors = tent_entity.get_sensors()
+        _LOGGER.debug("Tent sensors: %s", tent_sensors)
         
         # Instead of isinstance check, we'll use the device_type attribute which we already verified
         # The plant_entity is already verified to be a PlantDevice with device_type == DEVICE_TYPE_PLANT

@@ -11,7 +11,19 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.const import ATTR_NAME
 
-from .const import DOMAIN, FLOW_PLANT_INFO, DEVICE_TYPE_TENT
+from .const import (
+    DOMAIN, 
+    FLOW_PLANT_INFO, 
+    DEVICE_TYPE_TENT,
+    FLOW_SENSOR_TEMPERATURE,
+    FLOW_SENSOR_MOISTURE,
+    FLOW_SENSOR_CONDUCTIVITY,
+    FLOW_SENSOR_ILLUMINANCE,
+    FLOW_SENSOR_HUMIDITY,
+    FLOW_SENSOR_CO2,
+    FLOW_SENSOR_POWER_CONSUMPTION,
+    FLOW_SENSOR_PH,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -116,19 +128,35 @@ class Tent(Entity):
         self._sensors: List[str] = plant_info.get("sensors", [])
         if not self._sensors:
             derived_sensors: List[str] = []
+            # Look for sensors stored with the new key format (FLOW_SENSOR_*)
             for key in (
-                "temperature_sensor",
-                "moisture_sensor",
-                "conductivity_sensor",
-                "illuminance_sensor",
-                "humidity_sensor",
-                "co2_sensor",
-                "power_consumption_sensor",
-                "ph_sensor",
+                FLOW_SENSOR_TEMPERATURE,
+                FLOW_SENSOR_MOISTURE,
+                FLOW_SENSOR_CONDUCTIVITY,
+                FLOW_SENSOR_ILLUMINANCE,
+                FLOW_SENSOR_HUMIDITY,
+                FLOW_SENSOR_CO2,
+                FLOW_SENSOR_POWER_CONSUMPTION,
+                FLOW_SENSOR_PH,
             ):
                 sensor_id = plant_info.get(key)
                 if sensor_id:
                     derived_sensors.append(sensor_id)
+            # Also check for backward compatibility with old key format
+            if not derived_sensors:
+                for key in (
+                    "temperature_sensor",
+                    "moisture_sensor",
+                    "conductivity_sensor",
+                    "illuminance_sensor",
+                    "humidity_sensor",
+                    "co2_sensor",
+                    "power_consumption_sensor",
+                    "ph_sensor",
+                ):
+                    sensor_id = plant_info.get(key)
+                    if sensor_id:
+                        derived_sensors.append(sensor_id)
             if derived_sensors:
                 self._sensors = derived_sensors
         self._journal = Journal.from_dict(plant_info.get("journal", {}))

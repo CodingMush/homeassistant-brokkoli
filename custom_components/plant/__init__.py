@@ -817,6 +817,7 @@ class PlantDevice(Entity):
         self.sensor_CO2 = None
         self.sensor_power_consumption = None
         self.total_power_consumption = None
+        self.sensor_ph = None  # Add pH sensor attribute
 
         self.dli = None
         self.micro_dli = None
@@ -2332,25 +2333,40 @@ class PlantDevice(Entity):
             device_class = sensor_state.attributes.get("device_class")
             unit_of_measurement = sensor_state.attributes.get("unit_of_measurement", "")
             
+            # Log sensor information for debugging
+            _LOGGER.debug("Mapping sensor %s: device_class=%s, unit_of_measurement=%s", 
+                         sensor_entity_id, device_class, unit_of_measurement)
+            
             # Map to plant sensor types using consistent naming with Plant components
             if device_class == "temperature" or unit_of_measurement in ["°C", "°F", "K"]:
                 sensor_mapping[FLOW_SENSOR_TEMPERATURE] = sensor_entity_id
+                _LOGGER.debug("Mapped %s to temperature sensor", sensor_entity_id)
             elif device_class == "humidity" or unit_of_measurement == "%":
                 # Check if it's air humidity or soil moisture based on entity name
                 if "soil" in sensor_entity_id.lower() or "moisture" in sensor_entity_id.lower():
                     sensor_mapping[FLOW_SENSOR_MOISTURE] = sensor_entity_id
+                    _LOGGER.debug("Mapped %s to moisture sensor", sensor_entity_id)
                 else:
                     sensor_mapping[FLOW_SENSOR_HUMIDITY] = sensor_entity_id
+                    _LOGGER.debug("Mapped %s to humidity sensor", sensor_entity_id)
             elif device_class == "illuminance" or unit_of_measurement in ["lx", "lux"]:
                 sensor_mapping[FLOW_SENSOR_ILLUMINANCE] = sensor_entity_id
+                _LOGGER.debug("Mapped %s to illuminance sensor", sensor_entity_id)
             elif device_class == "conductivity" or unit_of_measurement == "µS/cm":
                 sensor_mapping[FLOW_SENSOR_CONDUCTIVITY] = sensor_entity_id
+                _LOGGER.debug("Mapped %s to conductivity sensor", sensor_entity_id)
             elif device_class == "carbon_dioxide" or "co2" in sensor_entity_id.lower() or unit_of_measurement == "ppm":
                 sensor_mapping[FLOW_SENSOR_CO2] = sensor_entity_id
+                _LOGGER.debug("Mapped %s to CO2 sensor", sensor_entity_id)
             elif device_class == "power" or "power" in sensor_entity_id.lower() or unit_of_measurement in ["W", "kW"]:
                 sensor_mapping[FLOW_SENSOR_POWER_CONSUMPTION] = sensor_entity_id
-            elif device_class == "ph" or "ph" in sensor_entity_id.lower() or unit_of_measurement in ["pH", "ph"]:
+                _LOGGER.debug("Mapped %s to power consumption sensor", sensor_entity_id)
+            elif device_class == "ph" or "ph" in sensor_entity_id.lower() or unit_of_measurement.lower() in ["ph", "pH"]:
                 sensor_mapping[FLOW_SENSOR_PH] = sensor_entity_id
+                _LOGGER.debug("Mapped %s to pH sensor", sensor_entity_id)
+            else:
+                _LOGGER.warning("Could not map sensor %s: device_class=%s, unit_of_measurement=%s", 
+                               sensor_entity_id, device_class, unit_of_measurement)
         
         # Replace sensors using the existing replace_external_sensor method
         sensor_entities = {
@@ -2364,22 +2380,30 @@ class PlantDevice(Entity):
             FLOW_SENSOR_PH: self.sensor_ph,
         }
         
+        # Log the sensor mapping for debugging
+        _LOGGER.debug("Sensor mapping for plant %s: %s", self.name, sensor_mapping)
+        
+        replaced_sensors = {}
         for sensor_key, sensor_entity in sensor_entities.items():
             if sensor_entity and sensor_key in sensor_mapping:
+                _LOGGER.debug("Replacing %s with %s", sensor_key, sensor_mapping[sensor_key])
                 sensor_entity.replace_external_sensor(sensor_mapping[sensor_key])
+                replaced_sensors[sensor_key] = sensor_mapping[sensor_key]
+            elif sensor_entity:
+                _LOGGER.debug("No mapping found for %s, keeping current sensor", sensor_key)
         
         # Update the config entry with the new sensor assignments
         data = dict(self._config.data)
         plant_info = dict(data.get(FLOW_PLANT_INFO, {}))
         
         # Update sensor mappings in plant info
-        for sensor_key, sensor_entity_id in sensor_mapping.items():
+        for sensor_key, sensor_entity_id in replaced_sensors.items():
             plant_info[sensor_key] = sensor_entity_id
             
         data[FLOW_PLANT_INFO] = plant_info
         self._hass.config_entries.async_update_entry(self._config, data=data)
         
-        _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
+        _LOGGER.info("Replaced sensors for plant %s: %s", self.name, replaced_sensors)
 
     def get_assigned_tent(self) -> Tent:
         """Get the assigned tent."""
