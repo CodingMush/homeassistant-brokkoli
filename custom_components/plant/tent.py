@@ -396,6 +396,21 @@ class Tent(Entity):
         # This method can be used to store a reference to the maintenance select entity if needed
         pass
 
+    def add_growth_phase_select(self, growth_phase_select) -> None:
+        """Add growth phase select entity."""
+        # Tents don't use growth phases, but the method is needed for compatibility
+        pass
+
+    def add_treatment_select(self, treatment_select) -> None:
+        """Add treatment select entity."""
+        # Tents don't use treatments, but the method is needed for compatibility
+        pass
+
+    def add_cycle_select(self, cycle_select) -> None:
+        """Add cycle select entity."""
+        # Tents don't use cycles, but the method is needed for compatibility
+        pass
+
     @classmethod
     def from_dict(cls, hass: HomeAssistant, data: dict) -> Tent:
         """Create tent from dictionary."""

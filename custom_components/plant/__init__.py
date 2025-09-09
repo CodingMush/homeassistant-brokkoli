@@ -1098,6 +1098,11 @@ class PlantDevice(Entity):
         return self._plant_info.get("timestamp", "")
 
     @property
+    def kwh_price(self) -> float:
+        """Return the kWh price."""
+        return self._kwh_price
+
+    @property
     def pid(self) -> str:
         """Return the pid."""
         return self._plant_info.get(ATTR_PID, "")
