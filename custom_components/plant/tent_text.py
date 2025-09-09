@@ -128,6 +128,11 @@ class TentMaintenance(TextEntity, RestoreEntity):
         
         # Add maintenance entry to tent
         if self._tent:
-            from .tent import MaintenanceEntry
+            from .tent import MaintenanceEntry, JournalEntry
+            # Create maintenance entry
             entry = MaintenanceEntry(value, "User")
             self._tent.add_maintenance_entry(entry)
+            
+            # Also add to journal
+            journal_entry = JournalEntry(f"Maintenance performed: {value}", "System")
+            self._tent.add_journal_entry(journal_entry)

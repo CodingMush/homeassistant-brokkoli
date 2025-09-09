@@ -227,8 +227,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if device_type != DEVICE_TYPE_TENT:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     else:
-        # Für Tents nur die TEXT Plattform laden für Journal und Maintenance
-        await hass.config_entries.async_forward_entry_setups(entry, [Platform.TEXT])
+        # Für Tents nur die TEXT und SELECT Plattformen laden für Journal, Maintenance und Select
+        await hass.config_entries.async_forward_entry_setups(entry, [Platform.TEXT, Platform.SELECT])
 
     plant_entities = [
         plant,
@@ -338,7 +338,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Für Tents brauchen wir die Plattformen nicht entladen, da sie nie geladen wurden
     if device_type == DEVICE_TYPE_TENT:
-        unload_ok = await hass.config_entries.async_forward_entry_unload(entry, Platform.TEXT)
+        unload_ok = await hass.config_entries.async_forward_entry_unload(entry, Platform.TEXT) and await hass.config_entries.async_forward_entry_unload(entry, Platform.SELECT)
     else:
         unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 

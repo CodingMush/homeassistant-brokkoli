@@ -391,6 +391,11 @@ class Tent(Entity):
         """Add journal entity (for compatibility with plant text setup)."""
         self._journal_text_entity = journal
 
+    def add_maintenance_select(self, maintenance_select) -> None:
+        """Add maintenance select entity."""
+        # This method can be used to store a reference to the maintenance select entity if needed
+        pass
+
     @classmethod
     def from_dict(cls, hass: HomeAssistant, data: dict) -> Tent:
         """Create tent from dictionary."""
