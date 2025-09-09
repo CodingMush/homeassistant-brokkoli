@@ -1762,7 +1762,7 @@ class PlantCurrentPowerConsumption(RestoreSensor):
         except (TypeError, ValueError):
             pass
 
-                        drops.append(drop)
+                drops.append(drop)
 
                 total_drop = sum(drops)
 
@@ -2182,7 +2182,8 @@ class PlantTotalPowerConsumption(RestoreSensor):
         hass: HomeAssistant,
         config: ConfigEntry,
         plant_device: Entity,
-# Neue Klasse für Energiekosten
+    ) -> None:
+
 class PlantEnergyCost(RestoreSensor):
     """Sensor für die Energiekosten."""
 
