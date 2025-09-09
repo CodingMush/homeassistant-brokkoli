@@ -1688,103 +1688,10 @@ class PlantCurrentMoistureConsumption(RestoreSensor):
             return  # Ignore invalid state changes
 
 
-class PlantCurrentPowerConsumption(RestoreSensor):
-    """Power consumption sensor for a plant."""
+class PlantCurrentFertilizerConsumption(RestoreSensor):
+    """Sensor to track fertilizer consumption based on conductivity drop."""
 
     def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__()
-        self._hass = hass
-        self._config = config
-        self._plant = plantdevice
-        self._attr_name = f"{plantdevice.name} {READING_POWER_CONSUMPTION}"
-        self._attr_unique_id = f"{config.entry_id}-current-power-consumption"
-        self._attr_has_entity_name = False
-        self._attr_icon = ICON_POWER_CONSUMPTION
-        self._attr_native_unit_of_measurement = "W"  # Watt statt kWh
-        self._attr_device_class = SensorDeviceClass.POWER  # POWER statt ENERGY
-        self._attr_state_class = (
-            SensorStateClass.MEASUREMENT
-        )  # MEASUREMENT statt TOTAL_INCREASING
-        self._last_value = None
-        self._last_time = None
-        self._attr_native_value = 0  # Starte immer bei 0
-
-        # Bei Neuerstellung explizit auf 0 setzen
-        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = 0
-            self._last_value = None
-            self._last_time = None
-
-    @property
-    def device_info(self) -> dict:
-        """Return device info."""
-        return {
-            "identifiers": {(DOMAIN, self._plant.unique_id)},
-        }
-
-    @property
-    def should_poll(self) -> bool:
-        """Return True as we want to poll for updates."""
-        return True
-
-    async def async_update(self) -> None:
-        """Update the sensor."""
-        if not self._plant.total_power_consumption:
-            return
-
-        try:
-            state = self._hass.states.get(self._plant.total_power_consumption.entity_id)
-            if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-                return
-
-            current_value = float(state.state)
-            current_time = dt_util.utcnow()
-
-            # Berechne aktuelle Leistung in Watt
-            if self._last_value is not None and self._last_time is not None:
-                time_diff = (current_time - self._last_time).total_seconds()
-                if time_diff > 0:
-                    # Umrechnung von kWh/s in Watt
-                    power = (
-                        (current_value - self._last_value) * 3600 * 1000
-                    ) / time_diff
-                    self._attr_native_value = max(
-                        0, round(power, self._plant.decimals_for("power_consumption"))
-                    )
-
-            # Speichere aktuelle Werte für nächste Berechnung
-            self._last_value = current_value
-            self._last_time = current_time
-
-        except (TypeError, ValueError):
-            pass
-
-        drops.append(drop)
-
-        total_drop = sum(drops)
-
-        # Convert moisture drop to volume
-        if self._plant.pot_size and self._plant.water_capacity:
-            pot_size = self._plant.pot_size.native_value
-            water_capacity = (
-                self._plant.water_capacity.native_value / 100
-            )  # Convert from % to decimal
-            volume_drop = (
-                (total_drop / 100) * pot_size * water_capacity
-            )  # Convert from % to L
-
-            self._attr_native_value = round(
-                volume_drop,
-                self._plant.decimals_for("moisture_consumption"),
-            )
-            self._last_update = current_time.isoformat()
-            self.async_write_ha_state()
-
-        except (TypeError, ValueError):
-            pass
         self,
         hass: HomeAssistant,
         config: ConfigEntry,
