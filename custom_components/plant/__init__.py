@@ -835,6 +835,7 @@ class PlantDevice(Entity):
         self.fertilizer_consumption = None
         self.total_fertilizer_consumption = None  # Füge Total Fertilizer Consumption hinzu
         self.power_consumption = None
+        self.energy_cost = None
 
         self.conductivity_status = None
         self.illuminance_status = None
@@ -1640,6 +1641,10 @@ class PlantDevice(Entity):
         self.total_integral = total_integral
         self.moisture_consumption = moisture_consumption
         self.fertilizer_consumption = fertilizer_consumption
+
+    def add_dli(self, dli: Entity | None = None) -> None:
+        """Add the DLI entity."""
+        self.dli = dli
 
     def get_tent_name(self) -> str:
         """Get the name of the assigned tent."""

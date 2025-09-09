@@ -29,6 +29,7 @@ def test_plantdevice_methods():
             'add_location_history',
             'add_thresholds',      # Newly added
             'add_calculations',    # Newly added
+            'add_dli',             # Newly added
             'update_kwh_price',    # Newly added/fixed
         ]
         
@@ -186,6 +187,14 @@ def test_method_functionality():
             print("✓ update_kwh_price method works correctly")
         else:
             print("✗ update_kwh_price method failed")
+            return False
+        
+        # Test add_dli method
+        plant.add_dli(dli=mock_entity)
+        if plant.dli == mock_entity:
+            print("✓ add_dli method works correctly")
+        else:
+            print("✗ add_dli method failed")
             return False
         
         print("✓ All method functionality tests passed")
