@@ -120,7 +120,7 @@ async def async_setup_entry(
     plant = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
 
     # Erstelle die Standard-Sensoren für Plants
-    if plant.device_type != DEVICE_TYPE_CYCLE:
+    if plant.device_type == "plant":
         # Standard Sensoren erstellen
         pcurb = PlantCurrentIlluminance(hass, entry, plant)
         pcurc = PlantCurrentConductivity(hass, entry, plant)
@@ -243,7 +243,7 @@ async def async_setup_entry(
         plant.add_dli(dli=pdli)
 
         # Füge zuerst den Total Power Consumption Sensor hinzu
-        if plant.device_type != DEVICE_TYPE_CYCLE:
+        if plant.device_type == "plant":
             total_power_consumption = PlantTotalPowerConsumption(hass, entry, plant)
             async_add_entities([total_power_consumption])
 
@@ -333,9 +333,10 @@ async def async_setup_entry(
         )
 
     # Füge Energiekosten-Sensor hinzu
-    energy_cost = PlantEnergyCost(hass, entry, plant)
-    plant.energy_cost = energy_cost
-    async_add_entities([energy_cost])
+    if plant.device_type == "plant":
+        energy_cost = PlantEnergyCost(hass, entry, plant)
+        plant.energy_cost = energy_cost
+        async_add_entities([energy_cost])
 
     return True
 

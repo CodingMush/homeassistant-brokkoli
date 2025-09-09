@@ -411,6 +411,21 @@ class Tent(Entity):
         # Tents don't use cycles, but the method is needed for compatibility
         pass
 
+    def add_sensors(
+        self,
+        moisture: Entity | None,
+        temperature: Entity | None,
+        conductivity: Entity | None,
+        illuminance: Entity | None,
+        humidity: Entity | None,
+        CO2: Entity | None,
+        power_consumption: Entity | None,
+        ph: Entity | None,  # Neuer Parameter
+    ) -> None:
+        """Add the sensor entities - for compatibility with plant sensor setup."""
+        # Tents don't use individual sensor entities, but the method is needed for compatibility
+        pass
+
     @classmethod
     def from_dict(cls, hass: HomeAssistant, data: dict) -> Tent:
         """Create tent from dictionary."""
