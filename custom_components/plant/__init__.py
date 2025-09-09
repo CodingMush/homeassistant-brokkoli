@@ -1130,6 +1130,8 @@ class PlantDevice(Entity):
                 "infotext1": self._plant_info.get("infotext1", ""),
                 "infotext2": self._plant_info.get("infotext2", ""),
                 "lineage": self._plant_info.get("lineage", ""),
+                "tent_id": self._tent_id,
+                "tent_name": self.get_tent_name(),
             })
 
         return attrs
@@ -2385,6 +2387,18 @@ class PlantDevice(Entity):
     def get_tent_id(self) -> str:
         """Get the assigned tent ID."""
         return self._tent_id
+
+    def get_tent_name(self) -> str:
+        """Get the assigned tent name."""
+        if self._tent_id is None:
+            return None
+        
+        # Find the tent by tent_id
+        for entry in self._hass.config_entries.async_entries(DOMAIN):
+            plant_info = entry.data.get(FLOW_PLANT_INFO, {})
+            if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT and plant_info.get("tent_id") == self._tent_id:
+                return plant_info.get(ATTR_NAME, "Unnamed Tent")
+        return None
 
 
 async def async_remove_config_entry_device(

@@ -922,7 +922,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "co2_aggregation",
                         config_data.get(
                             "default_co2_aggregation",
-                            DEFAULT_AGGREGATIONS["co2"],
+                            DEFAULT_AGGREGATIONS["CO2"],
                         ),
                     ),
                     "water_consumption": user_input.get(

@@ -183,8 +183,12 @@ CREATE_TENT_SCHEMA = vol.Schema({
 # Schema for change_tent Service
 CHANGE_TENT_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_id,
-    vol.Required(ATTR_TENT_ID): cv.string,
+    vol.Optional(ATTR_TENT_ID): cv.string,
+    vol.Optional("tent_name"): cv.string,
 })
+
+# Schema for list_tents Service
+LIST_TENTS_SCHEMA = vol.Schema({})
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:
@@ -1997,9 +2001,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         entity_id = call.data.get("entity_id")
         tent_id = call.data.get(ATTR_TENT_ID)
+        tent_name = call.data.get("tent_name")
         
-        if not entity_id or not tent_id:
-            raise HomeAssistantError("entity_id and tent_id are required")
+        if not entity_id or (not tent_id and not tent_name):
+            raise HomeAssistantError("entity_id and either tent_id or tent_name are required")
         
         # Resolve plant entity
         plant_entity = None
@@ -2012,8 +2017,23 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if not plant_entity:
             raise HomeAssistantError(f"Plant entity {entity_id} not found")
         
-        # Resolve tent by tent_id
+        # Resolve tent by tent_id or tent_name
         tent_entity = None
+        tent_id_found = None
+        
+        # If tent_name is provided, find the corresponding tent_id first
+        if tent_name and not tent_id:
+            for entry in hass.config_entries.async_entries(DOMAIN):
+                plant_info = entry.data.get(FLOW_PLANT_INFO, {})
+                if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT and plant_info.get(ATTR_NAME) == tent_name:
+                    tent_id = plant_info.get("tent_id")
+                    tent_id_found = tent_id
+                    break
+            
+            if not tent_id_found:
+                raise HomeAssistantError(f"Tent with name '{tent_name}' not found")
+        
+        # Resolve tent by tent_id
         for entry in hass.config_entries.async_entries(DOMAIN):
             plant_info = entry.data.get(FLOW_PLANT_INFO, {})
             if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT and plant_info.get("tent_id") == tent_id:
@@ -2032,7 +2052,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             raise HomeAssistantError(f"Entity {entity_id} is not a PlantDevice")
         
         plant_entity.change_tent(tent_entity)
-        _LOGGER.info("Changed tent assignment for plant %s to tent %s", entity_id, tent_id)
+        _LOGGER.info("Changed tent assignment for plant %s to tent %s (ID: %s)", entity_id, tent_entity.name, tent_id)
     
     # Register the change_tent service
     hass.services.async_register(
@@ -2040,6 +2060,42 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_CHANGE_TENT,
         change_tent,
         schema=CHANGE_TENT_SCHEMA
+    )
+
+    async def list_tents(call: ServiceCall) -> ServiceResponse:
+        """List all available tents."""
+        tents = []
+        
+        # Find all tent entries
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            plant_info = entry.data.get(FLOW_PLANT_INFO, {})
+            if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT:
+                tent_data = {
+                    "tent_id": plant_info.get("tent_id"),
+                    "name": plant_info.get(ATTR_NAME),
+                    "sensors": [],
+                }
+                
+                # Add sensor information
+                for key in [FLOW_SENSOR_ILLUMINANCE, FLOW_SENSOR_HUMIDITY, FLOW_SENSOR_CO2, 
+                           FLOW_SENSOR_POWER_CONSUMPTION, FLOW_SENSOR_PH]:
+                    if plant_info.get(key):
+                        tent_data["sensors"].append({
+                            "type": key,
+                            "entity_id": plant_info.get(key)
+                        })
+                
+                tents.append(tent_data)
+        
+        return {"tents": tents}
+    
+    # Register the list_tents service
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_LIST_TENTS,
+        list_tents,
+        schema=LIST_TENTS_SCHEMA,
+        supports_response=SupportsResponse.ONLY
     )
 
 
@@ -2079,5 +2135,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         hass.services.async_remove(DOMAIN, "create_tent")
     if hass.services.has_service(DOMAIN, SERVICE_CHANGE_TENT):
         hass.services.async_remove(DOMAIN, SERVICE_CHANGE_TENT)
+    if hass.services.has_service(DOMAIN, SERVICE_LIST_TENTS):
+        hass.services.async_remove(DOMAIN, SERVICE_LIST_TENTS)
 
     _LOGGER.info("Unloaded all plant services")
