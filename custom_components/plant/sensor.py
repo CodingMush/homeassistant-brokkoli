@@ -1762,35 +1762,29 @@ class PlantCurrentPowerConsumption(RestoreSensor):
         except (TypeError, ValueError):
             pass
 
-                drops.append(drop)
+        drops.append(drop)
 
-                total_drop = sum(drops)
+        total_drop = sum(drops)
 
-                # Convert moisture drop to volume
-                if self._plant.pot_size and self._plant.water_capacity:
-                    pot_size = self._plant.pot_size.native_value
-                    water_capacity = (
-                        self._plant.water_capacity.native_value / 100
-                    )  # Convert from % to decimal
-                    volume_drop = (
-                        (total_drop / 100) * pot_size * water_capacity
-                    )  # Convert from % to L
+        # Convert moisture drop to volume
+        if self._plant.pot_size and self._plant.water_capacity:
+            pot_size = self._plant.pot_size.native_value
+            water_capacity = (
+                self._plant.water_capacity.native_value / 100
+            )  # Convert from % to decimal
+            volume_drop = (
+                (total_drop / 100) * pot_size * water_capacity
+            )  # Convert from % to L
 
-                    self._attr_native_value = round(
-                        volume_drop,
-                        self._plant.decimals_for("moisture_consumption"),
-                    )
-                    self._last_update = current_time.isoformat()
-                    self.async_write_ha_state()
+            self._attr_native_value = round(
+                volume_drop,
+                self._plant.decimals_for("moisture_consumption"),
+            )
+            self._last_update = current_time.isoformat()
+            self.async_write_ha_state()
 
         except (TypeError, ValueError):
             pass
-
-
-class PlantCurrentFertilizerConsumption(RestoreSensor):
-    """Sensor to track fertilizer consumption based on conductivity drop."""
-
-    def __init__(
         self,
         hass: HomeAssistant,
         config: ConfigEntry,
