@@ -76,8 +76,10 @@ from .const import (
     ATTR_TENT_ID,
 )
 from .plant_helpers import PlantHelper
+from . import PlantDevice
 
 _LOGGER = logging.getLogger(__name__)
+
 
 # Service Schemas
 REPLACE_SENSOR_SCHEMA = vol.Schema({
@@ -2011,9 +2013,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         for entry_id in hass.data.get(DOMAIN, {}):
             if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
                 plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
-                if getattr(plant, "entity_id", None) == entity_id:
-                    plant_entity = plant
-                    break
+                # Check if this is a PlantDevice and has the correct entity_id
+                if hasattr(plant, "entity_id") and plant.entity_id == entity_id:
+                    # Additional check to ensure it's a PlantDevice and not a Tent
+                    from . import PlantDevice
+                    if isinstance(plant, PlantDevice) and plant.device_type == DEVICE_TYPE_PLANT:
+                        plant_entity = plant
+                        break
         if not plant_entity:
             raise HomeAssistantError(f"Plant entity {entity_id} not found")
         

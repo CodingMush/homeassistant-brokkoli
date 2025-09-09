@@ -929,7 +929,7 @@ class PlantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "water_consumption_aggregation",
                         config_data.get(
                             "default_water_consumption_aggregation",
-                            DEFAULT_AGGREGATIONS["water_consumption"],
+                            DEFAULT_AGGREGATIONS["moisture_consumption"],
                         ),
                     ),
                     "total_integral": user_input.get(
