@@ -2039,14 +2039,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         plant_entity.change_tent(tent_entity)
         _LOGGER.info("Changed tent assignment for plant %s to tent %s", entity_id, tent_id)
-
-
-async def async_unload_services(hass: HomeAssistant) -> None:
-    """Unload services for plant integration."""
-    # Remove all registered services
-    if hass.services.has_service(DOMAIN, SERVICE_REPLACE_SENSOR):
-        hass.services.async_remove(DOMAIN, SERVICE_REPLACE_SENSOR)
-    if hass.services.has_service(DOMAIN, SERVICE_REMOVE_PLANT):
+    
+    # Register the change_tent service
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CHANGE_TENT,
+        change_tent,
+        schema=CHANGE_TENT_SCHEMA
+    )
         hass.services.async_remove(DOMAIN, SERVICE_REMOVE_PLANT)
     if hass.services.has_service(DOMAIN, SERVICE_CREATE_PLANT):
         hass.services.async_remove(DOMAIN, SERVICE_CREATE_PLANT)
