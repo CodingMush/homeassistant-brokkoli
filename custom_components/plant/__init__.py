@@ -1015,6 +1015,11 @@ class PlantDevice(Entity):
         return info
 
     @property
+    def name(self) -> str:
+        """Return the name of the plant."""
+        return self._plant_info.get(ATTR_NAME, "Unknown Plant")
+
+    @property
     def illuminance_trigger(self) -> bool:
         """Whether we will generate alarms based on illuminance"""
         return self._config.options.get(FLOW_ILLUMINANCE_TRIGGER, True)
