@@ -190,13 +190,7 @@ CHANGE_TENT_SCHEMA = vol.Schema({
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for plant integration."""
 
-async def async_setup_services(hass: HomeAssistant) -> None:
-    """Set up services for plant integration."""
-
     async def replace_sensor(call: ServiceCall) -> None:
-        """Replace a sensor entity within a plant device"""
-        meter_entity = call.data.get("meter_entity")
-        new_sensor = call.data.get("new_sensor")
         found = False
         for entry_id in hass.data[DOMAIN]:
             if ATTR_SENSORS in hass.data[DOMAIN][entry_id]:
@@ -2047,6 +2041,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         change_tent,
         schema=CHANGE_TENT_SCHEMA
     )
+
+
+async def async_unload_services(hass: HomeAssistant) -> None:
+    """Unload services for plant integration."""
+    if hass.services.has_service(DOMAIN, SERVICE_REMOVE_PLANT):
         hass.services.async_remove(DOMAIN, SERVICE_REMOVE_PLANT)
     if hass.services.has_service(DOMAIN, SERVICE_CREATE_PLANT):
         hass.services.async_remove(DOMAIN, SERVICE_CREATE_PLANT)
