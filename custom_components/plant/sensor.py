@@ -46,6 +46,18 @@ from homeassistant.helpers.event import async_track_state_change_event, async_ca
 from homeassistant.util import dt as dt_util
 from homeassistant.components.recorder import history, get_instance
 
+# Import the sensor classes from plant_meters
+from .plant_meters import (
+    PlantCurrentIlluminance,
+    PlantCurrentConductivity,
+    PlantCurrentMoisture,
+    PlantCurrentTemperature,
+    PlantCurrentHumidity,
+    PlantCurrentCO2,
+    PlantTotalLightIntegral,
+    PlantDailyLightIntegral,
+)
+
 from . import SETUP_DUMMY_SENSORS
 from .const import (
     ATTR_CONDUCTIVITY,
@@ -157,24 +169,6 @@ async def async_setup_entry(
             power_consumption=None,  # Wird später gesetzt
             ph=pcurph,  # pH Sensor hinzugefügt
         )
-
-        # Jetzt erst die externen Sensoren zuweisen
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_ILLUMINANCE):
-            pcurb.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_ILLUMINANCE]
-            )
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CONDUCTIVITY):
-            pcurc.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_CONDUCTIVITY]
-            )
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_MOISTURE):
-            pcurm.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_MOISTURE]
-            )
-        if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_TEMPERATURE):
-            pcurt.replace_external_sensor(
-                entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_TEMPERATURE]
-            )
         if entry.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY):
             pcurh.replace_external_sensor(
                 entry.data[FLOW_PLANT_INFO][FLOW_SENSOR_HUMIDITY]
@@ -884,45 +878,18 @@ class PlantCurrentCO2(PlantCurrentStatus):
         return SensorDeviceClass.CO2
 
 
-class PlantCurrentPh(PlantCurrentStatus):
-    """Entity class for the current pH meter"""
+class PlantCurrentHumidity(PlantCurrentStatus):
+    def sensor_type(self) -> str | None:
+        return "humidity"
+    """Entity class for the current humidity meter"""
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
         """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_PH}"
-        self._attr_unique_id = f"{config.entry_id}-current-ph"
+        self._attr_name = f"{plantdevice.name} {READING_HUMIDITY}"
+        self._attr_unique_id = f"{config.entry_id}-current-humidity"
         self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_PH)
-        self._attr_icon = ICON_PH
-        self._attr_native_unit_of_measurement = None  # pH hat keine Einheit
-        self._default_state = 7.0  # Neutraler pH-Wert als Default
-        super().__init__(hass, config, plantdevice)
-
-    def sensor_type(self) -> str | None:
-        return "ph"
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return DEVICE_CLASS_PH  # Verwende unsere eigene Device Class
-
-    async def set_manual_value(self, value: float) -> None:
-        """Set a manual pH measurement (0-14)."""
-        try:
-            if value is None:
-                return
-            # clamp plausible pH range
-            if value < 0:
-                value = 0
-            if value > 14:
-                value = 14
-            self._attr_native_value = float(value)
-            self.async_write_ha_state()
-        except (TypeError, ValueError):
-            return
-
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
         self._attr_icon = ICON_HUMIDITY
         self._attr_native_unit_of_measurement = PERCENTAGE
