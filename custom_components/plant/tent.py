@@ -426,6 +426,46 @@ class Tent(Entity):
         # Tents don't use individual sensor entities, but the method is needed for compatibility
         pass
 
+    def add_pot_size(self, pot_size) -> None:
+        """Add pot size entity - for compatibility with plant number setup."""
+        # Tents don't use pot size, but the method is needed for compatibility
+        pass
+
+    def add_water_capacity(self, water_capacity) -> None:
+        """Add water capacity entity - for compatibility with plant number setup."""
+        # Tents don't use water capacity, but the method is needed for compatibility
+        pass
+
+    def add_flowering_duration(self, flowering_duration) -> None:
+        """Add flowering duration entity - for compatibility with plant number setup."""
+        # Tents don't use flowering duration, but the method is needed for compatibility
+        pass
+
+    def add_health_number(self, health_number) -> None:
+        """Add health number entity - for compatibility with plant number setup."""
+        # Tents don't use health number, but the method is needed for compatibility
+        pass
+
+    def add_thresholds(self, **kwargs) -> None:
+        """Add threshold entities - for compatibility with plant number setup."""
+        # Tents don't use thresholds, but the method is needed for compatibility
+        pass
+
+    def add_dli(self, dli) -> None:
+        """Add DLI entity - for compatibility with plant sensor setup."""
+        # Tents don't use DLI, but the method is needed for compatibility
+        pass
+
+    def add_calculations(self, **kwargs) -> None:
+        """Add calculation entities - for compatibility with plant sensor setup."""
+        # Tents don't use calculations, but the method is needed for compatibility
+        pass
+
+    def add_location_history(self, location_history) -> None:
+        """Add location history entity - for compatibility with plant text setup."""
+        # Tents don't use location history, but the method is needed for compatibility
+        pass
+
     @classmethod
     def from_dict(cls, hass: HomeAssistant, data: dict) -> Tent:
         """Create tent from dictionary."""
