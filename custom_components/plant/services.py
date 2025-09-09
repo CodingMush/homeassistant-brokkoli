@@ -76,7 +76,9 @@ from .const import (
     ATTR_TENT_ID,
 )
 from .plant_helpers import PlantHelper
-from . import PlantDevice
+
+_LOGGER = logging.getLogger(__name__)
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -2016,8 +2018,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 # Check if this is a PlantDevice and has the correct entity_id
                 if hasattr(plant, "entity_id") and plant.entity_id == entity_id:
                     # Additional check to ensure it's a PlantDevice and not a Tent
-                    from . import PlantDevice
-                    if isinstance(plant, PlantDevice) and plant.device_type == DEVICE_TYPE_PLANT:
+                    # We can't import PlantDevice due to circular imports, so we check the device_type attribute
+                    if hasattr(plant, "device_type") and plant.device_type == DEVICE_TYPE_PLANT:
                         plant_entity = plant
                         break
         if not plant_entity:
