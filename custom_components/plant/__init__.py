@@ -921,6 +921,9 @@ class PlantDevice(Entity):
 
         # Neue Property für Pot Size
         self.pot_size = None
+        
+        # Neue Property für Water Capacity
+        self.water_capacity = None
 
         # Initialisiere die Bilderliste
         self._images = self._plant_info.get("images", [])
@@ -1528,6 +1531,10 @@ class PlantDevice(Entity):
         """Add the pot size entity."""
         self.pot_size = pot_size
 
+    def add_water_capacity(self, water_capacity: Entity) -> None:
+        """Add the water capacity entity."""
+        self.water_capacity = water_capacity
+
     def add_health_number(self, health_number: Entity) -> None:
         """Add the health number entity."""
         self.health_number = health_number
@@ -1539,6 +1546,27 @@ class PlantDevice(Entity):
     def add_location_history(self, location_history: Entity) -> None:
         """Add the location history entity."""
         self.location_history = location_history
+
+    def add_sensors(
+        self,
+        moisture: Entity | None,
+        temperature: Entity | None,
+        conductivity: Entity | None,
+        illuminance: Entity | None,
+        humidity: Entity | None,
+        CO2: Entity | None,
+        power_consumption: Entity | None,
+        ph: Entity | None,  # Neuer Parameter
+    ) -> None:
+        """Add the sensor entities"""
+        self.sensor_moisture = moisture
+        self.sensor_temperature = temperature
+        self.sensor_conductivity = conductivity
+        self.sensor_illuminance = illuminance
+        self.sensor_humidity = humidity
+        self.sensor_CO2 = CO2
+        self.sensor_power_consumption = power_consumption
+        self.sensor_ph = ph  # Neue Zuweisung
 
     def add_power_consumption_sensors(self, current: Entity, total: Entity) -> None:
         """Add the power consumption sensors."""
