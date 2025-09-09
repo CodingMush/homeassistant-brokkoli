@@ -2090,12 +2090,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         return {"tents": tents}
     
     # Register the list_tents service
+    SERVICE_LIST_TENTS_LOCAL = "list_tents"
     hass.services.async_register(
         DOMAIN,
-        SERVICE_LIST_TENTS,
+        SERVICE_LIST_TENTS_LOCAL,
         list_tents,
         schema=LIST_TENTS_SCHEMA,
-        supports_response=SupportsResponse.ONLY
+        supports_response=SupportsResponse.OPTIONAL
     )
 
 
@@ -2135,7 +2136,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         hass.services.async_remove(DOMAIN, "create_tent")
     if hass.services.has_service(DOMAIN, SERVICE_CHANGE_TENT):
         hass.services.async_remove(DOMAIN, SERVICE_CHANGE_TENT)
-    if hass.services.has_service(DOMAIN, SERVICE_LIST_TENTS):
-        hass.services.async_remove(DOMAIN, SERVICE_LIST_TENTS)
+    if hass.services.has_service(DOMAIN, "list_tents"):
+        hass.services.async_remove(DOMAIN, "list_tents")
 
     _LOGGER.info("Unloaded all plant services")
