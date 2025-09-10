@@ -1350,8 +1350,13 @@ class PlantEnergyCost(RestoreSensor):
         """Handle entity which will be added."""
         await super().async_added_to_hass()
         state = await self.async_get_last_state()
-        if state:
-            self._attr_native_value = state.state
+        if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE, "unknown", "unavailable", None):
+            try:
+                self._attr_native_value = float(state.state)
+            except (ValueError, TypeError):
+                self._attr_native_value = None
+        else:
+            self._attr_native_value = None
         
         # Track total power consumption changes
         if self._plant.total_power_consumption:
@@ -1368,7 +1373,9 @@ class PlantEnergyCost(RestoreSensor):
 
     def _update_energy_cost(self) -> None:
         """Calculate and update energy cost."""
-        if self._plant.total_power_consumption and self._plant.total_power_consumption.native_value:
+        if (self._plant.total_power_consumption and 
+            self._plant.total_power_consumption.native_value is not None and
+            self._plant.total_power_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, "unknown", "unavailable")):
             try:
                 total_kwh = float(self._plant.total_power_consumption.native_value)
                 cost = total_kwh * self._kwh_price
