@@ -1121,6 +1121,7 @@ class PlantTotalWaterConsumption(IntegrationSensor):
             unique_id=f"{config.entry_id}-total-water-consumption",
             unit_prefix=None,
             unit_time=UnitOfTime.SECONDS,
+            max_sub_interval=None,
         )
         self._attr_icon = ICON_WATER_CONSUMPTION
         self._unit_of_measurement = UNIT_VOLUME
@@ -1202,6 +1203,7 @@ class PlantTotalFertilizerConsumption(IntegrationSensor):
             unique_id=f"{config.entry_id}-total-fertilizer-consumption",
             unit_prefix=None,
             unit_time=UnitOfTime.SECONDS,
+            max_sub_interval=None,
         )
         self._attr_icon = ICON_FERTILIZER_CONSUMPTION
         self._unit_of_measurement = UNIT_CONDUCTIVITY
