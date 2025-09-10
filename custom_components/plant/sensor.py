@@ -2072,4 +2072,415 @@ class PlantTotalWaterConsumption(RestoreSensor):
 
         # Bei Neuerstellung explizit auf None setzen
         if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = None
+            self._attr_native_value = None
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional sensor attributes."""
+        return {
+            "pot_size": self._plant.pot_size.native_value
+            if self._plant.pot_size
+            else None,
+            "last_update": self._last_update,
+            "manual_additions": round(
+                self._manual_additions, self._plant.decimals_for("total_water_consumption")
+            ),
+            "manual_entries": self._manual_entries,
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        # Restore previous state
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+                    self._attr_native_value = float(last_state.state)
+                    if last_state.attributes.get("last_update"):
+                        self._last_update = last_state.attributes["last_update"]
+                    if last_state.attributes.get("manual_additions") is not None:
+                        try:
+                            self._manual_additions = float(
+                                last_state.attributes.get("manual_additions", 0.0)
+                            )
+                        except (TypeError, ValueError):
+                            self._manual_additions = 0.0
+                    if last_state.attributes.get("manual_entries") is not None:
+                        try:
+                            self._manual_entries = list(
+                                last_state.attributes.get("manual_entries", [])
+                            )
+                        except Exception:
+                            self._manual_entries = []
+            except (TypeError, ValueError):
+                self._attr_native_value = None
+
+        # Track water consumption sensor changes
+        if self._plant.sensor_moisture_consumption:
+            async_track_state_change_event(
+                self._hass,
+                [self._plant.sensor_moisture_consumption.entity_id],
+                self._state_changed_event,
+            )
+
+    @callback
+    def _state_changed_event(self, event):
+        """Handle water consumption sensor state changes."""
+        if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            return  # Bei neuer Plant keine Änderungen verarbeiten
+
+        new_state = event.data.get("new_state")
+        if not new_state or new_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            return
+
+        try:
+            current_value = float(new_state.state)
+            current_time = dt_util.utcnow()
+
+            # Add to history
+            self._history.append((current_time, current_value))
+
+            if len(self._history) >= 2:
+                # Calculate total water consumption
+                total_consumption = current_value
+                total_with_manual = total_consumption + (self._manual_additions or 0.0)
+                self._attr_native_value = round(
+                    total_with_manual,
+                    self._plant.decimals_for("total_water_consumption"),
+                )
+                self._last_update = current_time.isoformat()
+                self.async_write_ha_state()
+
+        except (TypeError, ValueError):
+            self._attr_native_value = None  # Set to None on error
+
+    def add_manual_water(
+        self, amount_liters: float, note: str | None = None
+    ) -> None:
+        """Add a manual water amount to the total and persist it."""
+        try:
+            if amount_liters is None:
+                return
+            if amount_liters < 0:
+                amount_liters = 0
+            self._manual_additions = round(
+                (self._manual_additions or 0.0) + float(amount_liters),
+                self._plant.decimals_for("total_water_consumption"),
+            )
+            entry = {
+                "timestamp": dt_util.utcnow().isoformat(),
+                "amount_liters": round(
+                    float(amount_liters),
+                    self._plant.decimals_for("total_water_consumption"),
+                ),
+            }
+            if note:
+                entry["note"] = note
+            try:
+                # keep last 50 entries
+                self._manual_entries.append(entry)
+                self._manual_entries = self._manual_entries[-50:]
+            except Exception:
+                self._manual_entries = [entry]
+
+            # Recompute displayed value as current computed + manual additions
+            displayed_value = self._attr_native_value
+            try:
+                displayed_value = (
+                    float(displayed_value)
+                    if displayed_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    else 0.0
+                )
+            except (TypeError, ValueError):
+                displayed_value = 0.0
+
+            new_value = round(
+                displayed_value + float(amount_liters),
+                self._plant.decimals_for("total_water_consumption"),
+            )
+            self._attr_native_value = new_value
+            self._last_update = dt_util.utcnow().isoformat()
+            self.async_write_ha_state()
+        except Exception:
+            # Ensure no crash on service call
+            self._attr_native_value = None  # Set to None on error
+            self.async_write_ha_state()
+
+
+class PlantTotalPowerConsumption(RestoreSensor):
+    """Sensor to track total power consumption."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        plant_device: Entity,
+    ) -> None:
+        """Initialize the sensor."""
+        self._hass = hass
+        self._config = config
+        self._plant = plant_device
+        self._attr_name = f"{plant_device.name} Total {READING_POWER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-total-power-consumption"
+        self._attr_native_unit_of_measurement = "kWh"  # Use energy unit for total consumption
+        self._attr_icon = ICON_POWER_CONSUMPTION
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._history = []
+        self._last_update = None
+        self._attr_native_value = None  # Use None instead of 0
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
+            FLOW_SENSOR_POWER_CONSUMPTION
+        )
+
+        # Bei Neuerstellung explizit auf None setzen
+        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            self._attr_native_value = None
+            self._history = []
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional sensor attributes."""
+        return {
+            "external_sensor": self._external_sensor,
+            "last_update": self._last_update,
+        }
+
+    def replace_external_sensor(self, new_sensor: str) -> None:
+        """Replace the external sensor."""
+        self._external_sensor = new_sensor
+        if new_sensor:
+            async_track_state_change_event(
+                self._hass,
+                [self._external_sensor],
+                self._state_changed_event,
+            )
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        # Restore previous state
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+                    self._attr_native_value = float(last_state.state)
+                    if last_state.attributes.get("last_update"):
+                        self._last_update = last_state.attributes["last_update"]
+            except (TypeError, ValueError):
+                self._attr_native_value = None
+
+        # Track power consumption sensor changes
+        if self._external_sensor:
+            async_track_state_change_event(
+                self._hass,
+                [self._external_sensor],
+                self._state_changed_event,
+            )
+
+    @callback
+    def _state_changed_event(self, event):
+        """Handle power consumption sensor state changes."""
+        if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            return  # Bei neuer Plant keine Änderungen verarbeiten
+
+        new_state = event.data.get("new_state")
+        if not new_state or new_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            return
+
+        try:
+            current_value = float(new_state.state)
+            current_time = dt_util.utcnow()
+
+            # Add to history
+            self._history.append((current_time, current_value))
+
+            if len(self._history) >= 2:
+                # Calculate energy consumption (kWh) from power (W) over time
+                # Using trapezoidal integration: Energy = ∫Power dt
+                total_energy = 0.0
+                for i in range(1, len(self._history)):
+                    t1, p1 = self._history[i-1]
+                    t2, p2 = self._history[i]
+                    # Time difference in hours
+                    dt_hours = (t2 - t1).total_seconds() / 3600.0
+                    # Average power in kW
+                    avg_power_kw = ((p1 + p2) / 2.0) / 1000.0
+                    # Energy in kWh
+                    energy_kwh = avg_power_kw * dt_hours
+                    total_energy += energy_kwh
+                
+                self._attr_native_value = round(
+                    total_energy,
+                    self._plant.decimals_for("total_power_consumption"),
+                )
+                self._last_update = current_time.isoformat()
+                self.async_write_ha_state()
+
+        except (TypeError, ValueError):
+            self._attr_native_value = None  # Set to None on error
+
+    async def async_update(self) -> None:
+        """Update the sensor."""
+        if self._external_sensor:
+            try:
+                state = self._hass.states.get(self._external_sensor)
+                if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                    # Trigger the state change event to recalculate
+                    self._state_changed_event(
+                        type('Event', (), {
+                            'data': {
+                                'new_state': state
+                            }
+                        })()
+                    )
+            except Exception:
+                self._attr_native_value = None
+
+
+class PlantEnergyCost(RestoreSensor):
+    """Sensor to track energy costs based on power consumption."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        plant_device: Entity,
+    ) -> None:
+        """Initialize the sensor."""
+        self._hass = hass
+        self._config = config
+        self._plant = plant_device
+        self._attr_name = f"{plant_device.name} {READING_ENERGY_COST}"
+        self._attr_unique_id = f"{config.entry_id}-energy-cost"
+        self._attr_native_unit_of_measurement = "EUR"  # Use currency unit
+        self._attr_icon = ICON_ENERGY_COST
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._last_update = None
+        self._attr_native_value = None  # Use None instead of 0
+
+        # Bei Neuerstellung explizit auf None setzen
+        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            self._attr_native_value = None
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional sensor attributes."""
+        return {
+            "kwh_price": self._plant._kwh_price if hasattr(self._plant, '_kwh_price') else DEFAULT_KWH_PRICE,
+            "last_update": self._last_update,
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        # Restore previous state
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+                    self._attr_native_value = float(last_state.state)
+                    if last_state.attributes.get("last_update"):
+                        self._last_update = last_state.attributes["last_update"]
+            except (TypeError, ValueError):
+                self._attr_native_value = None
+
+        # Track total power consumption sensor changes
+        if self._plant.total_power_consumption:
+            async_track_state_change_event(
+                self._hass,
+                [self._plant.total_power_consumption.entity_id],
+                self._state_changed_event,
+            )
+
+    @callback
+    def _state_changed_event(self, event):
+        """Handle total power consumption sensor state changes."""
+        if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            return  # Bei neuer Plant keine Änderungen verarbeiten
+
+        new_state = event.data.get("new_state")
+        if not new_state or new_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            return
+
+        try:
+            # Get total energy consumption in kWh
+            total_energy_kwh = float(new_state.state)
+            
+            # Get kWh price from plant or use default
+            kwh_price = getattr(self._plant, '_kwh_price', DEFAULT_KWH_PRICE)
+            if kwh_price is None:
+                kwh_price = DEFAULT_KWH_PRICE
+                
+            # Calculate cost
+            cost = total_energy_kwh * kwh_price
+            
+            self._attr_native_value = round(
+                cost,
+                self._plant.decimals_for("energy_cost"),
+            )
+            self._last_update = dt_util.utcnow().isoformat()
+            self.async_write_ha_state()
+
+        except (TypeError, ValueError):
+            self._attr_native_value = None  # Set to None on error
+
+    async def async_update(self) -> None:
+        """Update the sensor."""
+        if self._plant.total_power_consumption:
+            try:
+                state = self._hass.states.get(self._plant.total_power_consumption.entity_id)
+                if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                    # Trigger the state change event to recalculate
+                    self._state_changed_event(
+                        type('Event', (), {
+                            'data': {
+                                'new_state': state
+                            }
+                        })()
+                    )
+            except Exception:
+                self._attr_native_value = None
