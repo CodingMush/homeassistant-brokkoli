@@ -16,6 +16,7 @@ from homeassistant.components.utility_meter.const import DAILY
 from homeassistant.components.utility_meter.sensor import UtilityMeterSensor
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    ATTR_ICON,
     ATTR_NAME,
     ATTR_UNIT_OF_MEASUREMENT,
     LIGHT_LUX,
@@ -59,6 +60,7 @@ from .const import (
     READING_PH,
     UNIT_DLI,
     UNIT_PPFD,
+    ICON_PPFD,
     ICON_PH,
     ATTR_PH,
 )
@@ -210,7 +212,7 @@ class PlantCurrentConductivity(PlantCurrentStatus):
             f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_CONDUCTIVITY}"
         )
         self._attr_unique_id = f"{config.entry_id}-current-conductivity"
-        self._attr_icon = "mdi:spa-outline"
+        self._attr_icon = "mdi:flash-circle"
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(
             FLOW_SENSOR_CONDUCTIVITY
         )
@@ -221,7 +223,7 @@ class PlantCurrentConductivity(PlantCurrentStatus):
     @property
     def device_class(self) -> str:
         """Device class"""
-        return SensorDeviceClass.CONDUCTIVITY
+        return ATTR_CONDUCTIVITY
 
 
 class PlantCurrentMoisture(PlantCurrentStatus):
@@ -235,17 +237,16 @@ class PlantCurrentMoisture(PlantCurrentStatus):
             f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_MOISTURE}"
         )
         self._attr_unique_id = f"{config.entry_id}-current-moisture"
+        self._attr_icon = "mdi:water-percent"
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_MOISTURE)
         self._attr_native_unit_of_measurement = PERCENTAGE
-        self._attr_icon = "mdi:water"
 
         super().__init__(hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:
         """Device class"""
-        return SensorDeviceClass.HUMIDITY
-    # FIXME Moisuture?
+        return ATTR_CONDUCTIVITY
 
 
 class PlantCurrentTemperature(PlantCurrentStatus):
@@ -259,11 +260,12 @@ class PlantCurrentTemperature(PlantCurrentStatus):
             f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_TEMPERATURE}"
         )
         self._attr_unique_id = f"{config.entry_id}-current-temperature"
+        self._attr_icon = "mdi:thermometer"
         self._external_sensor = config.data[FLOW_PLANT_INFO].get(
             FLOW_SENSOR_TEMPERATURE
         )
-        self._attr_icon = "mdi:thermometer"
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+
         super().__init__(hass, config, plantdevice)
 
     @property
@@ -283,16 +285,18 @@ class PlantCurrentHumidity(PlantCurrentStatus):
             f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_HUMIDITY}"
         )
         self._attr_unique_id = f"{config.entry_id}-current-humidity"
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
         self._attr_icon = "mdi:water-percent"
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
         self._attr_native_unit_of_measurement = PERCENTAGE
+
         super().__init__(hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:
         """Device class"""
         return SensorDeviceClass.HUMIDITY
-    
+
+
 class PlantCurrentCO2(PlantCurrentStatus):
     """Entity class for the current CO2 meter"""
 
@@ -300,19 +304,108 @@ class PlantCurrentCO2(PlantCurrentStatus):
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
         """Initialize the sensor"""
-        self._attr_name = (
-            f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_CO2}"
-        )
+        self._attr_name = f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_CO2}"
         self._attr_unique_id = f"{config.entry_id}-current-CO2"
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2)
         self._attr_icon = "mdi:molecule-co2"
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2)
         self._attr_native_unit_of_measurement = "ppm"
+
         super().__init__(hass, config, plantdevice)
 
     @property
     def device_class(self) -> str:
         """Device class"""
         return SensorDeviceClass.CO2
+
+
+class PlantCurrentPpfd(PlantCurrentStatus):
+    """Entity reporting current PPFD calculated from LX"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_PPFD}"
+        self._attr_unique_id = f"{config.entry_id}-current-ppfd"
+        self._attr_unit_of_measurement = UNIT_PPFD
+        self._attr_native_unit_of_measurement = UNIT_PPFD
+        self._plant = plantdevice
+        self._external_sensor = self._plant.sensor_illuminance.entity_id if self._plant.sensor_illuminance else None
+        self._attr_icon = ICON_PPFD
+        super().__init__(hass, config, plantdevice)
+        self._follow_unit = False
+
+        # Setze Wert bei Neuerstellung zurück
+        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            self._attr_native_value = None
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return None
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def entity_registry_visible_default(self) -> str:
+        return False
+
+    def ppfd(self, value: float | int | str) -> float | str:
+        """
+        Returns a calculated PPFD-value from the lx-value
+
+        See https://community.home-assistant.io/t/light-accumulation-for-xiaomi-flower-sensor/111180/3
+        https://www.apogeeinstruments.com/conversion-ppfd-to-lux/
+        μmol/m²/s
+        """
+        if value is not None and value != STATE_UNAVAILABLE:
+            value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
+        else:
+            value = None
+
+        return value
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+        
+        # Make sure we're tracking the illuminance sensor
+        if self._plant.sensor_illuminance:
+            self.replace_external_sensor(self._plant.sensor_illuminance.entity_id)
+
+    async def async_update(self) -> None:
+        """Run on every update to allow for changes from the GUI and service call"""
+        if not self.hass.states.get(self.entity_id):
+            return
+        if self._plant.sensor_illuminance and self._external_sensor != self._plant.sensor_illuminance.entity_id:
+            self.replace_external_sensor(self._plant.sensor_illuminance.entity_id)
+        if self._external_sensor:
+            external_sensor = self.hass.states.get(self._external_sensor)
+            if external_sensor:
+                self._attr_native_value = self.ppfd(external_sensor.state)
+            else:
+                self._attr_native_value = None
+        else:
+            self._attr_native_value = None
+
+    @callback
+    def state_changed(self, entity_id: str, new_state: str) -> None:
+        """Run on every update to allow for changes from the GUI and service call"""
+        if not self.hass.states.get(self.entity_id):
+            return
+        if self._plant.sensor_illuminance and self._external_sensor != self._plant.sensor_illuminance.entity_id:
+            self.replace_external_sensor(self._plant.sensor_illuminance.entity_id)
+        if self._external_sensor:
+            external_sensor = self.hass.states.get(self._external_sensor)
+            if external_sensor:
+                self._attr_native_value = self.ppfd(external_sensor.state)
+            else:
+                self._attr_native_value = None
+        else:
+            self._attr_native_value = None
 
 
 class PlantTotalLightIntegral(IntegrationSensor):

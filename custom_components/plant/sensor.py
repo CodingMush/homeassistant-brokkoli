@@ -55,6 +55,7 @@ from .plant_meters import (
     PlantCurrentHumidity,
     PlantCurrentCO2,
     PlantCurrentPh,
+    PlantCurrentPpfd,
     PlantTotalLightIntegral,
     PlantDailyLightIntegral,
 )
@@ -592,7 +593,7 @@ class PlantCurrentConductivity(PlantCurrentStatus):
             FLOW_SENSOR_CONDUCTIVITY
         )
         self._attr_icon = ICON_CONDUCTIVITY
-        self._attr_native_unit_of_measurement = UnitOfConductivity.MICROSIEMENS
+        self._attr_native_unit_of_measurement = UnitOfConductivity.MICROSIEMENS_PER_CM
         self._attr_device_class = ATTR_CONDUCTIVITY
         super().__init__(hass, config, plantdevice)
         self._raw_value = None
@@ -681,25 +682,6 @@ class PlantCurrentConductivity(PlantCurrentStatus):
 
         if not history_list or self._external_sensor not in history_list:
             return
-
-        # Extrahiere numerische Werte
-        values = []
-        for state in history_list[self._external_sensor]:
-            try:
-                if state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-                    values.append(float(state.state))
-            except (ValueError, TypeError):
-                continue
-
-        if values:
-            # Berechne das Perzentil
-            percentile_index = int(len(values) * self._normalize_percentile / 100)
-            sorted_values = sorted(values)
-            self._max_moisture = sorted_values[percentile_index]
-            self._normalize_factor = (
-                100 / self._max_moisture
-            )  # Exakter Wert für Berechnungen
-            self._last_normalize_update = now
             _LOGGER.debug(
                 "Updated moisture normalization: max=%s, factor=%s (from %s values)",
                 self._max_moisture,
