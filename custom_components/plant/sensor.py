@@ -238,7 +238,7 @@ async def async_setup_entry(
         plant.total_water_consumption = total_water_consumption
         plant.total_fertilizer_consumption = total_fertilizer_consumption
 
-        pdli = PlantDailyLightIntegral(hass, entry, pintegral, plant)
+        pdli = PlantDailyLightIntegral(hass, entry, pintegral)
         async_add_entities(new_entities=[pdli], update_before_add=True)
 
         plant.add_dli(dli=pdli)
@@ -354,7 +354,7 @@ class PlantCurrentStatus(RestoreSensor):
     ) -> None:
         """Initialize the Plant component."""
         super().__init__()
-        self._hass = hass
+        self.hass = hass
         self._config = config
         self._default_state = None  # Use None instead of 0
         self._plant = plantdevice
@@ -427,7 +427,7 @@ class PlantCurrentStatus(RestoreSensor):
         self._external_sensor = new_sensor
         if new_sensor:
             async_track_state_change_event(
-                self._hass,
+                self.hass,
                 [self._external_sensor],
                 self._state_changed_event,
             )
@@ -450,13 +450,13 @@ class PlantCurrentStatus(RestoreSensor):
             elif hasattr(self, '_external_sensor') and self._external_sensor:
                 # Re-register the state change listener
                 async_track_state_change_event(
-                    self._hass,
+                    self.hass,
                     [self._external_sensor],
                     self._state_changed_event,
                 )
 
         async_dispatcher_connect(
-            self._hass, DATA_UPDATED, self._schedule_immediate_update
+            self.hass, DATA_UPDATED, self._schedule_immediate_update
         )
 
     @callback
@@ -504,7 +504,7 @@ class PlantCurrentStatus(RestoreSensor):
         """Set state and unit to the parent sensor state and unit"""
         if self._external_sensor:
             try:
-                state = self._hass.states.get(self._external_sensor)
+                state = self.hass.states.get(self._external_sensor)
                 if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                     self._attr_native_value = self._apply_rounding(state.state)
                     if ATTR_UNIT_OF_MEASUREMENT in state.attributes:
@@ -536,7 +536,7 @@ class PlantCurrentStatus(RestoreSensor):
                     "Unknown external value for %s: %s = %s, setting to default: %s",
                     self.entity_id,
                     self._external_sensor,
-                    self._hass.states.get(self._external_sensor).state if self._hass.states.get(self._external_sensor) else "None",
+                    self.hass.states.get(self._external_sensor).state if self.hass.states.get(self._external_sensor) else "None",
                     self._default_state,
                 )
                 self._attr_native_value = self._default_state
@@ -775,7 +775,7 @@ class PlantTotalLightIntegral(IntegrationSensor):
 
         # Track source entity changes
         async_track_state_change_event(
-            self._hass,
+            self.hass,
             [self._source_entity],
             self._state_changed_event,
         )
@@ -1166,7 +1166,7 @@ class CycleMedianSensor(SensorEntity):
         # Track moisture sensor changes
         if self._plant.sensor_moisture:
             async_track_state_change_event(
-                self._hass,
+                self.hass,
                 [self._plant.sensor_moisture.entity_id],
                 self._state_changed_event,
             )
@@ -1222,7 +1222,7 @@ class PlantCurrentFertilizerConsumption(RestoreSensor):
         plant_device: Entity,
     ) -> None:
         """Initialize the sensor."""
-        self._hass = hass
+        self.hass = hass
         self._config = config
         self._plant = plant_device
         self._attr_name = f"{plant_device.name} {READING_FERTILIZER_CONSUMPTION}"
@@ -1268,7 +1268,7 @@ class PlantCurrentFertilizerConsumption(RestoreSensor):
 
         # Track conductivity sensor changes
         async_track_state_change_event(
-            self._hass,
+            self.hass,
             [self._plant.sensor_conductivity.entity_id],
             self._state_changed_event,
         )
@@ -1313,7 +1313,7 @@ class PlantCurrentMoistureConsumption(RestoreSensor):
         plant_device: Entity,
     ) -> None:
         """Initialize the sensor."""
-        self._hass = hass
+        self.hass = hass
         self._config = config
         self._plant = plant_device
         self._attr_name = f"{plant_device.name} {READING_MOISTURE_CONSUMPTION}"
@@ -1359,7 +1359,7 @@ class PlantCurrentMoistureConsumption(RestoreSensor):
 
         # Track moisture sensor changes
         async_track_state_change_event(
-            self._hass,
+            self.hass,
             [self._plant.sensor_moisture.entity_id],
             self._state_changed_event,
         )
@@ -1404,7 +1404,7 @@ class PlantCurrentPowerConsumption(RestoreSensor):
         plant_device: Entity,
     ) -> None:
         """Initialize the sensor."""
-        self._hass = hass
+        self.hass = hass
         self._config = config
         self._plant = plant_device
         self._attr_name = f"{plant_device.name} {READING_POWER_CONSUMPTION}"
@@ -1452,7 +1452,7 @@ class PlantCurrentPowerConsumption(RestoreSensor):
         # Track power consumption sensor changes
         if self._external_sensor:
             async_track_state_change_event(
-                self._hass,
+                self.hass,
                 [self._external_sensor],
                 self._state_changed_event,
             )
@@ -1462,7 +1462,7 @@ class PlantCurrentPowerConsumption(RestoreSensor):
         self._external_sensor = new_sensor
         if new_sensor:
             async_track_state_change_event(
-                self._hass,
+                self.hass,
                 [self._external_sensor],
                 self._state_changed_event,
             )
@@ -1497,7 +1497,7 @@ class PlantCurrentPowerConsumption(RestoreSensor):
         """Update the sensor."""
         if self._external_sensor:
             try:
-                state = self._hass.states.get(self._external_sensor)
+                state = self.hass.states.get(self._external_sensor)
                 if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                     self.state_changed(self._external_sensor, state)
             except Exception:
@@ -1514,7 +1514,7 @@ class PlantTotalFertilizerConsumption(RestoreSensor):
         plant_device: Entity,
     ) -> None:
         """Initialize the sensor."""
-        self._hass = hass
+        self.hass = hass
         self._config = config
         self._plant = plant_device
         self._attr_name = f"{plant_device.name} Total {READING_FERTILIZER_CONSUMPTION}"
@@ -1591,7 +1591,7 @@ class PlantTotalFertilizerConsumption(RestoreSensor):
         # Track fertilizer consumption sensor changes
         if self._plant.sensor_fertilizer_consumption:
             async_track_state_change_event(
-                self._hass,
+                self.hass,
                 [self._plant.sensor_fertilizer_consumption.entity_id],
                 self._state_changed_event,
             )
@@ -1688,7 +1688,7 @@ class PlantTotalWaterConsumption(RestoreSensor):
         plant_device: Entity,
     ) -> None:
         """Initialize the sensor."""
-        self._hass = hass
+        self.hass = hass
         self._config = config
         self._plant = plant_device
         self._attr_name = f"{plant_device.name} Total {READING_MOISTURE_CONSUMPTION}"
@@ -1764,9 +1764,9 @@ class PlantTotalWaterConsumption(RestoreSensor):
                 self._attr_native_value = None
 
         # Track water consumption sensor changes
-        if self._plant.sensor_moisture_consumption:
+        if hasattr(self._plant, "sensor_moisture_consumption") and self._plant.sensor_moisture_consumption:
             async_track_state_change_event(
-                self._hass,
+                self.hass,
                 [self._plant.sensor_moisture_consumption.entity_id],
                 self._state_changed_event,
             )
@@ -1865,7 +1865,7 @@ class PlantTotalPowerConsumption(RestoreSensor):
         plant_device: Entity,
     ) -> None:
         """Initialize the sensor."""
-        self._hass = hass
+        self.hass = hass
         self._config = config
         self._plant = plant_device
         self._attr_name = f"{plant_device.name} Total {READING_POWER_CONSUMPTION}"
@@ -1912,7 +1912,7 @@ class PlantTotalPowerConsumption(RestoreSensor):
         self._external_sensor = new_sensor
         if new_sensor:
             async_track_state_change_event(
-                self._hass,
+                self.hass,
                 [self._external_sensor],
                 self._state_changed_event,
             )
@@ -1936,7 +1936,7 @@ class PlantTotalPowerConsumption(RestoreSensor):
         # Track power consumption sensor changes
         if self._external_sensor:
             async_track_state_change_event(
-                self._hass,
+                self.hass,
                 [self._external_sensor],
                 self._state_changed_event,
             )
@@ -1987,7 +1987,7 @@ class PlantTotalPowerConsumption(RestoreSensor):
         """Update the sensor."""
         if self._external_sensor:
             try:
-                state = self._hass.states.get(self._external_sensor)
+                state = self.hass.states.get(self._external_sensor)
                 if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                     # Trigger the state change event to recalculate
                     self._state_changed_event(
@@ -2011,7 +2011,7 @@ class PlantEnergyCost(RestoreSensor):
         plant_device: Entity,
     ) -> None:
         """Initialize the sensor."""
-        self._hass = hass
+        self.hass = hass
         self._config = config
         self._plant = plant_device
         self._attr_name = f"{plant_device.name} {READING_ENERGY_COST}"
@@ -2065,7 +2065,7 @@ class PlantEnergyCost(RestoreSensor):
         # Track total power consumption sensor changes
         if self._plant.total_power_consumption:
             async_track_state_change_event(
-                self._hass,
+                self.hass,
                 [self._plant.total_power_consumption.entity_id],
                 self._state_changed_event,
             )
@@ -2106,7 +2106,7 @@ class PlantEnergyCost(RestoreSensor):
         """Update the sensor."""
         if self._plant.total_power_consumption:
             try:
-                state = self._hass.states.get(self._plant.total_power_consumption.entity_id)
+                state = self.hass.states.get(self._plant.total_power_consumption.entity_id)
                 if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                     # Trigger the state change event to recalculate
                     self._state_changed_event(
