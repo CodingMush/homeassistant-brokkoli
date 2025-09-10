@@ -29,11 +29,16 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import Entity, async_generate_entity_id
+from homeassistant.helpers.entity import (
+    Entity,
+    EntityCategory,
+    async_generate_entity_id,
+)
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .const import (
     ATTR_CONDUCTIVITY,
+    ATTR_IS_NEW_PLANT,
     DATA_UPDATED,
     DEFAULT_LUX_TO_PPFD,
     DOMAIN,
