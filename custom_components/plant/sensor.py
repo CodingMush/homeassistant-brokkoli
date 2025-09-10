@@ -1327,7 +1327,7 @@ class PlantEnergyCost(PlantCurrentStatus):
     @property
     def state_class(self):
         """Return the state class."""
-        return SensorStateClass.TOTAL_INCREASING
+        return SensorStateClass.TOTAL
 
     @property
     def entity_category(self) -> str:
