@@ -1302,22 +1302,27 @@ class PlantTotalPowerConsumption(PlantCurrentStatus):
         return EntityCategory.DIAGNOSTIC
 
 
-class PlantEnergyCost(PlantCurrentStatus):
+class PlantEnergyCost(RestoreSensor):
     """Entity class for energy cost calculation"""
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
         """Initialize the sensor"""
+        super().__init__()
+        self.hass = hass
+        self._config = config
+        self._plant = plantdevice
         self._attr_name = f"{plantdevice.name} {READING_ENERGY_COST}"
         self._attr_unique_id = f"{config.entry_id}-energy-cost"
         self._attr_icon = ICON_ENERGY_COST
-        self._plant = plantdevice
-        self._external_sensor = None
         self._attr_native_unit_of_measurement = "€"
-        super().__init__(hass, config, plantdevice)
+        self._attr_native_value = None
         # Set default kWh price if not configured
         self._kwh_price = config.data.get(ATTR_KWH_PRICE, DEFAULT_KWH_PRICE)
+        self.entity_id = async_generate_entity_id(
+            f"{DOMAIN_SENSOR}.{{}}", self.name, current_ids={}
+        )
 
     @property
     def device_class(self) -> str:
@@ -1334,14 +1339,46 @@ class PlantEnergyCost(PlantCurrentStatus):
         """The entity category"""
         return EntityCategory.DIAGNOSTIC
 
-    async def async_update(self) -> None:
-        """Calculate energy cost based on total power consumption"""
+    @property
+    def device_info(self) -> dict:
+        """Device info for devices"""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+        state = await self.async_get_last_state()
+        if state:
+            self._attr_native_value = state.state
+        
+        # Track total power consumption changes
+        if self._plant.total_power_consumption:
+            async_track_state_change_event(
+                self.hass,
+                [self._plant.total_power_consumption.entity_id],
+                self._state_changed_event,
+            )
+
+    @callback
+    def _state_changed_event(self, event):
+        """Handle total power consumption state changes."""
+        self._update_energy_cost()
+
+    def _update_energy_cost(self) -> None:
+        """Calculate and update energy cost."""
         if self._plant.total_power_consumption and self._plant.total_power_consumption.native_value:
             try:
                 total_kwh = float(self._plant.total_power_consumption.native_value)
                 cost = total_kwh * self._kwh_price
                 self._attr_native_value = round(cost, 2)
+                self.async_write_ha_state()
             except (TypeError, ValueError):
                 self._attr_native_value = None
         else:
             self._attr_native_value = None
+
+    async def async_update(self) -> None:
+        """Calculate energy cost based on total power consumption"""
+        self._update_energy_cost()
