@@ -1858,16 +1858,6 @@ class PlantCurrentPowerConsumption(RestoreSensor):
                 self._attr_native_value = None
 
 
-        """Update the sensor."""
-        if self._external_sensor:
-            try:
-                state = self._hass.states.get(self._external_sensor)
-                if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-                    self.state_changed(self._external_sensor, state)
-            except Exception:
-                pass
-
-
 class PlantTotalFertilizerConsumption(RestoreSensor):
     """Sensor to track total fertilizer consumption."""
 
@@ -2351,9 +2341,8 @@ class PlantTotalPowerConsumption(RestoreSensor):
             except Exception:
                 self._attr_native_value = None
 
-
 class PlantEnergyCost(RestoreSensor):
-    """Sensor für die Energiekosten."""
+    """Sensor to calculate energy costs based on total power consumption."""
 
     def __init__(
         self,
@@ -2362,6 +2351,7 @@ class PlantEnergyCost(RestoreSensor):
         plant_device: Entity,
     ) -> None:
         """Initialize the sensor."""
+        super().__init__()
         self._hass = hass
         self._config = config
         self._plant = plant_device
@@ -2409,3 +2399,50 @@ class PlantEnergyCost(RestoreSensor):
         except (TypeError, ValueError):
             self._attr_native_value = None
 
+class PlantTotalFertilizerConsumption(RestoreSensor):
+        self._hass = hass
+        self._config = config
+        self._plant = plant_device
+        self._attr_unique_id = f"{config.entry_id}_energy_cost"
+        self.entity_id = async_generate_entity_id(
+            "sensor.{}", f"{plant_device.name}_energy_cost", hass=hass
+        )
+        self._attr_name = f"{plant_device.name} {READING_ENERGY_COST}"
+        self._attr_native_unit_of_measurement = "EUR"
+        self._attr_icon = ICON_ENERGY_COST  # Füge das Icon hinzu
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_native_value = None  # Use None instead of 0
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        state = await self.async_get_last_state()
+        if state:
+            try:
+                self._attr_native_value = float(state.state)
+            except (TypeError, ValueError):
+                self._attr_native_value = None
+
+    async def async_update(self) -> None:
+        """Update the sensor."""
+        if not self._plant.total_power_consumption:
+            self._attr_native_value = None
+            return
+
+        try:
+            total_power = float(self._plant.total_power_consumption.state)
+            self._attr_native_value = round(
+                total_power * self._plant.kwh_price,
+                self._plant.decimals_for("energy_cost"),
+            )
+        except (TypeError, ValueError):
+            self._attr_native_value = None

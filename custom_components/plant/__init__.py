@@ -1137,6 +1137,24 @@ class PlantDevice(Entity):
             "images": self._images,
         }
 
+        # Add sensor names for debugging
+        if self.sensor_temperature and self.sensor_temperature._external_sensor:
+            attrs["temperature_sensor"] = self.sensor_temperature._external_sensor
+        if self.sensor_moisture and self.sensor_moisture._external_sensor:
+            attrs["moisture_sensor"] = self.sensor_moisture._external_sensor
+        if self.sensor_conductivity and self.sensor_conductivity._external_sensor:
+            attrs["conductivity_sensor"] = self.sensor_conductivity._external_sensor
+        if self.sensor_illuminance and self.sensor_illuminance._external_sensor:
+            attrs["illuminance_sensor"] = self.sensor_illuminance._external_sensor
+        if self.sensor_humidity and self.sensor_humidity._external_sensor:
+            attrs["humidity_sensor"] = self.sensor_humidity._external_sensor
+        if self.sensor_CO2 and self.sensor_CO2._external_sensor:
+            attrs["co2_sensor"] = self.sensor_CO2._external_sensor
+        if self.sensor_power_consumption and self.sensor_power_consumption._external_sensor:
+            attrs["power_consumption_sensor"] = self.sensor_power_consumption._external_sensor
+        if self.sensor_ph and self.sensor_ph._external_sensor:
+            attrs["ph_sensor"] = self.sensor_ph._external_sensor
+
         # Füge member_count für Cycles hinzu
         if self.device_type == DEVICE_TYPE_CYCLE:
             attrs = {"member_count": len(self._member_plants)} | attrs
@@ -1968,4 +1986,6 @@ class PlantDevice(Entity):
             self.sensor_ph.replace_external_sensor(sensor_mapping["ph"])
             _LOGGER.debug("Assigned pH sensor %s to plant %s", sensor_mapping["ph"], self.name)
             
+        # Force an update of the plant state to reflect the new sensor assignments
+        self.async_write_ha_state()
         _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
