@@ -453,6 +453,7 @@ class PlantDailyLightIntegral(UtilityMeterSensor):
     ) -> None:
         """Initialize the sensor"""
         super().__init__(
+            hass=hass,
             cron_pattern=None,
             delta_values=None,
             meter_offset=timedelta(seconds=0),

@@ -738,6 +738,8 @@ class PlantTotalLightIntegral(IntegrationSensor):
         )
         self._plant = plantdevice
         self._attr_native_value = None  # Use None instead of 0
+        self._history = []  # Initialize history for DLI calculations
+        self._last_update = None
 
         # Setze Wert bei Neuerstellung zurück
         if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
@@ -767,6 +769,17 @@ class PlantTotalLightIntegral(IntegrationSensor):
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
         await super().async_added_to_hass()
+
+        # Restore previous state
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+                    self._attr_native_value = float(last_state.state)
+                    if last_state.attributes.get("last_update"):
+                        self._last_update = last_state.attributes["last_update"]
+            except (TypeError, ValueError):
+                self._attr_native_value = None
 
         # Bei einer neuen Plant nicht den alten State wiederherstellen
         if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
