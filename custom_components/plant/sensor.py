@@ -802,29 +802,6 @@ class PlantCurrentHumidity(PlantCurrentStatus):
         return SensorDeviceClass.HUMIDITY
 
 
-class PlantCurrentCO2(PlantCurrentStatus):
-    def sensor_type(self) -> str | None:
-        return "CO2"
-    """Entity class for the current CO2 meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_CO2}"
-        self._attr_unique_id = f"{config.entry_id}-current-CO2"
-        self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2)
-        self._attr_icon = ICON_CO2
-        self._attr_native_unit_of_measurement = "ppm"
-        super().__init__(hass, config, plantdevice)
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.CO2
-
-
 class PlantCurrentHumidity(PlantCurrentStatus):
     def sensor_type(self) -> str | None:
         return "humidity"
@@ -869,14 +846,6 @@ class PlantCurrentCO2(PlantCurrentStatus):
     def device_class(self) -> str:
         """Device class"""
         return SensorDeviceClass.CO2
-
-
-class PlantCurrentPpfd(PlantCurrentStatus):
-    """Entity reporting current PPFD calculated from LX"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
         """Initialize the sensor"""
         self._attr_name = f"{plantdevice.name} {READING_PPFD}"
         self._attr_unique_id = f"{config.entry_id}-current-ppfd"
@@ -966,6 +935,28 @@ class PlantCurrentPpfd(PlantCurrentStatus):
                 self._attr_native_value = None
         else:
             self._attr_native_value = None
+
+
+class PlantDailyLightIntegral(IntegrationSensor):
+    """Entity class to calculate PPFD from LX"""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        illuminance_ppfd_sensor: Entity,
+        plantdevice: Entity,
+    ) -> None:
+        """Initialize the sensor"""
+        self._config = config  # Speichere config für späteren Zugriff
+        super().__init__(
+            hass,
+            integration_method=METHOD_TRAPEZOIDAL,
+            name=f"{plantdevice.name} Daily {READING_PPFD} Integral",
+            round_digits=2,
+            source_entity=illuminance_ppfd_sensor.entity_id,
+            unique_id=f"{config.entry_id}-ppfd-integral",
+            unit_prefix=None,
             unit_time=UnitOfTime.SECONDS,
             max_sub_interval=None,
         )
