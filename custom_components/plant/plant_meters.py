@@ -366,8 +366,11 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         https://www.apogeeinstruments.com/conversion-ppfd-to-lux/
         μmol/m²/s
         """
-        if value is not None and value != STATE_UNAVAILABLE:
-            value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
+        if value is not None and value != STATE_UNAVAILABLE and value != STATE_UNKNOWN:
+            try:
+                value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
+            except (ValueError, TypeError):
+                value = None
         else:
             value = None
 

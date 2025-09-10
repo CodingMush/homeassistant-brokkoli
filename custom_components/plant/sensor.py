@@ -880,8 +880,11 @@ class PlantCurrentCO2(PlantCurrentStatus):
         https://www.apogeeinstruments.com/conversion-ppfd-to-lux/
         μmol/m²/s
         """
-        if value is not None and value != STATE_UNAVAILABLE:
-            value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
+        if value is not None and value != STATE_UNAVAILABLE and value != STATE_UNKNOWN:
+            try:
+                value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
+            except (ValueError, TypeError):
+                value = None
         else:
             value = None
 
@@ -1644,6 +1647,97 @@ class PlantCurrentFertilizerConsumption(RestoreSensor):
                     self._attr_native_value = round(
                         (self._attr_native_value or 0) + increase,
                         self._plant.decimals_for("fertilizer_consumption")
+                    )
+
+            # Speichere aktuellen Wert für nächste Berechnung
+            self._last_value = current_value
+            self.async_write_ha_state()
+
+        except (TypeError, ValueError):
+            self._attr_native_value = None  # Set to None on error
+
+
+class PlantCurrentMoistureConsumption(RestoreSensor):
+    """Sensor to track moisture consumption based on moisture drop."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        plant_device: Entity,
+    ) -> None:
+        """Initialize the sensor."""
+        self._hass = hass
+        self._config = config
+        self._plant = plant_device
+        self._attr_name = f"{plant_device.name} {READING_MOISTURE_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-moisture-consumption"
+        self._attr_native_unit_of_measurement = PERCENTAGE
+        self._attr_icon = ICON_WATER_CONSUMPTION
+        self._history = []
+        self._last_update = None
+        self._attr_native_value = None  # Use None instead of 0
+        self._last_value = None  # Initialisiere _last_value
+
+        # Bei Neuerstellung explizit auf None setzen
+        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            self._attr_native_value = None
+            self._history = []
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional sensor attributes."""
+        return {
+            "last_update": self._last_update,
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        # Restore previous state
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+                    self._attr_native_value = float(last_state.state)
+            except (TypeError, ValueError):
+                self._attr_native_value = None
+
+        # Track moisture sensor changes
+        async_track_state_change_event(
+            self._hass,
+            [self._plant.sensor_moisture.entity_id],
+            self._state_changed_event,
+        )
+
+    @callback
+    def _state_changed_event(self, event):
+        """Handle moisture sensor state changes."""
+        if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            return  # Bei neuer Plant keine Änderungen verarbeiten
+
+        new_state = event.data.get("new_state")
+        if not new_state or new_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            return
+
+        try:
+            current_value = float(new_state.state)
+
+            # Berechne nur die Differenz seit dem letzten Wert
+            if self._last_value is not None:
+                if current_value < self._last_value:  # Nur negative Änderungen (Feuchtigkeitsverlust)
+                    decrease = self._last_value - current_value
+                    self._attr_native_value = round(
+                        (self._attr_native_value or 0) + decrease,
+                        self._plant.decimals_for("moisture_consumption")
                     )
 
             # Speichere aktuellen Wert für nächste Berechnung
