@@ -82,8 +82,9 @@ class PlantCurrentStatus(RestoreSensor):
         """Initialize the Plant component."""
         self._hass = hass
         self._config = config
-        self._default_state = 0
+        self._default_state = None  # Use None instead of 0
         self._plant = plantdevice
+        self._external_sensor = None
         # self._conf_check_days = self._plant.check_days
         self.entity_id = async_generate_entity_id(
             f"{DOMAIN}.{{}}", self.name, current_ids={}
@@ -164,11 +165,14 @@ class PlantCurrentStatus(RestoreSensor):
             self.replace_external_sensor(current_attrs.get("external_sensor"))
         if self._external_sensor:
             external_sensor = self.hass.states.get(self._external_sensor)
-            if external_sensor:
+            if external_sensor and external_sensor.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                 self._attr_native_value = external_sensor.state
-                self._attr_native_unit_of_measurement = external_sensor.attributes[
-                    ATTR_UNIT_OF_MEASUREMENT
-                ]
+                # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
+                # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
+                if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in external_sensor.attributes:
+                    self._attr_native_unit_of_measurement = external_sensor.attributes[
+                        ATTR_UNIT_OF_MEASUREMENT
+                    ]
             else:
                 self._attr_native_value = None  # Use None instead of STATE_UNKNOWN for numeric sensors
         else:
@@ -176,6 +180,56 @@ class PlantCurrentStatus(RestoreSensor):
 
         if self.state is None:
             return
+
+    async def async_update(self) -> None:
+        """Set state and unit to the parent sensor state and unit"""
+        if self._external_sensor:
+            try:
+                state = self.hass.states.get(self._external_sensor)
+                if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                    self._attr_native_value = state.state
+                    # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
+                    # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
+                    if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in state.attributes:
+                        self._attr_native_unit_of_measurement = state.attributes[
+                            ATTR_UNIT_OF_MEASUREMENT
+                        ]
+                elif state:
+                    # State is known but unavailable/unknown
+                    self._attr_native_value = self._default_state
+                else:
+                    # Sensor not found
+                    _LOGGER.debug(
+                        "External sensor %s not found for %s, setting to default: %s",
+                        self._external_sensor,
+                        self.entity_id,
+                        self._default_state,
+                    )
+                    self._attr_native_value = self._default_state
+            except AttributeError:
+                _LOGGER.debug(
+                    "Unknown external sensor for %s: %s, setting to default: %s",
+                    self.entity_id,
+                    self._external_sensor,
+                    self._default_state,
+                )
+                self._attr_native_value = self._default_state
+            except ValueError:
+                _LOGGER.debug(
+                    "Unknown external value for %s: %s = %s, setting to default: %s",
+                    self.entity_id,
+                    self._external_sensor,
+                    self.hass.states.get(self._external_sensor).state if self.hass.states.get(self._external_sensor) else "None",
+                    self._default_state,
+                )
+                self._attr_native_value = self._default_state
+        else:
+            _LOGGER.debug(
+                "External sensor not set for %s, setting to default: %s",
+                self.entity_id,
+                self._default_state,
+            )
+            self._attr_native_value = self._default_state
 
 
 class PlantCurrentIlluminance(PlantCurrentStatus):
@@ -427,6 +481,7 @@ class PlantTotalLightIntegral(IntegrationSensor):
     ) -> None:
         """Initialize the sensor"""
         super().__init__(
+            hass,
             integration_method=METHOD_TRAPEZOIDAL,
             name=f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} Total {READING_PPFD} Integral",
             round_digits=2,
@@ -452,22 +507,26 @@ class PlantDailyLightIntegral(UtilityMeterSensor):
         illuminance_integration_sensor: Entity,
     ) -> None:
         """Initialize the sensor"""
-        super().__init__(
-            hass=hass,
-            cron_pattern=None,
-            delta_values=None,
-            meter_offset=timedelta(seconds=0),
-            meter_type=DAILY,
-            name=f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_DLI}",
-            net_consumption=None,
-            parent_meter=config.entry_id,
-            source_entity=illuminance_integration_sensor.entity_id,
-            tariff_entity=None,
-            tariff=None,
-            unique_id=f"{config.entry_id}-dli",
-            sensor_always_available=True,
-            suggested_entity_id=None,
-        )
+        # Prepare parameters for UtilityMeterSensor
+        params = {
+            "cron_pattern": None,
+            "delta_values": None,
+            "hass": hass,
+            "meter_offset": timedelta(seconds=0),
+            "meter_type": DAILY,
+            "name": f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_DLI}",
+            "net_consumption": None,
+            "parent_meter": config.entry_id,
+            "periodically_resetting": True,
+            "source_entity": illuminance_integration_sensor.entity_id,
+            "suggested_entity_id": None,
+            "tariff_entity": None,
+            "tariff": None,
+            "unique_id": f"{config.entry_id}-dli",
+        }
+        
+        # Call the parent constructor with all parameters
+        super().__init__(**params)
 
         self._unit_of_measurement = UNIT_DLI
 

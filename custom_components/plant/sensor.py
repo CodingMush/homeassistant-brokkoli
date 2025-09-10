@@ -491,11 +491,21 @@ class PlantCurrentStatus(RestoreSensor):
             and new_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
         ):
             self._attr_native_value = self._apply_rounding(new_state.state)
-            if ATTR_UNIT_OF_MEASUREMENT in new_state.attributes:
+            # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
+            # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
+            if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in new_state.attributes:
                 self._attr_native_unit_of_measurement = new_state.attributes[
                     ATTR_UNIT_OF_MEASUREMENT
                 ]
         else:
+            if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                self._attr_native_value = self._apply_rounding(state.state)
+                # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
+                # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
+                if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in state.attributes:
+                    self._attr_native_unit_of_measurement = state.attributes[
+                        ATTR_UNIT_OF_MEASUREMENT
+                    ]
             # Only set to default if we don't have an external sensor
             if not self._external_sensor:
                 self._attr_native_value = self._default_state
@@ -507,7 +517,9 @@ class PlantCurrentStatus(RestoreSensor):
                 state = self.hass.states.get(self._external_sensor)
                 if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                     self._attr_native_value = self._apply_rounding(state.state)
-                    if ATTR_UNIT_OF_MEASUREMENT in state.attributes:
+                    # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
+                    # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
+                    if (not hasattr(self, 'device_class') or self.device_class is None) and ATTR_UNIT_OF_MEASUREMENT in state.attributes:
                         self._attr_native_unit_of_measurement = state.attributes[
                             ATTR_UNIT_OF_MEASUREMENT
                         ]
@@ -547,35 +559,7 @@ class PlantCurrentStatus(RestoreSensor):
                 self._default_state,
             )
             self._attr_native_value = self._default_state
-        return SensorDeviceClass.ILLUMINANCE
 
-
-
-
-class PlantCurrentTemperature(PlantCurrentStatus):
-    """Entity class for the current temperature meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_TEMPERATURE}"
-        self._attr_unique_id = f"{config.entry_id}-current-temperature"
-        self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
-            FLOW_SENSOR_TEMPERATURE
-        )
-        self._attr_icon = ICON_TEMPERATURE
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        super().__init__(hass, config, plantdevice)
-
-    def sensor_type(self) -> str | None:
-        return "temperature"
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.TEMPERATURE
 
 class PlantCurrentHumidity(PlantCurrentStatus):
     """Entity class for the current humidity meter"""
@@ -599,15 +583,6 @@ class PlantCurrentHumidity(PlantCurrentStatus):
     def device_class(self) -> str:
         """Device class"""
         return SensorDeviceClass.HUMIDITY
-
-
-
-class PlantCurrentPpfd(PlantCurrentStatus):
-    """Entity class to calculate PPFD from LX"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
         """Initialize the sensor"""
         self._attr_name = f"{plantdevice.name} {READING_PPFD}"
         self._attr_unique_id = f"{config.entry_id}-current-ppfd"
