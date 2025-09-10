@@ -818,6 +818,7 @@ class PlantDevice(Entity):
         self.sensor_power_consumption = None
         self.total_power_consumption = None
         self.sensor_ph = None  # Add pH sensor attribute
+        self.sensor_fertilizer_consumption = None  # Add fertilizer consumption sensor attribute
 
         self.dli = None
         self.micro_dli = None
@@ -1854,3 +1855,10 @@ class PlantDevice(Entity):
         # Aktualisiere den Energiekosten-Sensor wenn vorhanden
         if hasattr(self, 'energy_cost') and self.energy_cost:
             self.energy_cost.async_schedule_update_ha_state(True)
+
+    def change_tent(self, tent_entity) -> None:
+        """Change the tent assignment for this plant."""
+        self._assigned_tent = tent_entity
+        self._tent_id = tent_entity.device_id if tent_entity else None
+        # Update the device registry to reflect the new tent assignment
+        # This would typically involve updating the device's area or other metadata

@@ -1746,6 +1746,226 @@ class PlantCurrentFertilizerConsumption(RestoreSensor):
             pass
 
 
+class PlantCurrentPowerConsumption(RestoreSensor):
+    """Sensor to track current power consumption."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        plant_device: Entity,
+    ) -> None:
+        """Initialize the sensor."""
+        self._hass = hass
+        self._config = config
+        self._plant = plant_device
+        self._attr_name = f"{plant_device.name} {READING_POWER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-power-consumption"
+        self._attr_native_unit_of_measurement = "W"
+        self._attr_icon = ICON_POWER_CONSUMPTION
+        self._attr_device_class = SensorDeviceClass.POWER
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
+            FLOW_SENSOR_POWER_CONSUMPTION
+        )
+        self._attr_native_value = 0
+
+        # Bei Neuerstellung explizit auf 0 setzen
+        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            self._attr_native_value = 0
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional sensor attributes."""
+        return {
+            "external_sensor": self._external_sensor,
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        # Restore previous state
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+                    self._attr_native_value = float(last_state.state)
+            except (TypeError, ValueError):
+                self._attr_native_value = 0
+
+        # Track power consumption sensor changes
+        if self._external_sensor:
+            async_track_state_change_event(
+                self._hass,
+                [self._external_sensor],
+                self._state_changed_event,
+            )
+
+    def replace_external_sensor(self, new_sensor: str) -> None:
+        """Replace the external sensor."""
+        self._external_sensor = new_sensor
+        if new_sensor:
+            async_track_state_change_event(
+                self._hass,
+                [self._external_sensor],
+                self._state_changed_event,
+            )
+        self.async_write_ha_state()
+
+    @callback
+    def _state_changed_event(self, event):
+        """Handle power consumption sensor state changes."""
+        self.state_changed(event.data.get("entity_id"), event.data.get("new_state"))
+
+    @callback
+    def state_changed(self, entity_id, new_state):
+        """Run on every update to allow for changes from the GUI and service call."""
+        if not self.hass or not self.hass.states.get(self.entity_id):
+            return
+            
+        if entity_id == self.entity_id:
+            current_attrs = self.hass.states.get(self.entity_id).attributes
+            if current_attrs.get("external_sensor") != self._external_sensor:
+                self.replace_external_sensor(current_attrs.get("external_sensor"))
+        elif entity_id == self._external_sensor and new_state and new_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                self._attr_native_value = round(
+                    float(new_state.state),
+                    self._plant.decimals_for("power_consumption")
+                )
+                self.async_write_ha_state()
+            except (TypeError, ValueError):
+                pass
+
+    async def async_update(self) -> None:
+        """Update the sensor."""
+        if self._external_sensor:
+            try:
+                state = self._hass.states.get(self._external_sensor)
+                if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                    self.state_changed(self._external_sensor, state)
+            except Exception:
+                pass
+
+
+class PlantTotalPowerConsumption(RestoreSensor):
+    """Sensor to track total power consumption."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        plant_device: Entity,
+    ) -> None:
+        """Initialize the sensor."""
+        self._hass = hass
+        self._config = config
+        self._plant = plant_device
+        self._attr_name = f"{plant_device.name} Total {READING_POWER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-total-power-consumption"
+        self._attr_native_unit_of_measurement = "kWh"
+        self._attr_icon = ICON_POWER_CONSUMPTION
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
+            FLOW_SENSOR_POWER_CONSUMPTION
+        )
+        self._attr_native_value = 0
+
+        # Bei Neuerstellung explizit auf 0 setzen
+        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            self._attr_native_value = 0
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional sensor attributes."""
+        return {
+            "external_sensor": self._external_sensor,
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        # Restore previous state
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+                    self._attr_native_value = float(last_state.state)
+            except (TypeError, ValueError):
+                self._attr_native_value = 0
+
+        # Track power consumption sensor changes
+        if self._external_sensor:
+            async_track_state_change_event(
+                self._hass,
+                [self._external_sensor],
+                self._state_changed_event,
+            )
+
+    def replace_external_sensor(self, new_sensor: str) -> None:
+        """Replace the external sensor."""
+        self._external_sensor = new_sensor
+        if new_sensor:
+            async_track_state_change_event(
+                self._hass,
+                [self._external_sensor],
+                self._state_changed_event,
+            )
+        self.async_write_ha_state()
+
+    @callback
+    def _state_changed_event(self, event):
+        """Handle power consumption sensor state changes."""
+        self.state_changed(event.data.get("entity_id"), event.data.get("new_state"))
+
+    @callback
+    def state_changed(self, entity_id, new_state):
+        """Run on every update to allow for changes from the GUI and service call."""
+        if not self.hass or not self.hass.states.get(self.entity_id):
+            return
+            
+        if entity_id == self.entity_id:
+            current_attrs = self.hass.states.get(self.entity_id).attributes
+            if current_attrs.get("external_sensor") != self._external_sensor:
+                self.replace_external_sensor(current_attrs.get("external_sensor"))
+        elif entity_id == self._external_sensor and new_state and new_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                self._attr_native_value = round(
+                    float(new_state.state),
+                    self._plant.decimals_for("total_power_consumption")
+                )
+                self.async_write_ha_state()
+            except (TypeError, ValueError):
+                pass
+
+    async def async_update(self) -> None:
+        """Update the sensor."""
+        if self._external_sensor:
+            try:
+                state = self._hass.states.get(self._external_sensor)
+                if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                    self.state_changed(self._external_sensor, state)
+            except Exception:
+                pass
+
+
 class PlantTotalFertilizerConsumption(RestoreSensor):
     """Sensor to track total fertilizer consumption."""
 
@@ -2007,6 +2227,7 @@ class PlantTotalWaterConsumption(RestoreSensor):
                             self._manual_entries = []
             except (TypeError, ValueError):
                 self._attr_native_value = 0
+
 
         # Track moisture sensor changes
         if self._plant.sensor_moisture:
