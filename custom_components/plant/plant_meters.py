@@ -367,3 +367,44 @@ class PlantDailyLightIntegral(UtilityMeterSensor):
         )
 
         self._unit_of_measurement = UNIT_DLI
+
+
+class PlantCurrentPh(PlantCurrentStatus):
+    """Entity class for the current pH meter"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = (
+            f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} {READING_PH}"
+        )
+        self._attr_unique_id = f"{config.entry_id}-current-ph"
+        self._attr_icon = ICON_PH
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
+            FLOW_SENSOR_PH
+        )
+        self._attr_native_unit_of_measurement = None  # pH hat keine Einheit
+        self._default_state = 7.0  # Neutraler pH-Wert als Default
+
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return "ph"  # Verwende unsere eigene Device Class
+
+    async def set_manual_value(self, value: float) -> None:
+        """Set a manual pH measurement (0-14)."""
+        try:
+            if value is None:
+                return
+            # clamp plausible pH range
+            if value < 0:
+                value = 0
+            if value > 14:
+                value = 14
+            self._attr_native_value = float(value)
+            self.async_write_ha_state()
+        except (TypeError, ValueError):
+            return

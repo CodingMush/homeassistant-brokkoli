@@ -54,6 +54,7 @@ from .plant_meters import (
     PlantCurrentTemperature,
     PlantCurrentHumidity,
     PlantCurrentCO2,
+    PlantCurrentPh,
     PlantTotalLightIntegral,
     PlantDailyLightIntegral,
 )
