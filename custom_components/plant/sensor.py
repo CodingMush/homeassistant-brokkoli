@@ -1379,7 +1379,7 @@ class PlantEnergyCost(RestoreSensor):
             try:
                 total_kwh = float(self._plant.total_power_consumption.native_value)
                 cost = total_kwh * self._kwh_price
-                self._attr_native_value = round(cost, 2)
+                self._attr_native_value = round(cost, self._plant.decimals_for("energy_cost"))
                 self.async_write_ha_state()
             except (TypeError, ValueError):
                 self._attr_native_value = None
