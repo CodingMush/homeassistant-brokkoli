@@ -1069,3 +1069,267 @@ class CycleMedianSensor(SensorEntity):
                     )
             except Exception:
                 self._attr_native_value = None
+
+
+class PlantCurrentMoistureConsumption(PlantCurrentStatus):
+    """Entity class for current moisture consumption"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_MOISTURE_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-current-moisture-consumption"
+        self._attr_icon = ICON_WATER_CONSUMPTION
+        self._plant = plantdevice
+        self._external_sensor = None
+        self._attr_native_unit_of_measurement = UNIT_VOLUME
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return None
+
+    @property
+    def state_class(self):
+        """Return the state class."""
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+
+class PlantTotalWaterConsumption(IntegrationSensor):
+    """Entity class for total water consumption"""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        plantdevice: Entity,
+    ) -> None:
+        """Initialize the sensor"""
+        super().__init__(
+            hass,
+            integration_method=METHOD_TRAPEZOIDAL,
+            name=f"{plantdevice.name} Total {READING_MOISTURE_CONSUMPTION}",
+            round_digits=2,
+            source_entity="",  # Will be set later
+            unique_id=f"{config.entry_id}-total-water-consumption",
+            unit_prefix=None,
+            unit_time=UnitOfTime.SECONDS,
+        )
+        self._attr_icon = ICON_WATER_CONSUMPTION
+        self._unit_of_measurement = UNIT_VOLUME
+        self._attr_native_unit_of_measurement = UNIT_VOLUME
+        self._plant = plantdevice
+        self.entity_id = async_generate_entity_id(
+            f"{DOMAIN_SENSOR}.{{}}", self.name, current_ids={}
+        )
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def device_info(self) -> dict:
+        """Device info for devices"""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    def _unit(self, source_unit: str) -> str:
+        """Override unit"""
+        return UNIT_VOLUME
+
+    def replace_external_sensor(self, new_sensor: str) -> None:
+        """Modify the external sensor"""
+        self._source_entity = new_sensor
+        self.async_write_ha_state()
+
+
+class PlantCurrentFertilizerConsumption(PlantCurrentStatus):
+    """Entity class for current fertilizer consumption"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_FERTILIZER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-current-fertilizer-consumption"
+        self._attr_icon = ICON_FERTILIZER_CONSUMPTION
+        self._plant = plantdevice
+        self._external_sensor = None
+        self._attr_native_unit_of_measurement = UNIT_CONDUCTIVITY
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return None
+
+    @property
+    def state_class(self):
+        """Return the state class."""
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+
+class PlantTotalFertilizerConsumption(IntegrationSensor):
+    """Entity class for total fertilizer consumption"""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        plantdevice: Entity,
+    ) -> None:
+        """Initialize the sensor"""
+        super().__init__(
+            hass,
+            integration_method=METHOD_TRAPEZOIDAL,
+            name=f"{plantdevice.name} Total {READING_FERTILIZER_CONSUMPTION}",
+            round_digits=2,
+            source_entity="",  # Will be set later
+            unique_id=f"{config.entry_id}-total-fertilizer-consumption",
+            unit_prefix=None,
+            unit_time=UnitOfTime.SECONDS,
+        )
+        self._attr_icon = ICON_FERTILIZER_CONSUMPTION
+        self._unit_of_measurement = UNIT_CONDUCTIVITY
+        self._attr_native_unit_of_measurement = UNIT_CONDUCTIVITY
+        self._plant = plantdevice
+        self.entity_id = async_generate_entity_id(
+            f"{DOMAIN_SENSOR}.{{}}", self.name, current_ids={}
+        )
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def device_info(self) -> dict:
+        """Device info for devices"""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    def _unit(self, source_unit: str) -> str:
+        """Override unit"""
+        return UNIT_CONDUCTIVITY
+
+    def replace_external_sensor(self, new_sensor: str) -> None:
+        """Modify the external sensor"""
+        self._source_entity = new_sensor
+        self.async_write_ha_state()
+
+
+class PlantCurrentPowerConsumption(PlantCurrentStatus):
+    """Entity class for current power consumption"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_POWER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-current-power-consumption"
+        self._attr_icon = ICON_POWER_CONSUMPTION
+        self._plant = plantdevice
+        self._external_sensor = None
+        self._attr_native_unit_of_measurement = "W"
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return SensorDeviceClass.POWER
+
+    @property
+    def state_class(self):
+        """Return the state class."""
+        return SensorStateClass.MEASUREMENT
+
+
+class PlantTotalPowerConsumption(PlantCurrentStatus):
+    """Entity class for total power consumption"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} Total {READING_POWER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-total-power-consumption"
+        self._attr_icon = ICON_POWER_CONSUMPTION
+        self._plant = plantdevice
+        self._external_sensor = None
+        self._attr_native_unit_of_measurement = "kWh"
+        super().__init__(hass, config, plantdevice)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return SensorDeviceClass.ENERGY
+
+    @property
+    def state_class(self):
+        """Return the state class."""
+        return SensorStateClass.TOTAL_INCREASING
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+
+class PlantEnergyCost(PlantCurrentStatus):
+    """Entity class for energy cost calculation"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_ENERGY_COST}"
+        self._attr_unique_id = f"{config.entry_id}-energy-cost"
+        self._attr_icon = ICON_ENERGY_COST
+        self._plant = plantdevice
+        self._external_sensor = None
+        self._attr_native_unit_of_measurement = "€"
+        super().__init__(hass, config, plantdevice)
+        # Set default kWh price if not configured
+        self._kwh_price = config.data.get(ATTR_KWH_PRICE, DEFAULT_KWH_PRICE)
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return "monetary"
+
+    @property
+    def state_class(self):
+        """Return the state class."""
+        return SensorStateClass.TOTAL_INCREASING
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+    async def async_update(self) -> None:
+        """Calculate energy cost based on total power consumption"""
+        if self._plant.total_power_consumption and self._plant.total_power_consumption.native_value:
+            try:
+                total_kwh = float(self._plant.total_power_consumption.native_value)
+                cost = total_kwh * self._kwh_price
+                self._attr_native_value = round(cost, 2)
+            except (TypeError, ValueError):
+                self._attr_native_value = None
+        else:
+            self._attr_native_value = None
