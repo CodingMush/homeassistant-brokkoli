@@ -519,7 +519,7 @@ class PlantCurrentStatus(RestoreSensor):
                     self._attr_native_value = self._apply_rounding(state.state)
                     # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
                     # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
-                    if (not hasattr(self, 'device_class') or self.device_class is None) and ATTR_UNIT_OF_MEASUREMENT in state.attributes:
+                    if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in state.attributes:
                         self._attr_native_unit_of_measurement = state.attributes[
                             ATTR_UNIT_OF_MEASUREMENT
                         ]
@@ -553,36 +553,17 @@ class PlantCurrentStatus(RestoreSensor):
                 )
                 self._attr_native_value = self._default_state
         else:
-            _LOGGER.debug(
-                "External sensor not set for %s, setting to default: %s",
-                self.entity_id,
-                self._default_state,
-            )
-            self._attr_native_value = self._default_state
+            # Only set to default if we don't have an external sensor
+            if not self._external_sensor:
+                self._attr_native_value = self._default_state
 
 
-class PlantCurrentHumidity(PlantCurrentStatus):
-    """Entity class for the current humidity meter"""
+class PlantCurrentPpfd(PlantCurrentStatus):
+    """Entity class to calculate PPFD from LX"""
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_HUMIDITY}"
-        self._attr_unique_id = f"{config.entry_id}-current-humidity"
-        self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_HUMIDITY)
-        self._attr_icon = ICON_HUMIDITY
-        self._attr_native_unit_of_measurement = PERCENTAGE
-        super().__init__(hass, config, plantdevice)
-
-    def sensor_type(self) -> str | None:
-        return "humidity"
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.HUMIDITY
         """Initialize the sensor"""
         self._attr_name = f"{plantdevice.name} {READING_PPFD}"
         self._attr_unique_id = f"{config.entry_id}-current-ppfd"
@@ -740,51 +721,6 @@ class PlantTotalLightIntegral(IntegrationSensor):
     def _unit(self, source_unit: str) -> str:
         """Override unit"""
         return UNIT_PPFD  # Benutze immer PPFD als Einheit
-
-    async def async_added_to_hass(self) -> None:
-        """Handle entity which will be added."""
-        await super().async_added_to_hass()
-
-        # Restore previous state
-        last_state = await self.async_get_last_state()
-        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            try:
-                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-                    self._attr_native_value = float(last_state.state)
-                    if last_state.attributes.get("last_update"):
-                        self._last_update = last_state.attributes["last_update"]
-            except (TypeError, ValueError):
-                self._attr_native_value = None
-
-        # Bei einer neuen Plant nicht den alten State wiederherstellen
-        if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = None
-            self._state = None  # Wichtig für IntegrationSensor
-
-        # Track source entity changes
-        async_track_state_change_event(
-            self.hass,
-            [self._source_entity],
-            self._state_changed_event,
-        )
-
-    @callback
-    def _state_changed_event(self, event):
-        """Handle source entity state changes."""
-        if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            return  # Bei neuer Plant keine Änderungen verarbeiten
-
-        new_state = event.data.get("new_state")
-        if not new_state or new_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            return
-
-        try:
-            current_value = float(new_state.state)
-            current_time = dt_util.utcnow()
-
-            # Add to history
-            self._history.append((current_time, current_value))
-
             # Entferne Einträge älter als 24 Stunden
             cutoff_time = current_time - timedelta(hours=24)
             self._history = [(t, v) for t, v in self._history if t >= cutoff_time]
