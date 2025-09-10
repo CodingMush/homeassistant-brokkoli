@@ -518,6 +518,7 @@ class PlantDailyLightIntegral(UtilityMeterSensor):
             "net_consumption": None,
             "parent_meter": config.entry_id,
             "periodically_resetting": True,
+            "sensor_always_available": True,
             "source_entity": illuminance_integration_sensor.entity_id,
             "suggested_entity_id": None,
             "tariff_entity": None,
