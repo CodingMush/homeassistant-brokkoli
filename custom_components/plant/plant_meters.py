@@ -163,9 +163,9 @@ class PlantCurrentStatus(RestoreSensor):
                     ATTR_UNIT_OF_MEASUREMENT
                 ]
             else:
-                self._attr_native_value = STATE_UNKNOWN
+                self._attr_native_value = None  # Use None instead of STATE_UNKNOWN for numeric sensors
         else:
-            self._attr_native_value = STATE_UNKNOWN
+            self._attr_native_value = None  # Use None instead of STATE_UNKNOWN for numeric sensors
 
         if self.state == STATE_UNKNOWN or self.state is None:
             return

@@ -1746,6 +1746,181 @@ class PlantCurrentFertilizerConsumption(RestoreSensor):
             pass
 
 
+class PlantTotalFertilizerConsumption(RestoreSensor):
+    """Sensor to track total fertilizer consumption."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: ConfigEntry,
+        plant_device: Entity,
+    ) -> None:
+        """Initialize the sensor."""
+        self._hass = hass
+        self._config = config
+        self._plant = plant_device
+        self._attr_name = f"{plant_device.name} Total {READING_FERTILIZER_CONSUMPTION}"
+        self._attr_unique_id = f"{config.entry_id}-total-fertilizer-consumption"
+        self._attr_native_unit_of_measurement = UNIT_VOLUME  # Use volume unit for total consumption
+        self._attr_icon = ICON_FERTILIZER_CONSUMPTION
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._history = []
+        self._last_update = None
+        self._attr_native_value = 0  # Starte immer bei 0
+        self._manual_additions = 0.0
+        self._manual_entries = []  # list of dicts {ts, amount, note}
+
+        # Bei Neuerstellung explizit auf 0 setzen
+        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            self._attr_native_value = 0
+            self._history = []
+
+    @property
+    def entity_category(self) -> str:
+        """The entity category"""
+        return EntityCategory.DIAGNOSTIC
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info."""
+        return {
+            "identifiers": {(DOMAIN, self._plant.unique_id)},
+        }
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return additional sensor attributes."""
+        return {
+            "pot_size": self._plant.pot_size.native_value
+            if self._plant.pot_size
+            else None,
+            "last_update": self._last_update,
+            "manual_additions": round(
+                self._manual_additions, self._plant.decimals_for("total_fertilizer_consumption")
+            ),
+            "manual_entries": self._manual_entries,
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        # Restore previous state
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+                    self._attr_native_value = float(last_state.state)
+                    if last_state.attributes.get("last_update"):
+                        self._last_update = last_state.attributes["last_update"]
+                    if last_state.attributes.get("manual_additions") is not None:
+                        try:
+                            self._manual_additions = float(
+                                last_state.attributes.get("manual_additions", 0.0)
+                            )
+                        except (TypeError, ValueError):
+                            self._manual_additions = 0.0
+                    if last_state.attributes.get("manual_entries") is not None:
+                        try:
+                            self._manual_entries = list(
+                                last_state.attributes.get("manual_entries", [])
+                            )
+                        except Exception:
+                            self._manual_entries = []
+            except (TypeError, ValueError):
+                self._attr_native_value = 0
+
+        # Track fertilizer consumption sensor changes
+        if self._plant.sensor_fertilizer_consumption:
+            async_track_state_change_event(
+                self._hass,
+                [self._plant.sensor_fertilizer_consumption.entity_id],
+                self._state_changed_event,
+            )
+
+    @callback
+    def _state_changed_event(self, event):
+        """Handle fertilizer consumption sensor state changes."""
+        if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
+            return  # Bei neuer Plant keine Änderungen verarbeiten
+
+        new_state = event.data.get("new_state")
+        if not new_state or new_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            return
+
+        try:
+            current_value = float(new_state.state)
+            current_time = dt_util.utcnow()
+
+            # Add to history
+            self._history.append((current_time, current_value))
+
+            if len(self._history) >= 2:
+                # Calculate total fertilizer consumption
+                total_consumption = current_value
+                total_with_manual = total_consumption + (self._manual_additions or 0.0)
+                self._attr_native_value = round(
+                    total_with_manual,
+                    self._plant.decimals_for("total_fertilizer_consumption"),
+                )
+                self._last_update = current_time.isoformat()
+                self.async_write_ha_state()
+
+        except (TypeError, ValueError):
+            pass
+
+    def add_manual_fertilizer(
+        self, amount_liters: float, note: str | None = None
+    ) -> None:
+        """Add a manual fertilizer amount to the total and persist it."""
+        try:
+            if amount_liters is None:
+                return
+            if amount_liters < 0:
+                amount_liters = 0
+            self._manual_additions = round(
+                (self._manual_additions or 0.0) + float(amount_liters),
+                self._plant.decimals_for("total_fertilizer_consumption"),
+            )
+            entry = {
+                "timestamp": dt_util.utcnow().isoformat(),
+                "amount_liters": round(
+                    float(amount_liters),
+                    self._plant.decimals_for("total_fertilizer_consumption"),
+                ),
+            }
+            if note:
+                entry["note"] = note
+            try:
+                # keep last 50 entries
+                self._manual_entries.append(entry)
+                self._manual_entries = self._manual_entries[-50:]
+            except Exception:
+                self._manual_entries = [entry]
+
+            # Recompute displayed value as current computed + manual additions
+            displayed_value = self._attr_native_value
+            try:
+                displayed_value = (
+                    float(displayed_value)
+                    if displayed_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    else 0.0
+                )
+            except (TypeError, ValueError):
+                displayed_value = 0.0
+
+            new_value = round(
+                displayed_value + float(amount_liters),
+                self._plant.decimals_for("total_fertilizer_consumption"),
+            )
+            self._attr_native_value = new_value
+            self._last_update = dt_util.utcnow().isoformat()
+            self.async_write_ha_state()
+        except Exception:
+            # Ensure no crash on service call
+            self.async_write_ha_state()
+
+
 class PlantTotalWaterConsumption(RestoreSensor):
     def __init__(
         self,
@@ -1942,96 +2117,6 @@ class PlantTotalWaterConsumption(RestoreSensor):
         except Exception:
             # Ensure no crash on service call
             self.async_write_ha_state()
-
-
-class PlantCurrentFertilizerConsumption(RestoreSensor):
-    """Sensor to track fertilizer consumption based on conductivity drop."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        config: ConfigEntry,
-        plant_device: Entity,
-    ) -> None:
-        """Initialize the sensor."""
-        self._hass = hass
-        self._config = config
-        self._plant = plant_device
-        self._attr_name = f"{plant_device.name} {READING_FERTILIZER_CONSUMPTION}"
-        self._attr_unique_id = f"{config.entry_id}-fertilizer-consumption"
-        self._attr_native_unit_of_measurement = UNIT_CONDUCTIVITY
-        self._attr_icon = ICON_FERTILIZER_CONSUMPTION
-        self._history = []
-        self._last_update = None
-        self._attr_native_value = 0  # Starte immer bei 0
-        self._last_value = None  # Initialisiere _last_value
-
-        # Bei Neuerstellung explizit auf 0 setzen
-        if config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            self._attr_native_value = 0
-            self._history = []
-
-    @property
-    def device_info(self) -> dict:
-        """Return device info."""
-        return {
-            "identifiers": {(DOMAIN, self._plant.unique_id)},
-        }
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Return additional sensor attributes."""
-        return {
-            "last_update": self._last_update,
-        }
-
-    async def async_added_to_hass(self) -> None:
-        """Handle entity which will be added."""
-        await super().async_added_to_hass()
-
-        # Restore previous state
-        last_state = await self.async_get_last_state()
-        if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            try:
-                if not self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-                    self._attr_native_value = float(last_state.state)
-            except (TypeError, ValueError):
-                self._attr_native_value = 0
-
-        # Track conductivity sensor changes
-        async_track_state_change_event(
-            self._hass,
-            [self._plant.sensor_conductivity.entity_id],
-            self._state_changed_event,
-        )
-
-    @callback
-    def _state_changed_event(self, event):
-        """Handle conductivity sensor state changes."""
-        if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-            return  # Bei neuer Plant keine Änderungen verarbeiten
-
-        new_state = event.data.get("new_state")
-        if not new_state or new_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            return
-
-        try:
-            current_value = float(new_state.state)
-
-            # Berechne nur die Differenz seit dem letzten Wert
-            if self._last_value is not None:
-                if current_value > self._last_value:  # Nur positive Änderungen
-                    increase = current_value - self._last_value
-                    self._attr_native_value += round(
-                        increase, self._plant.decimals_for("fertilizer_consumption")
-                    )
-
-            # Speichere aktuellen Wert für nächste Berechnung
-            self._last_value = current_value
-            self.async_write_ha_state()
-
-        except (TypeError, ValueError):
-            pass
 
 
 class PlantTotalPowerConsumption(RestoreSensor):
