@@ -549,8 +549,6 @@ class PlantCurrentStatus(RestoreSensor):
             self._attr_native_value = self._default_state
         return SensorDeviceClass.ILLUMINANCE
 
-    def sensor_type(self) -> str | None:
-        return "illuminance"
 
 class PlantCurrentIlluminance(PlantCurrentStatus):
     """Entity class for the current illuminance meter"""
@@ -599,6 +597,31 @@ class PlantCurrentConductivity(PlantCurrentStatus):
         self._raw_value = None
         self._normalize = config.data[FLOW_PLANT_INFO].get(ATTR_NORMALIZE_MOISTURE, False)
 
+class PlantCurrentTemperature(PlantCurrentStatus):
+    """Entity class for the current temperature meter"""
+
+    def __init__(
+        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
+    ) -> None:
+        """Initialize the sensor"""
+        self._attr_name = f"{plantdevice.name} {READING_TEMPERATURE}"
+        self._attr_unique_id = f"{config.entry_id}-current-temperature"
+        self._attr_has_entity_name = False
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
+            FLOW_SENSOR_TEMPERATURE
+        )
+        self._attr_icon = ICON_TEMPERATURE
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        super().__init__(hass, config, plantdevice)
+
+    def sensor_type(self) -> str | None:
+        return "temperature"
+
+    @property
+    def device_class(self) -> str:
+        """Device class"""
+        return SensorDeviceClass.TEMPERATURE
+
     def sensor_type(self) -> str | None:
         return "conductivity"
 
@@ -634,90 +657,7 @@ class PlantCurrentConductivity(PlantCurrentStatus):
         """Device class"""
         return ATTR_CONDUCTIVITY
 
-    async def set_manual_value(self, value: float) -> None:
-        """Set a manual conductivity measurement (uS/cm)."""
-        try:
-            if value is None:
-                return
-            self._attr_native_value = float(value)
-            self.async_write_ha_state()
-        except (TypeError, ValueError):
-            return
-        # Initialisiere Normalisierung beim Start
-        if self._normalize:
-            self._last_normalize_update = None  # Force update
-            await self._update_normalization()
 
-            # Wenn es eine Neuerstellung ist, aktualisiere sofort
-            if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
-                _LOGGER.debug("New plant created, updating normalization immediately")
-                await self._update_normalization()
-
-    async def _update_normalization(self) -> None:
-        """Update the normalization max value"""
-        if not self._normalize or not self._external_sensor:
-            return
-
-        now = dt_util.utcnow()
-
-        # Aktualisiere nur alle 5 Minuten, außer bei None (Erststart/Neuerstellung)
-        if (
-            self._last_normalize_update is not None
-            and now - self._last_normalize_update < timedelta(minutes=5)
-        ):
-            return
-
-        # Hole historische Daten
-        start_time = now - timedelta(days=self._normalize_window)
-
-        # Korrigierter Aufruf der history API mit dem richtigen Executor
-        recorder = get_instance(self._hass)
-        history_list = await recorder.async_add_executor_job(
-            history.state_changes_during_period,
-            self._hass,
-            start_time,
-            now,
-            self._external_sensor,
-        )
-
-        if not history_list or self._external_sensor not in history_list:
-            return
-            _LOGGER.debug(
-                "Updated moisture normalization: max=%s, factor=%s (from %s values)",
-                self._max_moisture,
-                round(self._normalize_factor, 2),  # Gerundeter Wert nur für Log
-                len(values),
-            )
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Return additional sensor attributes."""
-        attributes = super().extra_state_attributes or {}
-
-        if self._normalize:
-            attributes.update(
-                {
-                    "moisture_normalization": {
-                        "enabled": True,
-                        "window_days": self._normalize_window,
-                        "percentile": self._normalize_percentile,
-                        "current_max": self._max_moisture,
-                        "raw_value": self._raw_value
-                        if hasattr(self, "_raw_value")
-                        else None,
-                    }
-                }
-            )
-
-        return attributes
-
-    async def async_update(self) -> None:
-        """Update the sensor."""
-        await super().async_update()
-
-        # Speichere den Rohwert vor der Normalisierung
-        if self._attr_native_value is not None:
-            self._raw_value = self._attr_native_value
 
         # Aktualisiere Normalisierung
         await self._update_normalization()
@@ -744,31 +684,6 @@ class PlantCurrentConductivity(PlantCurrentStatus):
         return ATTR_MOISTURE
 
 
-class PlantCurrentTemperature(PlantCurrentStatus):
-    def sensor_type(self) -> str | None:
-        return "temperature"
-    """Entity class for the current temperature meter"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_TEMPERATURE}"
-        self._attr_unique_id = f"{config.entry_id}-current-temperature"
-        self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
-            FLOW_SENSOR_TEMPERATURE
-        )
-        self._attr_icon = ICON_TEMPERATURE
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        super().__init__(hass, config, plantdevice)
-
-    @property
-    def device_class(self) -> str:
-        """Device class"""
-        return SensorDeviceClass.TEMPERATURE
-
-
 class PlantCurrentHumidity(PlantCurrentStatus):
     """Entity class for the current humidity meter"""
 
@@ -793,30 +708,32 @@ class PlantCurrentHumidity(PlantCurrentStatus):
         return SensorDeviceClass.HUMIDITY
 
 
-class PlantCurrentCO2(PlantCurrentStatus):
-    """Entity class for the current CO2 meter"""
+class PlantCurrentTemperature(PlantCurrentStatus):
+    """Entity class for the current temperature meter"""
 
     def __init__(
         self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
     ) -> None:
         """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_CO2}"
-        self._attr_unique_id = f"{config.entry_id}-current-CO2"
+        self._attr_name = f"{plantdevice.name} {READING_TEMPERATURE}"
+        self._attr_unique_id = f"{config.entry_id}-current-temperature"
         self._attr_has_entity_name = False
-        self._external_sensor = config.data[FLOW_PLANT_INFO].get(FLOW_SENSOR_CO2)
-        self._attr_icon = ICON_CO2
-        self._attr_native_unit_of_measurement = "ppm"
+        self._external_sensor = config.data[FLOW_PLANT_INFO].get(
+            FLOW_SENSOR_TEMPERATURE
+        )
+        self._attr_icon = ICON_TEMPERATURE
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         super().__init__(hass, config, plantdevice)
 
     def sensor_type(self) -> str | None:
-        return "CO2"
+        return "temperature"
 
     @property
     def device_class(self) -> str:
         """Device class"""
-        return SensorDeviceClass.CO2
-
-
+        return SensorDeviceClass.TEMPERATURE
+        """Device class"""
+        return SensorDeviceClass.HUMIDITY
 class PlantCurrentPh(PlantCurrentStatus):
     """Entity class for the current pH meter"""
 
@@ -840,17 +757,6 @@ class PlantCurrentPh(PlantCurrentStatus):
     def device_class(self) -> str:
         """Device class"""
         return DEVICE_CLASS_PH
-
-
-class PlantCurrentPpfd(PlantCurrentStatus):
-    """Entity class to calculate PPFD from LX"""
-
-    def __init__(
-        self, hass: HomeAssistant, config: ConfigEntry, plantdevice: Entity
-    ) -> None:
-        """Initialize the sensor"""
-        self._attr_name = f"{plantdevice.name} {READING_PPFD}"
-        self._attr_unique_id = f"{config.entry_id}-current-ppfd"
         self._attr_has_entity_name = False
         self._attr_unit_of_measurement = UNIT_PPFD
         self._attr_native_unit_of_measurement = UNIT_PPFD
