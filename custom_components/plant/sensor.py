@@ -2198,7 +2198,8 @@ class PlantEnergyCost(RestoreSensor):
         self._attr_name = f"{plant_device.name} {READING_ENERGY_COST}"
         self._attr_native_unit_of_measurement = "EUR"
         self._attr_icon = ICON_ENERGY_COST  # Füge das Icon hinzu
-        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._attr_device_class = SensorDeviceClass.MONETARY
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
