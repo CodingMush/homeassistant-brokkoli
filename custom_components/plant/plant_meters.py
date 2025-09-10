@@ -81,8 +81,8 @@ class PlantCurrentStatus(RestoreSensor):
         self.entity_id = async_generate_entity_id(
             f"{DOMAIN}.{{}}", self.name, current_ids={}
         )
-        if not self._attr_native_value or self._attr_native_value == STATE_UNKNOWN:
-            self._attr_native_value = self._default_state
+        if not self._attr_native_value:
+            self._attr_native_value = None  # Use None instead of STATE_UNKNOWN
 
     @property
     def state_class(self):
@@ -122,7 +122,7 @@ class PlantCurrentStatus(RestoreSensor):
         state = await self.async_get_last_state()
 
         # We do not restore the state for these they are read from the external sensor anyway
-        self._attr_native_value = STATE_UNKNOWN
+        self._attr_native_value = None  # Use None instead of STATE_UNKNOWN
         if state:
             if "external_sensor" in state.attributes:
                 self.replace_external_sensor(state.attributes["external_sensor"])
@@ -167,7 +167,7 @@ class PlantCurrentStatus(RestoreSensor):
         else:
             self._attr_native_value = None  # Use None instead of STATE_UNKNOWN for numeric sensors
 
-        if self.state == STATE_UNKNOWN or self.state is None:
+        if self.state is None:
             return
 
 
@@ -408,4 +408,4 @@ class PlantCurrentPh(PlantCurrentStatus):
             self._attr_native_value = float(value)
             self.async_write_ha_state()
         except (TypeError, ValueError):
-            return
+            self._attr_native_value = None  # Set to None on error
