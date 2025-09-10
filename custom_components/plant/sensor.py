@@ -1072,10 +1072,14 @@ class CycleMedianSensor(SensorEntity):
             "last_update": self._last_update,
         }
 
+    def _unit(self, source_unit: str) -> str:
+        """Override unit"""
+        return UNIT_PPFD  # Benutze immer PPFD als Einheit
+
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
         await super().async_added_to_hass()
-
+        
         # Restore previous state
         last_state = await self.async_get_last_state()
         if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
@@ -1087,17 +1091,16 @@ class CycleMedianSensor(SensorEntity):
             except (TypeError, ValueError):
                 self._attr_native_value = None
 
-        # Track moisture sensor changes
-        if self._plant.sensor_moisture:
-            async_track_state_change_event(
-                self.hass,
-                [self._plant.sensor_moisture.entity_id],
-                self._state_changed_event,
-            )
+        # Track PPFD sensor changes
+        async_track_state_change_event(
+            self.hass,
+            [self._sensor_ppfd.entity_id],
+            self._state_changed_event,
+        )
 
     @callback
     def _state_changed_event(self, event):
-        """Handle moisture sensor state changes."""
+        """Handle PPFD sensor state changes."""
         if self._config.data[FLOW_PLANT_INFO].get(ATTR_IS_NEW_PLANT, False):
             return  # Bei neuer Plant keine Änderungen verarbeiten
 
@@ -1116,21 +1119,23 @@ class CycleMedianSensor(SensorEntity):
             cutoff_time = current_time - timedelta(hours=24)
             self._history = [(t, v) for t, v in self._history if t >= cutoff_time]
 
+            # Calculate DLI from the last 24 hours
             if len(self._history) >= 2:
-                # Calculate total moisture drop
-                drops = []
-                for i in range(1, len(self._history)):
-                    if (
-                        self._history[i][1] < self._history[i - 1][1]
-                    ):  # Only negative changes
-                        drop = self._history[i - 1][1] - self._history[i][1]
-                        drops.append(drop)
+                # Convert from mol/m²/s to mol/m²/d (DLI)
+                time_diff = (self._history[-1][0] - self._history[0][0]).total_seconds()
+                if time_diff > 0:
+                    dli = (current_value - self._history[0][1]) * (
+                        24 * 3600 / time_diff
+                    )
+                    self._attr_native_value = round(
+                        max(0, dli), self._plant.decimals_for("dli")
+                    )
+                    self._last_update = current_time.isoformat()
+                    self.async_write_ha_state()
 
-                # Calculate total water consumption
-                total_drop = sum(drops)
-                total_consumption = total_drop * self._plant.water_capacity.native_value
-                self._attr_native_value = round(total_consumption, 2)
-                self._last_update = current_time
+        except (TypeError, ValueError):
+            pass
+
 
         except (TypeError, ValueError):
             self._attr_native_value = None  # Set to None on error
