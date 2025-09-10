@@ -208,6 +208,7 @@ async def async_setup_entry(
                 hass,
                 entry,
                 plant,
+                moisture_consumption,  # Pass the source sensor
             )
             async_add_entities([total_water_consumption])
 
@@ -224,6 +225,7 @@ async def async_setup_entry(
                 hass,
                 entry,
                 plant,
+                fertilizer_consumption,  # Pass the source sensor
             )
             async_add_entities([total_fertilizer_consumption])
 
@@ -1110,14 +1112,18 @@ class PlantTotalWaterConsumption(IntegrationSensor):
         hass: HomeAssistant,
         config: ConfigEntry,
         plantdevice: Entity,
+        source_sensor: Entity = None,
     ) -> None:
         """Initialize the sensor"""
+        # Use the moisture_consumption sensor as the source if provided
+        source_entity_id = source_sensor.entity_id if source_sensor else ""
+        
         super().__init__(
             hass,
             integration_method=METHOD_TRAPEZOIDAL,
             name=f"{plantdevice.name} Total {READING_MOISTURE_CONSUMPTION}",
             round_digits=2,
-            source_entity="",  # Will be set later
+            source_entity=source_entity_id,
             unique_id=f"{config.entry_id}-total-water-consumption",
             unit_prefix=None,
             unit_time=UnitOfTime.SECONDS,
@@ -1192,14 +1198,18 @@ class PlantTotalFertilizerConsumption(IntegrationSensor):
         hass: HomeAssistant,
         config: ConfigEntry,
         plantdevice: Entity,
+        source_sensor: Entity = None,
     ) -> None:
         """Initialize the sensor"""
+        # Use the fertilizer_consumption sensor as the source if provided
+        source_entity_id = source_sensor.entity_id if source_sensor else ""
+        
         super().__init__(
             hass,
             integration_method=METHOD_TRAPEZOIDAL,
             name=f"{plantdevice.name} Total {READING_FERTILIZER_CONSUMPTION}",
             round_digits=2,
-            source_entity="",  # Will be set later
+            source_entity=source_entity_id,
             unique_id=f"{config.entry_id}-total-fertilizer-consumption",
             unit_prefix=None,
             unit_time=UnitOfTime.SECONDS,
