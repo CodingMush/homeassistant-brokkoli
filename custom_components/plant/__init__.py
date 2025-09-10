@@ -1736,6 +1736,9 @@ class PlantDevice(Entity):
     def assign_tent(self, tent) -> None:
         self._assigned_tent = tent
         self._tent_id = tent.unique_id
+        # Replace sensors with tent sensors
+        tent_sensors = tent.get_sensors()
+        self.replace_sensors(tent_sensors)
 
     def update(self) -> None:
         """Run on every update of the entities"""
@@ -1942,6 +1945,10 @@ class PlantDevice(Entity):
         """Change the tent assignment for this plant."""
         self._assigned_tent = tent_entity
         self._tent_id = tent_entity.device_id if tent_entity else None
+        # Replace sensors with tent sensors if a tent is assigned
+        if tent_entity:
+            tent_sensors = tent_entity.get_sensors()
+            self.replace_sensors(tent_sensors)
         # Update the device registry to reflect the new tent assignment
         # This would typically involve updating the device's area or other metadata
 
