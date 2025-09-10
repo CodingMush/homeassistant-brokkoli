@@ -4,6 +4,8 @@
 
 This document describes the implementation of Tent sensor management and how Plants inherit sensors from Tents in the Home Assistant Brokkoli integration. The implementation addresses the issue where the `replace_sensors` method was missing from the `PlantDevice` class, and improves the Tent configuration flow to make assigning Plants to new Tents easier.
 
+**Status: IMPLEMENTED** - The `replace_sensors` method has been successfully implemented and tested.
+
 ## Changes Made
 
 ### 1. Implemented Missing `replace_sensors` Method
