@@ -743,7 +743,7 @@ class PlantTotalLightIntegral(IntegrationSensor):
             hass,
             integration_method=METHOD_TRAPEZOIDAL,
             name=f"{plantdevice.name} Total {READING_PPFD} Integral",
-            round_digits=2,
+            round_digits=0,  # Use 0 decimal places for integral values
             source_entity=illuminance_ppfd_sensor.entity_id,
             unique_id=f"{config.entry_id}-ppfd-integral",
             unit_prefix=None,
@@ -1188,7 +1188,7 @@ class PlantTotalWaterConsumption(IntegrationSensor):
             hass,
             integration_method=METHOD_TRAPEZOIDAL,
             name=f"{plantdevice.name} Total {READING_MOISTURE_CONSUMPTION}",
-            round_digits=2,
+            round_digits=0,  # Use 0 decimal places for integral values
             source_entity=source_entity_id,
             unique_id=f"{config.entry_id}-total-water-consumption",
             unit_prefix=None,
@@ -1274,7 +1274,7 @@ class PlantTotalFertilizerConsumption(IntegrationSensor):
             hass,
             integration_method=METHOD_TRAPEZOIDAL,
             name=f"{plantdevice.name} Total {READING_FERTILIZER_CONSUMPTION}",
-            round_digits=2,
+            round_digits=0,  # Use 0 decimal places for integral values
             source_entity=source_entity_id,
             unique_id=f"{config.entry_id}-total-fertilizer-consumption",
             unit_prefix=None,

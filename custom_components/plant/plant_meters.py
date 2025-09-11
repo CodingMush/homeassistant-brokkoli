@@ -494,7 +494,7 @@ class PlantTotalLightIntegral(IntegrationSensor):
             hass,
             integration_method=METHOD_TRAPEZOIDAL,
             name=f"{config.data[FLOW_PLANT_INFO][ATTR_NAME]} Total {READING_PPFD} Integral",
-            round_digits=2,
+            round_digits=0,  # Use 0 decimal places for integral values
             source_entity=illuminance_ppfd_sensor.entity_id,
             unique_id=f"{config.entry_id}-ppfd-integral",
             unit_prefix=None,
