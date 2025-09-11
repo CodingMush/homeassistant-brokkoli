@@ -92,6 +92,28 @@ class PlantCurrentStatus(RestoreSensor):
         if not self._attr_native_value:
             self._attr_native_value = None  # Use None instead of STATE_UNKNOWN
 
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config. Override in subclasses."""
+        return None
+
+    def _apply_rounding(self, value: Any) -> Any:
+        """Apply centralized decimal rounding if applicable."""
+        sensor_key = self.sensor_type()
+        if sensor_key is None:
+            return self._default_state if value in (STATE_UNKNOWN, STATE_UNAVAILABLE, None) else value
+        # Treat unknown/unavailable/non-numeric as default numeric state
+        if value in (STATE_UNKNOWN, STATE_UNAVAILABLE, None):
+            return self._default_state
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return self._default_state
+        try:
+            decimals = self._plant.decimals_for(sensor_key)
+        except Exception:
+            decimals = 2
+        return round(numeric, decimals)
+
     @property
     def state_class(self):
         return SensorStateClass.MEASUREMENT
@@ -166,7 +188,7 @@ class PlantCurrentStatus(RestoreSensor):
         if self._external_sensor:
             external_sensor = self.hass.states.get(self._external_sensor)
             if external_sensor and external_sensor.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-                self._attr_native_value = external_sensor.state
+                self._attr_native_value = self._apply_rounding(external_sensor.state)
                 # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
                 # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
                 if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in external_sensor.attributes:
@@ -187,7 +209,7 @@ class PlantCurrentStatus(RestoreSensor):
             try:
                 state = self.hass.states.get(self._external_sensor)
                 if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-                    self._attr_native_value = state.state
+                    self._attr_native_value = self._apply_rounding(state.state)
                     # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
                     # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
                     if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in state.attributes:
@@ -254,6 +276,10 @@ class PlantCurrentIlluminance(PlantCurrentStatus):
         )
         super().__init__(hass, config, plantdevice)
 
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "illuminance"
+
     @property
     def device_class(self) -> str:
         """Device class"""
@@ -279,6 +305,10 @@ class PlantCurrentConductivity(PlantCurrentStatus):
 
         super().__init__(hass, config, plantdevice)
 
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "conductivity"
+
     @property
     def device_class(self) -> str:
         """Device class"""
@@ -301,6 +331,10 @@ class PlantCurrentMoisture(PlantCurrentStatus):
         self._attr_native_unit_of_measurement = PERCENTAGE
 
         super().__init__(hass, config, plantdevice)
+
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "moisture"
 
     @property
     def device_class(self) -> str:
@@ -327,6 +361,10 @@ class PlantCurrentTemperature(PlantCurrentStatus):
 
         super().__init__(hass, config, plantdevice)
 
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "temperature"
+
     @property
     def device_class(self) -> str:
         """Device class"""
@@ -350,6 +388,10 @@ class PlantCurrentHumidity(PlantCurrentStatus):
 
         super().__init__(hass, config, plantdevice)
 
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "humidity"
+
     @property
     def device_class(self) -> str:
         """Device class"""
@@ -370,6 +412,10 @@ class PlantCurrentCO2(PlantCurrentStatus):
         self._attr_native_unit_of_measurement = "ppm"
 
         super().__init__(hass, config, plantdevice)
+
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "CO2"
 
     @property
     def device_class(self) -> str:
@@ -561,6 +607,10 @@ class PlantCurrentPh(PlantCurrentStatus):
         self._default_state = 7.0  # Neutraler pH-Wert als Default
 
         super().__init__(hass, config, plantdevice)
+
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "ph"
 
     @property
     def device_class(self) -> str:

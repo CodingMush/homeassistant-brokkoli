@@ -523,7 +523,6 @@ class PlantCurrentStatus(RestoreSensor):
         ):
             self._attr_native_value = self._apply_rounding(new_state.state)
             # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
-            # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
             if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in new_state.attributes:
                 self._attr_native_unit_of_measurement = new_state.attributes[
                     ATTR_UNIT_OF_MEASUREMENT
@@ -541,7 +540,6 @@ class PlantCurrentStatus(RestoreSensor):
                 if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                     self._attr_native_value = self._apply_rounding(state.state)
                     # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
-                    # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
                     if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in state.attributes:
                         self._attr_native_unit_of_measurement = state.attributes[
                             ATTR_UNIT_OF_MEASUREMENT
@@ -816,8 +814,9 @@ class PlantTotalLightIntegral(IntegrationSensor):
                     dli = (current_value - self._history[0][1]) * (
                         24 * 3600 / time_diff
                     )
+                    # Apply proper rounding based on sensor configuration
                     self._attr_native_value = round(
-                        max(0, dli), self._plant.decimals_for("dli")
+                        max(0, dli), self._plant.decimals_for("total_integral")
                     )
                     self._last_update = current_time.isoformat()
                     self.async_write_ha_state()
@@ -1154,6 +1153,10 @@ class PlantCurrentMoistureConsumption(PlantCurrentStatus):
         self._attr_native_unit_of_measurement = UNIT_VOLUME
         super().__init__(hass, config, plantdevice)
 
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "moisture_consumption"
+
     @property
     def device_class(self) -> str:
         """Device class"""
@@ -1239,6 +1242,10 @@ class PlantCurrentFertilizerConsumption(PlantCurrentStatus):
         self._external_sensor = None
         self._attr_native_unit_of_measurement = UNIT_CONDUCTIVITY
         super().__init__(hass, config, plantdevice)
+
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "fertilizer_consumption"
 
     @property
     def device_class(self) -> str:
@@ -1326,6 +1333,10 @@ class PlantCurrentPowerConsumption(PlantCurrentStatus):
         self._attr_native_unit_of_measurement = "W"
         super().__init__(hass, config, plantdevice)
 
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "power_consumption"
+
     @property
     def device_class(self) -> str:
         """Device class"""
@@ -1351,6 +1362,10 @@ class PlantTotalPowerConsumption(PlantCurrentStatus):
         self._external_sensor = None
         self._attr_native_unit_of_measurement = "kWh"
         super().__init__(hass, config, plantdevice)
+
+    def sensor_type(self) -> str | None:
+        """Logical sensor type key used for decimals config."""
+        return "total_power_consumption"
 
     @property
     def device_class(self) -> str:
