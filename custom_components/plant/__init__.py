@@ -959,9 +959,19 @@ class PlantDevice(Entity):
                 }
                 break
 
+        # Initialize state
+        self._attr_state = STATE_UNKNOWN
+
     def decimals_for(self, sensor_type: str) -> int:
         """Return configured decimals for a sensor type."""
         return get_decimals_for(sensor_type, self._decimals_overrides)
+
+    @property
+    def state(self):
+        """Return the state of the plant."""
+        if self._attr_state is None:
+            return STATE_UNKNOWN
+        return self._attr_state
 
     @property
     def entity_category(self) -> None:
@@ -1208,6 +1218,9 @@ class PlantDevice(Entity):
             self.sensor_power_consumption.async_schedule_update_ha_state(True)
         if hasattr(self, 'sensor_ph') and self.sensor_ph:
             self.sensor_ph.async_schedule_update_ha_state(True)
+        
+        # Update the plant state
+        self.update()
 
         # Basis-Response mit Hauptsensoren
         response = {
@@ -1723,6 +1736,182 @@ class PlantDevice(Entity):
             self.moisture_consumption,
             self.fertilizer_consumption,
         ]
+
+    def update(self) -> None:
+        """Run on every update to allow for changes from the GUI and service call."""
+        new_state = STATE_OK
+        known_state = False
+
+        if self.sensor_temperature is not None:
+            temperature = self.sensor_temperature.state
+            if temperature is not None and temperature != STATE_UNAVAILABLE and temperature != STATE_UNKNOWN and self.min_temperature is not None and self.max_temperature is not None:
+                try:
+                    known_state = True
+                    if float(temperature) < float(self.min_temperature.state):
+                        self.temperature_status = STATE_LOW
+                        if self.temperature_trigger:
+                            new_state = STATE_PROBLEM
+                    elif float(temperature) > float(self.max_temperature.state):
+                        self.temperature_status = STATE_HIGH
+                        if self.temperature_trigger:
+                            new_state = STATE_PROBLEM
+                    else:
+                        self.temperature_status = STATE_OK
+                except (ValueError, TypeError):
+                    pass
+
+        if self.sensor_conductivity is not None:
+            conductivity = self.sensor_conductivity.state
+            if conductivity is not None and conductivity != STATE_UNAVAILABLE and conductivity != STATE_UNKNOWN and self.min_conductivity is not None and self.max_conductivity is not None:
+                try:
+                    known_state = True
+                    if float(conductivity) < float(self.min_conductivity.state):
+                        self.conductivity_status = STATE_LOW
+                        if self.conductivity_trigger:
+                            new_state = STATE_PROBLEM
+                    elif float(conductivity) > float(self.max_conductivity.state):
+                        self.conductivity_status = STATE_HIGH
+                        if self.conductivity_trigger:
+                            new_state = STATE_PROBLEM
+                    else:
+                        self.conductivity_status = STATE_OK
+                except (ValueError, TypeError):
+                    pass
+
+        if self.sensor_illuminance is not None:
+            illuminance = self.sensor_illuminance.state
+            if illuminance is not None and illuminance != STATE_UNAVAILABLE and illuminance != STATE_UNKNOWN and self.min_illuminance is not None and self.max_illuminance is not None:
+                try:
+                    known_state = True
+                    if float(illuminance) < float(self.min_illuminance.state):
+                        self.illuminance_status = STATE_LOW
+                        if self.illuminance_trigger:
+                            new_state = STATE_PROBLEM
+                    elif float(illuminance) > float(self.max_illuminance.state):
+                        self.illuminance_status = STATE_HIGH
+                        if self.illuminance_trigger:
+                            new_state = STATE_PROBLEM
+                    else:
+                        self.illuminance_status = STATE_OK
+                except (ValueError, TypeError):
+                    pass
+
+        if self.sensor_humidity is not None:
+            humidity = self.sensor_humidity.state
+            if humidity is not None and humidity != STATE_UNAVAILABLE and humidity != STATE_UNKNOWN and self.min_humidity is not None and self.max_humidity is not None:
+                try:
+                    known_state = True
+                    if float(humidity) < float(self.min_humidity.state):
+                        self.humidity_status = STATE_LOW
+                        if self.humidity_trigger:
+                            new_state = STATE_PROBLEM
+                    elif float(humidity) > float(self.max_humidity.state):
+                        self.humidity_status = STATE_HIGH
+                        if self.humidity_trigger:
+                            new_state = STATE_PROBLEM
+                    else:
+                        self.humidity_status = STATE_OK
+                except (ValueError, TypeError):
+                    pass
+
+        if self.sensor_CO2 is not None:
+            CO2 = self.sensor_CO2.state
+            if CO2 is not None and CO2 != STATE_UNAVAILABLE and CO2 != STATE_UNKNOWN and self.min_CO2 is not None and self.max_CO2 is not None:
+                try:
+                    known_state = True
+                    if float(CO2) < float(self.min_CO2.state):
+                        self.CO2_status = STATE_LOW
+                        if self.CO2_trigger:
+                            new_state = STATE_PROBLEM
+                    elif float(CO2) > float(self.max_CO2.state):
+                        self.CO2_status = STATE_HIGH
+                        if self.CO2_trigger:
+                            new_state = STATE_PROBLEM
+                    else:
+                        self.CO2_status = STATE_OK
+                except (ValueError, TypeError):
+                    pass
+
+        if self.dli is not None:
+            dli = self.dli.state
+            if dli is not None and dli != STATE_UNAVAILABLE and dli != STATE_UNKNOWN and self.min_dli is not None and self.max_dli is not None:
+                try:
+                    known_state = True
+                    if float(dli) < float(self.min_dli.state):
+                        self.dli_status = STATE_LOW
+                        if self.dli_trigger:
+                            new_state = STATE_PROBLEM
+                    elif float(dli) > float(self.max_dli.state):
+                        self.dli_status = STATE_HIGH
+                        if self.dli_trigger:
+                            new_state = STATE_PROBLEM
+                    else:
+                        self.dli_status = STATE_OK
+                except (ValueError, TypeError):
+                    pass
+
+        # Überprüfe Wasser-Verbrauch
+        if self.moisture_consumption is not None:
+            water_consumption = self.moisture_consumption.state
+            if water_consumption is not None and water_consumption != STATE_UNAVAILABLE and water_consumption != STATE_UNKNOWN and self.min_water_consumption is not None and self.max_water_consumption is not None:
+                try:
+                    known_state = True
+                    if float(water_consumption) < float(self.min_water_consumption.state):
+                        self.water_consumption_status = STATE_LOW
+                        if self.water_consumption_trigger:
+                            new_state = STATE_PROBLEM
+                    elif float(water_consumption) > float(self.max_water_consumption.state):
+                        self.water_consumption_status = STATE_HIGH
+                        if self.water_consumption_trigger:
+                            new_state = STATE_PROBLEM
+                    else:
+                        self.water_consumption_status = STATE_OK
+                except (ValueError, TypeError):
+                    pass
+
+        # Überprüfe Dünger-Verbrauch
+        if self.fertilizer_consumption is not None:
+            fertilizer_consumption = self.fertilizer_consumption.state
+            if fertilizer_consumption is not None and fertilizer_consumption != STATE_UNAVAILABLE and fertilizer_consumption != STATE_UNKNOWN and self.min_fertilizer_consumption is not None and self.max_fertilizer_consumption is not None:
+                try:
+                    known_state = True
+                    if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
+                        self.fertilizer_consumption_status = STATE_LOW
+                        if self.fertilizer_consumption_trigger:
+                            new_state = STATE_PROBLEM
+                    elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
+                        self.fertilizer_consumption_status = STATE_HIGH
+                        if self.fertilizer_consumption_trigger:
+                            new_state = STATE_PROBLEM
+                    else:
+                        self.fertilizer_consumption_status = STATE_OK
+                except (ValueError, TypeError):
+                    pass
+
+        # Überprüfe Power Consumption
+        if self.sensor_power_consumption is not None:
+            power_consumption = self.sensor_power_consumption.state
+            if power_consumption is not None and power_consumption != STATE_UNAVAILABLE and power_consumption != STATE_UNKNOWN and self.min_power_consumption is not None and self.max_power_consumption is not None:
+                try:
+                    known_state = True
+                    if float(power_consumption) < float(self.min_power_consumption.state):
+                        self.power_consumption_status = STATE_LOW
+                        if self.power_consumption_trigger:
+                            new_state = STATE_PROBLEM
+                    elif float(power_consumption) > float(self.max_power_consumption.state):
+                        self.power_consumption_status = STATE_HIGH
+                        if self.power_consumption_trigger:
+                            new_state = STATE_PROBLEM
+                    else:
+                        self.power_consumption_status = STATE_OK
+                except (ValueError, TypeError):
+                    pass
+
+        # Set the state
+        self._attr_state = new_state
+        if not known_state:
+            self._attr_state = STATE_UNKNOWN
+
         if self.sensor_temperature is not None:
             temperature = self.sensor_temperature.state
             if temperature is not None and temperature != STATE_UNAVAILABLE and temperature != STATE_UNKNOWN and self.min_temperature is not None and self.max_temperature is not None:

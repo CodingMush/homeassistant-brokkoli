@@ -423,6 +423,10 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         if value is not None and value != STATE_UNAVAILABLE and value != STATE_UNKNOWN:
             try:
                 value = float(value) * DEFAULT_LUX_TO_PPFD / 1000000
+                # Apply rounding for PPFD (should have 0 decimal places)
+                if hasattr(self, "_plant") and hasattr(self._plant, "decimals_for"):
+                    decimals = self._plant.decimals_for("ppfd")
+                    value = round(value, decimals)
             except (ValueError, TypeError):
                 value = None
         else:
@@ -448,6 +452,9 @@ class PlantCurrentPpfd(PlantCurrentStatus):
             external_sensor = self.hass.states.get(self._external_sensor)
             if external_sensor:
                 self._attr_native_value = self.ppfd(external_sensor.state)
+                # Apply rounding after calculation
+                if self._attr_native_value is not None:
+                    self._attr_native_value = self._plant._apply_rounding("ppfd", self._attr_native_value)
             else:
                 self._attr_native_value = None
         else:
@@ -464,6 +471,9 @@ class PlantCurrentPpfd(PlantCurrentStatus):
             external_sensor = self.hass.states.get(self._external_sensor)
             if external_sensor:
                 self._attr_native_value = self.ppfd(external_sensor.state)
+                # Apply rounding after calculation
+                if self._attr_native_value is not None:
+                    self._attr_native_value = self._plant._apply_rounding("ppfd", self._attr_native_value)
             else:
                 self._attr_native_value = None
         else:
