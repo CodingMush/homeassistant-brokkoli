@@ -130,6 +130,8 @@ from .plant_helpers import PlantHelper
 from .services import async_setup_services, async_unload_services
 from .sensor_configuration import get_decimals_for
 from .tent import Tent
+from .repairs import async_create_sensor_unavailability_issue, async_create_invalid_configuration_issue, async_create_missing_sensor_issue
+from .device_removal import async_remove_stale_devices, async_check_and_remove_stale_device, async_cleanup_orphaned_entities
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SELECT, Platform.TEXT]

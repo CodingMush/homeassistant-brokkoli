@@ -5,7 +5,9 @@
     "recorder",
     "seedfinder",
     "integration",
-    "utility_meter"
+    "utility_meter",
+    "diagnostics",
+    "repairs"
   ],
   "codeowners": [
     "@Olen",
