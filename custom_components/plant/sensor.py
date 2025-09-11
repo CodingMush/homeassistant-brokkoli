@@ -787,8 +787,9 @@ class PlantTotalLightIntegral(IntegrationSensor):
 
     async def async_update(self):
         """Update the DLI calculation."""
-        # Instead of calling super().async_update(), we'll directly update the integration sensor
-        # This avoids the AttributeError since IntegrationSensor might not have async_update
+        # Call the parent update method first to ensure we have the latest value
+        # await super().async_update()
+        
         try:
             # Get current time
             current_time = datetime.now()
@@ -1416,7 +1417,7 @@ class PlantEnergyCost(RestoreSensor):
         if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE, "unknown", "unavailable", None):
             try:
                 self._attr_native_value = float(state.state)
-            except (ValueError, TypeError):
+            except (ValueureError, TypeError):
                 self._attr_native_value = None
         else:
             self._attr_native_value = None
