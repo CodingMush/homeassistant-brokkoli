@@ -1223,7 +1223,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_temperature.state if self.max_temperature else None,
                 ATTR_MIN: self.min_temperature.state if self.min_temperature else None,
                 ATTR_CURRENT: (
-                    float(self.sensor_temperature.native_value)
+                    self._apply_rounding("temperature", self.sensor_temperature.native_value)
                     if self.sensor_temperature and self.sensor_temperature.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.sensor_temperature.native_value)
                     else None
@@ -1236,7 +1236,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_illuminance.state if self.max_illuminance else None,
                 ATTR_MIN: self.min_illuminance.state if self.min_illuminance else None,
                 ATTR_CURRENT: (
-                    float(self.sensor_illuminance.native_value)
+                    self._apply_rounding("illuminance", self.sensor_illuminance.native_value)
                     if self.sensor_illuminance and self.sensor_illuminance.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.sensor_illuminance.native_value)
                     else None
@@ -1249,7 +1249,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_moisture.state if self.max_moisture else None,
                 ATTR_MIN: self.min_moisture.state if self.min_moisture else None,
                 ATTR_CURRENT: (
-                    float(self.sensor_moisture.native_value)
+                    self._apply_rounding("moisture", self.sensor_moisture.native_value)
                     if self.sensor_moisture and self.sensor_moisture.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.sensor_moisture.native_value)
                     else None
@@ -1262,7 +1262,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_conductivity.state if self.max_conductivity else None,
                 ATTR_MIN: self.min_conductivity.state if self.min_conductivity else None,
                 ATTR_CURRENT: (
-                    float(self.sensor_conductivity.native_value)
+                    self._apply_rounding("conductivity", self.sensor_conductivity.native_value)
                     if self.sensor_conductivity and self.sensor_conductivity.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.sensor_conductivity.native_value)
                     else None
@@ -1275,7 +1275,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_humidity.state if self.max_humidity else None,
                 ATTR_MIN: self.min_humidity.state if self.min_humidity else None,
                 ATTR_CURRENT: (
-                    float(self.sensor_humidity.native_value)
+                    self._apply_rounding("humidity", self.sensor_humidity.native_value)
                     if self.sensor_humidity and self.sensor_humidity.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.sensor_humidity.native_value)
                     else None
@@ -1288,7 +1288,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_CO2.state if self.max_CO2 else None,
                 ATTR_MIN: self.min_CO2.state if self.min_CO2 else None,
                 ATTR_CURRENT: (
-                    float(self.sensor_CO2.native_value)
+                    self._apply_rounding("CO2", self.sensor_CO2.native_value)
                     if self.sensor_CO2 and self.sensor_CO2.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.sensor_CO2.native_value)
                     else None
@@ -1301,7 +1301,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_dli.state if self.max_dli else None,
                 ATTR_MIN: self.min_dli.state if self.min_dli else None,
                 ATTR_CURRENT: (
-                    float(self.dli.native_value)
+                    self._apply_rounding("dli", self.dli.native_value)
                     if self.dli and self.dli.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.dli.native_value)
                     else None
@@ -1314,7 +1314,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_water_consumption.state if self.max_water_consumption else None,
                 ATTR_MIN: self.min_water_consumption.state if self.min_water_consumption else None,
                 ATTR_CURRENT: (
-                    float(self.moisture_consumption.native_value)
+                    self._apply_rounding("moisture_consumption", self.moisture_consumption.native_value)
                     if self.moisture_consumption and self.moisture_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.moisture_consumption.native_value)
                     else None
@@ -1327,7 +1327,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_fertilizer_consumption.state if self.max_fertilizer_consumption else None,
                 ATTR_MIN: self.min_fertilizer_consumption.state if self.min_fertilizer_consumption else None,
                 ATTR_CURRENT: (
-                    float(self.fertilizer_consumption.native_value)
+                    self._apply_rounding("fertilizer_consumption", self.fertilizer_consumption.native_value)
                     if self.fertilizer_consumption and self.fertilizer_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.fertilizer_consumption.native_value)
                     else None
@@ -1340,7 +1340,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_power_consumption.state if self.max_power_consumption else None,
                 ATTR_MIN: self.min_power_consumption.state if self.min_power_consumption else None,
                 ATTR_CURRENT: (
-                    float(self.sensor_power_consumption.native_value)
+                    self._apply_rounding("power_consumption", self.sensor_power_consumption.native_value)
                     if self.sensor_power_consumption and self.sensor_power_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.sensor_power_consumption.native_value)
                     else None
@@ -1353,7 +1353,7 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_ph.state if self.max_ph else None,
                 ATTR_MIN: self.min_ph.state if self.min_ph else None,
                 ATTR_CURRENT: (
-                    float(self.sensor_ph.native_value)
+                    self._apply_rounding("ph", self.sensor_ph.native_value)
                     if self.sensor_ph and self.sensor_ph.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     and self._is_valid_number(self.sensor_ph.native_value)
                     else None
@@ -1373,11 +1373,29 @@ class PlantDevice(Entity):
         # Diagnosesensoren hinzufügen
         diagnostics = response["diagnostic_sensors"]
         
+        # Füge PPFD hinzu
+        if self.ppfd:
+            current_value = self.ppfd.native_value
+            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
+                try:
+                    current_value = self._apply_rounding("ppfd", float(current_value))
+                except (ValueError, TypeError):
+                    current_value = None
+            else:
+                current_value = None
+                
+            diagnostics["ppfd"] = {
+                "entity_id": self.ppfd.entity_id,
+                "current": current_value,
+                "icon": self.ppfd.icon,
+                "unit_of_measurement": self.ppfd.native_unit_of_measurement,
+            }
+        
         if hasattr(self, 'energy_cost') and self.energy_cost:
             current_value = self.energy_cost.native_value
             if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
-                    current_value = float(current_value)
+                    current_value = self._apply_rounding("energy_cost", float(current_value))
                 except (ValueError, TypeError):
                     current_value = None
             else:
@@ -1394,7 +1412,7 @@ class PlantDevice(Entity):
             current_value = self.total_power_consumption.native_value
             if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
-                    current_value = float(current_value)
+                    current_value = self._apply_rounding("total_power_consumption", float(current_value))
                 except (ValueError, TypeError):
                     current_value = None
             else:
@@ -1415,7 +1433,7 @@ class PlantDevice(Entity):
             if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
                     # Explizite Konvertierung zu float
-                    current_value = float(current_value)
+                    current_value = self._apply_rounding("total_integral", float(current_value))
                 except (ValueError, TypeError):
                     current_value = None
             else:
@@ -1433,7 +1451,7 @@ class PlantDevice(Entity):
             current_value = self.total_water_consumption.native_value
             if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
-                    current_value = float(current_value)
+                    current_value = self._apply_rounding("total_water_consumption", float(current_value))
                 except (ValueError, TypeError):
                     current_value = None
             else:
@@ -1451,7 +1469,7 @@ class PlantDevice(Entity):
             current_value = self.total_fertilizer_consumption.native_value
             if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
-                    current_value = float(current_value)
+                    current_value = self._apply_rounding("total_fertilizer_consumption", float(current_value))
                 except (ValueError, TypeError):
                     current_value = None
             else:
@@ -1462,6 +1480,60 @@ class PlantDevice(Entity):
                 "current": current_value,
                 "icon": self.total_fertilizer_consumption.icon,
                 "unit_of_measurement": self.total_fertilizer_consumption.native_unit_of_measurement,
+            }
+        
+        # Füge moisture_consumption hinzu
+        if self.moisture_consumption:
+            current_value = self.moisture_consumption.native_value
+            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
+                try:
+                    current_value = self._apply_rounding("moisture_consumption", float(current_value))
+                except (ValueError, TypeError):
+                    current_value = None
+            else:
+                current_value = None
+                
+            diagnostics["moisture_consumption"] = {
+                "entity_id": self.moisture_consumption.entity_id,
+                "current": current_value,
+                "icon": self.moisture_consumption.icon,
+                "unit_of_measurement": self.moisture_consumption.native_unit_of_measurement,
+            }
+        
+        # Füge fertilizer_consumption hinzu
+        if self.fertilizer_consumption:
+            current_value = self.fertilizer_consumption.native_value
+            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
+                try:
+                    current_value = self._apply_rounding("fertilizer_consumption", float(current_value))
+                except (ValueError, TypeError):
+                    current_value = None
+            else:
+                current_value = None
+                
+            diagnostics["fertilizer_consumption"] = {
+                "entity_id": self.fertilizer_consumption.entity_id,
+                "current": current_value,
+                "icon": self.fertilizer_consumption.icon,
+                "unit_of_measurement": self.fertilizer_consumption.native_unit_of_measurement,
+            }
+        
+        # Füge power_consumption hinzu
+        if self.power_consumption:
+            current_value = self.power_consumption.native_value
+            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
+                try:
+                    current_value = self._apply_rounding("power_consumption", float(current_value))
+                except (ValueError, TypeError):
+                    current_value = None
+            else:
+                current_value = None
+                
+            diagnostics["power_consumption"] = {
+                "entity_id": self.power_consumption.entity_id,
+                "current": current_value,
+                "icon": self.power_consumption.icon,
+                "unit_of_measurement": self.power_consumption.native_unit_of_measurement,
             }
         
         # Dann nur echte Helper Entities in "helpers" einfügen (Selects, Numbers, Texts)
@@ -1568,6 +1640,20 @@ class PlantDevice(Entity):
             }
 
         return response
+
+    def _apply_rounding(self, sensor_type: str, value: Any) -> Any:
+        """Apply centralized decimal rounding for websocket values."""
+        if value in (STATE_UNKNOWN, STATE_UNAVAILABLE, None):
+            return None
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return None
+        try:
+            decimals = self.decimals_for(sensor_type)
+        except Exception:
+            decimals = 2
+        return round(numeric, decimals)
 
     def _is_valid_number(self, value) -> bool:
         """Check if a value is a valid number."""

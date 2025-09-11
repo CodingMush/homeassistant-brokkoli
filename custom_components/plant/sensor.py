@@ -698,7 +698,8 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         if self._external_sensor:
             external_sensor = self.hass.states.get(self._external_sensor)
             if external_sensor:
-                self._attr_native_value = self.ppfd(external_sensor.state)
+                ppfd_value = self.ppfd(external_sensor.state)
+                self._attr_native_value = self._apply_rounding(ppfd_value)
             else:
                 self._attr_native_value = None
         else:
@@ -714,7 +715,8 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         if self._external_sensor:
             external_sensor = self.hass.states.get(self._external_sensor)
             if external_sensor:
-                self._attr_native_value = self.ppfd(external_sensor.state)
+                ppfd_value = self.ppfd(external_sensor.state)
+                self._attr_native_value = self._apply_rounding(ppfd_value)
             else:
                 self._attr_native_value = None
         else:
