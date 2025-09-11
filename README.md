@@ -57,6 +57,34 @@ For the complete Brokkoli Suite, install these complementary components:
 1. Copy the `custom_components/plant/` directory to your `<config>/custom_components/` directory
 2. Restart Home Assistant
 
+## 🗑️ Removal
+
+To remove a plant and all its associated entities:
+
+1. Go to **Settings** → **Devices & Services**
+2. Find your plant device in the list
+3. Click on the plant device to open its details
+4. Click the **Remove** button
+5. Confirm the removal when prompted
+
+Alternatively, you can use the `plant.remove_plant` service:
+
+1. Go to **Developer Tools** → **Services**
+2. Select `plant.remove_plant` from the service dropdown
+3. Select the plant entity you want to remove
+4. Click **Call Service**
+
+### Step-by-Step Removal Process
+
+When you remove a plant, the following happens:
+
+1. **Entity Removal**: All sensor entities, threshold entities, and helper entities associated with the plant are removed
+2. **Device Cleanup**: The plant device and all its entities are unregistered from Home Assistant
+3. **Configuration Deletion**: The plant's configuration entry is removed from Home Assistant's configuration
+4. **Data Purging**: All plant-specific data, including historical sensor data, is removed
+
+**Note**: This action is irreversible. Make sure to export your plant configuration using the `plant.export_plants` service if you want to keep a backup before removal.
+
 ## 🚀 Quick Start
 
 ### 1. Set up your first cannabis plant
@@ -126,6 +154,8 @@ The integration provides various services to interact with your cannabis plants:
 - `plant.replace_sensor` - Replace sensors for a plant
 - `plant.create_plant` - Create a new plant
 - `plant.remove_plant` - Remove a plant and all its entities
+  - **Example**: Remove a plant named "My Plant" by selecting the plant entity `plant.my_plant`
+  - **Note**: This will permanently delete the plant and all associated sensor entities, thresholds, and configuration
 - `plant.clone_plant` - Create a clone/cutting of an existing plant
 - `plant.create_cycle` - Create a new cycle for grouping plants
 - `plant.remove_cycle` - Remove a cycle and all its entities
