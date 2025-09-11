@@ -433,8 +433,37 @@ class PlantCurrentStatus(RestoreSensor):
                 [self._external_sensor],
                 self._state_changed_event,
             )
+            # Immediately update the sensor value after assigning a new external sensor
+            self._update_from_external_sensor()
 
         self.async_write_ha_state()
+
+    def _update_from_external_sensor(self) -> None:
+        """Update the sensor value from the external sensor immediately."""
+        if self._external_sensor:
+            try:
+                state = self.hass.states.get(self._external_sensor)
+                if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                    self._attr_native_value = self._apply_rounding(state.state)
+                    # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
+                    if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in state.attributes:
+                        self._attr_native_unit_of_measurement = state.attributes[
+                            ATTR_UNIT_OF_MEASUREMENT
+                        ]
+                    self.async_write_ha_state()
+                elif state:
+                    # State is known but unavailable/unknown
+                    self._attr_native_value = self._default_state
+                    self.async_write_ha_state()
+            except Exception as e:
+                _LOGGER.debug(
+                    "Error updating from external sensor %s for %s: %s",
+                    self._external_sensor,
+                    self.entity_id,
+                    e,
+                )
+                self._attr_native_value = self._default_state
+                self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
@@ -500,14 +529,6 @@ class PlantCurrentStatus(RestoreSensor):
                     ATTR_UNIT_OF_MEASUREMENT
                 ]
         else:
-            if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-                self._attr_native_value = self._apply_rounding(state.state)
-                # Only copy the unit of measurement if we don't have a specific device class that requires a specific unit
-                # This prevents CO2 sensors from inheriting 'lx' units from illuminance sensors
-                if (not hasattr(self, 'device_class') or (hasattr(self, 'device_class') and self.device_class is None)) and ATTR_UNIT_OF_MEASUREMENT in state.attributes:
-                    self._attr_native_unit_of_measurement = state.attributes[
-                        ATTR_UNIT_OF_MEASUREMENT
-                    ]
             # Only set to default if we don't have an external sensor
             if not self._external_sensor:
                 self._attr_native_value = self._default_state
@@ -628,6 +649,46 @@ class PlantCurrentPpfd(PlantCurrentStatus):
         if self._plant.sensor_illuminance:
             self.replace_external_sensor(self._plant.sensor_illuminance.entity_id)
 
+    def replace_external_sensor(self, new_sensor: str | None) -> None:
+        """Modify the external sensor"""
+        _LOGGER.info("Setting %s external sensor to %s", self.entity_id, new_sensor)
+        self._external_sensor = new_sensor
+        if new_sensor:
+            async_track_state_change_event(
+                self.hass,
+                [self._external_sensor],
+                self._state_changed_event,
+            )
+            # Immediately update the sensor value after assigning a new external sensor
+            self._update_from_external_sensor()
+
+        self.async_write_ha_state()
+
+    def _update_from_external_sensor(self) -> None:
+        """Update the sensor value from the external sensor immediately."""
+        if self._external_sensor:
+            try:
+                state = self.hass.states.get(self._external_sensor)
+                if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                    # Calculate PPFD from illuminance
+                    ppfd_value = self.ppfd(state.state)
+                    self._attr_native_value = self._apply_rounding(ppfd_value)
+                    self._attr_native_unit_of_measurement = UNIT_PPFD
+                    self.async_write_ha_state()
+                elif state:
+                    # State is known but unavailable/unknown
+                    self._attr_native_value = self._default_state
+                    self.async_write_ha_state()
+            except Exception as e:
+                _LOGGER.debug(
+                    "Error updating from external sensor %s for %s: %s",
+                    self._external_sensor,
+                    self.entity_id,
+                    e,
+                )
+                self._attr_native_value = self._default_state
+                self.async_write_ha_state()
+
     async def async_update(self) -> None:
         """Run on every update to allow for changes from the GUI and service call"""
         if not self.hass.states.get(self.entity_id):
@@ -726,6 +787,9 @@ class PlantTotalLightIntegral(IntegrationSensor):
 
     async def async_update(self):
         """Update the DLI calculation."""
+        # Call the parent update method first to ensure we have the latest value
+        await super().async_update()
+        
         try:
             # Get current time
             current_time = datetime.now()

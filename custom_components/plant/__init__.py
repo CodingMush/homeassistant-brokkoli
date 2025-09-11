@@ -1174,9 +1174,10 @@ class PlantDevice(Entity):
     @property
     def websocket_info(self) -> dict:
         """Wesocket response"""
-        if not self.plant_complete:
-            # We are not fully set up, so we just return an empty dict for now
-            return {}
+        # Remove the plant_complete check since it's never set to True
+        # if not self.plant_complete:
+        #     # We are not fully set up, so we just return an empty dict for now
+        #     return {}
 
         # Hole den Download-Pfad aus der Konfiguration und konvertiere ihn
         config_entry = None
@@ -1189,6 +1190,25 @@ class PlantDevice(Entity):
         # Konvertiere /config/www/ zu /local/
         web_path = download_path.replace("/config/www/", "/local/")
 
+        # Force an update of all sensors to ensure we have current values
+        # This is especially important after assigning a tent to a plant
+        if hasattr(self, 'sensor_temperature') and self.sensor_temperature:
+            self.sensor_temperature.async_schedule_update_ha_state(True)
+        if hasattr(self, 'sensor_moisture') and self.sensor_moisture:
+            self.sensor_moisture.async_schedule_update_ha_state(True)
+        if hasattr(self, 'sensor_conductivity') and self.sensor_conductivity:
+            self.sensor_conductivity.async_schedule_update_ha_state(True)
+        if hasattr(self, 'sensor_illuminance') and self.sensor_illuminance:
+            self.sensor_illuminance.async_schedule_update_ha_state(True)
+        if hasattr(self, 'sensor_humidity') and self.sensor_humidity:
+            self.sensor_humidity.async_schedule_update_ha_state(True)
+        if hasattr(self, 'sensor_CO2') and self.sensor_CO2:
+            self.sensor_CO2.async_schedule_update_ha_state(True)
+        if hasattr(self, 'sensor_power_consumption') and self.sensor_power_consumption:
+            self.sensor_power_consumption.async_schedule_update_ha_state(True)
+        if hasattr(self, 'sensor_ph') and self.sensor_ph:
+            self.sensor_ph.async_schedule_update_ha_state(True)
+
         # Basis-Response mit Hauptsensoren
         response = {
             "path": web_path,  # Der konvertierte Pfad
@@ -1200,136 +1220,136 @@ class PlantDevice(Entity):
             
             # Ursprüngliche Sensor-Info beibehalten - Verwende native_value anstelle von state
             ATTR_TEMPERATURE: {
-                ATTR_MAX: self.max_temperature.state,
-                ATTR_MIN: self.min_temperature.state,
+                ATTR_MAX: self.max_temperature.state if self.max_temperature else None,
+                ATTR_MIN: self.min_temperature.state if self.min_temperature else None,
                 ATTR_CURRENT: (
                     self.sensor_temperature.native_value
                     if self.sensor_temperature and self.sensor_temperature.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.sensor_temperature.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.sensor_temperature.unit_of_measurement,
-                ATTR_SENSOR: self.sensor_temperature.entity_id,
+                ATTR_ICON: self.sensor_temperature.icon if self.sensor_temperature else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.sensor_temperature.unit_of_measurement if self.sensor_temperature else None,
+                ATTR_SENSOR: self.sensor_temperature.entity_id if self.sensor_temperature else None,
             },
             ATTR_ILLUMINANCE: {
-                ATTR_MAX: self.max_illuminance.state,
-                ATTR_MIN: self.min_illuminance.state,
+                ATTR_MAX: self.max_illuminance.state if self.max_illuminance else None,
+                ATTR_MIN: self.min_illuminance.state if self.min_illuminance else None,
                 ATTR_CURRENT: (
                     self.sensor_illuminance.native_value
                     if self.sensor_illuminance and self.sensor_illuminance.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.sensor_illuminance.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.sensor_illuminance.unit_of_measurement,
-                ATTR_SENSOR: self.sensor_illuminance.entity_id,
+                ATTR_ICON: self.sensor_illuminance.icon if self.sensor_illuminance else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.sensor_illuminance.unit_of_measurement if self.sensor_illuminance else None,
+                ATTR_SENSOR: self.sensor_illuminance.entity_id if self.sensor_illuminance else None,
             },
             ATTR_MOISTURE: {
-                ATTR_MAX: self.max_moisture.state,
-                ATTR_MIN: self.min_moisture.state,
+                ATTR_MAX: self.max_moisture.state if self.max_moisture else None,
+                ATTR_MIN: self.min_moisture.state if self.min_moisture else None,
                 ATTR_CURRENT: (
                     self.sensor_moisture.native_value
                     if self.sensor_moisture and self.sensor_moisture.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.sensor_moisture.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.sensor_moisture.unit_of_measurement,
-                ATTR_SENSOR: self.sensor_moisture.entity_id,
+                ATTR_ICON: self.sensor_moisture.icon if self.sensor_moisture else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.sensor_moisture.unit_of_measurement if self.sensor_moisture else None,
+                ATTR_SENSOR: self.sensor_moisture.entity_id if self.sensor_moisture else None,
             },
             ATTR_CONDUCTIVITY: {
-                ATTR_MAX: self.max_conductivity.state,
-                ATTR_MIN: self.min_conductivity.state,
+                ATTR_MAX: self.max_conductivity.state if self.max_conductivity else None,
+                ATTR_MIN: self.min_conductivity.state if self.min_conductivity else None,
                 ATTR_CURRENT: (
                     self.sensor_conductivity.native_value
                     if self.sensor_conductivity and self.sensor_conductivity.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.sensor_conductivity.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.sensor_conductivity.unit_of_measurement,
-                ATTR_SENSOR: self.sensor_conductivity.entity_id,
+                ATTR_ICON: self.sensor_conductivity.icon if self.sensor_conductivity else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.sensor_conductivity.unit_of_measurement if self.sensor_conductivity else None,
+                ATTR_SENSOR: self.sensor_conductivity.entity_id if self.sensor_conductivity else None,
             },
             ATTR_HUMIDITY: {
-                ATTR_MAX: self.max_humidity.state,
-                ATTR_MIN: self.min_humidity.state,
+                ATTR_MAX: self.max_humidity.state if self.max_humidity else None,
+                ATTR_MIN: self.min_humidity.state if self.min_humidity else None,
                 ATTR_CURRENT: (
                     self.sensor_humidity.native_value
                     if self.sensor_humidity and self.sensor_humidity.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.sensor_humidity.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.sensor_humidity.unit_of_measurement,
-                ATTR_SENSOR: self.sensor_humidity.entity_id,
+                ATTR_ICON: self.sensor_humidity.icon if self.sensor_humidity else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.sensor_humidity.unit_of_measurement if self.sensor_humidity else None,
+                ATTR_SENSOR: self.sensor_humidity.entity_id if self.sensor_humidity else None,
             },
             ATTR_CO2: {
-                ATTR_MAX: self.max_CO2.state,
-                ATTR_MIN: self.min_CO2.state,
+                ATTR_MAX: self.max_CO2.state if self.max_CO2 else None,
+                ATTR_MIN: self.min_CO2.state if self.min_CO2 else None,
                 ATTR_CURRENT: (
                     self.sensor_CO2.native_value
                     if self.sensor_CO2 and self.sensor_CO2.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.sensor_CO2.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.sensor_CO2.unit_of_measurement,
-                ATTR_SENSOR: self.sensor_CO2.entity_id,
+                ATTR_ICON: self.sensor_CO2.icon if self.sensor_CO2 else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.sensor_CO2.unit_of_measurement if self.sensor_CO2 else None,
+                ATTR_SENSOR: self.sensor_CO2.entity_id if self.sensor_CO2 else None,
             },
             ATTR_DLI: {
-                ATTR_MAX: self.max_dli.state,
-                ATTR_MIN: self.min_dli.state,
+                ATTR_MAX: self.max_dli.state if self.max_dli else None,
+                ATTR_MIN: self.min_dli.state if self.min_dli else None,
                 ATTR_CURRENT: (
                     self.dli.native_value
                     if self.dli and self.dli.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.dli.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.dli.unit_of_measurement,
-                ATTR_SENSOR: self.dli.entity_id,
+                ATTR_ICON: self.dli.icon if self.dli else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.dli.unit_of_measurement if self.dli else None,
+                ATTR_SENSOR: self.dli.entity_id if self.dli else None,
             },
             ATTR_WATER_CONSUMPTION: {
-                ATTR_MAX: self.max_water_consumption.state,
-                ATTR_MIN: self.min_water_consumption.state,
+                ATTR_MAX: self.max_water_consumption.state if self.max_water_consumption else None,
+                ATTR_MIN: self.min_water_consumption.state if self.min_water_consumption else None,
                 ATTR_CURRENT: (
                     self.moisture_consumption.native_value
                     if self.moisture_consumption and self.moisture_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.moisture_consumption.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.moisture_consumption.unit_of_measurement,
-                ATTR_SENSOR: self.moisture_consumption.entity_id,
+                ATTR_ICON: self.moisture_consumption.icon if self.moisture_consumption else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.moisture_consumption.unit_of_measurement if self.moisture_consumption else None,
+                ATTR_SENSOR: self.moisture_consumption.entity_id if self.moisture_consumption else None,
             },
             ATTR_FERTILIZER_CONSUMPTION: {
-                ATTR_MAX: self.max_fertilizer_consumption.state,
-                ATTR_MIN: self.min_fertilizer_consumption.state,
+                ATTR_MAX: self.max_fertilizer_consumption.state if self.max_fertilizer_consumption else None,
+                ATTR_MIN: self.min_fertilizer_consumption.state if self.min_fertilizer_consumption else None,
                 ATTR_CURRENT: (
                     self.fertilizer_consumption.native_value
                     if self.fertilizer_consumption and self.fertilizer_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.fertilizer_consumption.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.fertilizer_consumption.unit_of_measurement,
-                ATTR_SENSOR: self.fertilizer_consumption.entity_id,
+                ATTR_ICON: self.fertilizer_consumption.icon if self.fertilizer_consumption else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.fertilizer_consumption.unit_of_measurement if self.fertilizer_consumption else None,
+                ATTR_SENSOR: self.fertilizer_consumption.entity_id if self.fertilizer_consumption else None,
             },
             ATTR_POWER_CONSUMPTION: {
-                ATTR_MAX: self.max_power_consumption.state,
-                ATTR_MIN: self.min_power_consumption.state,
+                ATTR_MAX: self.max_power_consumption.state if self.max_power_consumption else None,
+                ATTR_MIN: self.min_power_consumption.state if self.min_power_consumption else None,
                 ATTR_CURRENT: (
                     self.sensor_power_consumption.native_value
                     if self.sensor_power_consumption and self.sensor_power_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.sensor_power_consumption.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.sensor_power_consumption.unit_of_measurement,
-                ATTR_SENSOR: self.sensor_power_consumption.entity_id,
+                ATTR_ICON: self.sensor_power_consumption.icon if self.sensor_power_consumption else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.sensor_power_consumption.unit_of_measurement if self.sensor_power_consumption else None,
+                ATTR_SENSOR: self.sensor_power_consumption.entity_id if self.sensor_power_consumption else None,
             },
             ATTR_PH: {
-                ATTR_MAX: self.max_ph.state,
-                ATTR_MIN: self.min_ph.state,
+                ATTR_MAX: self.max_ph.state if self.max_ph else None,
+                ATTR_MIN: self.min_ph.state if self.min_ph else None,
                 ATTR_CURRENT: (
                     self.sensor_ph.native_value
                     if self.sensor_ph and self.sensor_ph.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
                     else None
                 ),
-                ATTR_ICON: self.sensor_ph.icon,
-                ATTR_UNIT_OF_MEASUREMENT: self.sensor_ph.unit_of_measurement,
-                ATTR_SENSOR: self.sensor_ph.entity_id,
+                ATTR_ICON: self.sensor_ph.icon if self.sensor_ph else None,
+                ATTR_UNIT_OF_MEASUREMENT: self.sensor_ph.unit_of_measurement if self.sensor_ph else None,
+                ATTR_SENSOR: self.sensor_ph.entity_id if self.sensor_ph else None,
             },
             
             # Neue Struktur: Separater Bereich für Diagnosesensoren
@@ -1537,9 +1557,6 @@ class PlantDevice(Entity):
             }
 
         return response
-
-    @property
-    def threshold_entities(self) -> list[Entity]:
         """List all threshold entities"""
         entities = [
             self.max_conductivity,
@@ -1739,10 +1756,6 @@ class PlantDevice(Entity):
         # Replace sensors with tent sensors
         tent_sensors = tent.get_sensors()
         self.replace_sensors(tent_sensors)
-
-    def update(self) -> None:
-        """Run on every update of the entities"""
-        new_state = STATE_OK
         known_state = False
 
         # Handle None values for all sensors to prevent AttributeError
@@ -1951,14 +1964,6 @@ class PlantDevice(Entity):
             self.replace_sensors(tent_sensors)
         # Update the device registry to reflect the new tent assignment
         # This would typically involve updating the device's area or other metadata
-
-    def replace_sensors(self, tent_sensors: list) -> None:
-        """Replace the plant's sensors with those from a tent.
-        
-        Args:
-            tent_sensors: List of sensor entity IDs from the tent
-        """
-        if not tent_sensors:
             _LOGGER.debug("No sensors to replace for plant %s", self.name)
             return
             
@@ -2025,36 +2030,46 @@ class PlantDevice(Entity):
         
         # Replace sensors using the existing replace_external_sensor method
         # Only replace sensors that actually exist
+        updated_sensors = []
+        
         if hasattr(self, 'sensor_temperature') and self.sensor_temperature and "temperature" in sensor_mapping:
             self.sensor_temperature.replace_external_sensor(sensor_mapping["temperature"])
+            updated_sensors.append(self.sensor_temperature)
             _LOGGER.debug("Assigned temperature sensor %s to plant %s", sensor_mapping["temperature"], self.name)
             
         if hasattr(self, 'sensor_moisture') and self.sensor_moisture and "moisture" in sensor_mapping:
             self.sensor_moisture.replace_external_sensor(sensor_mapping["moisture"])
+            updated_sensors.append(self.sensor_moisture)
             _LOGGER.debug("Assigned moisture sensor %s to plant %s", sensor_mapping["moisture"], self.name)
             
         if hasattr(self, 'sensor_conductivity') and self.sensor_conductivity and "conductivity" in sensor_mapping:
             self.sensor_conductivity.replace_external_sensor(sensor_mapping["conductivity"])
+            updated_sensors.append(self.sensor_conductivity)
             _LOGGER.debug("Assigned conductivity sensor %s to plant %s", sensor_mapping["conductivity"], self.name)
             
         if hasattr(self, 'sensor_illuminance') and self.sensor_illuminance and "illuminance" in sensor_mapping:
             self.sensor_illuminance.replace_external_sensor(sensor_mapping["illuminance"])
+            updated_sensors.append(self.sensor_illuminance)
             _LOGGER.debug("Assigned illuminance sensor %s to plant %s", sensor_mapping["illuminance"], self.name)
             
         if hasattr(self, 'sensor_humidity') and self.sensor_humidity and "humidity" in sensor_mapping:
             self.sensor_humidity.replace_external_sensor(sensor_mapping["humidity"])
+            updated_sensors.append(self.sensor_humidity)
             _LOGGER.debug("Assigned humidity sensor %s to plant %s", sensor_mapping["humidity"], self.name)
             
         if hasattr(self, 'sensor_CO2') and self.sensor_CO2 and "co2" in sensor_mapping:
             self.sensor_CO2.replace_external_sensor(sensor_mapping["co2"])
+            updated_sensors.append(self.sensor_CO2)
             _LOGGER.debug("Assigned CO2 sensor %s to plant %s", sensor_mapping["co2"], self.name)
             
         if hasattr(self, 'sensor_power_consumption') and self.sensor_power_consumption and "power_consumption" in sensor_mapping:
             self.sensor_power_consumption.replace_external_sensor(sensor_mapping["power_consumption"])
+            updated_sensors.append(self.sensor_power_consumption)
             _LOGGER.debug("Assigned power consumption sensor %s to plant %s", sensor_mapping["power_consumption"], self.name)
             
         if hasattr(self, 'sensor_ph') and self.sensor_ph and "ph" in sensor_mapping:
             self.sensor_ph.replace_external_sensor(sensor_mapping["ph"])
+            updated_sensors.append(self.sensor_ph)
             _LOGGER.debug("Assigned pH sensor %s to plant %s", sensor_mapping["ph"], self.name)
             
         # Force an update of the plant state to reflect the new sensor assignments

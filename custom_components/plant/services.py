@@ -249,6 +249,47 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         meter.replace_external_sensor(new_sensor)
         return
 
+    async def change_tent(call: ServiceCall) -> None:
+        """Change the tent assignment for a plant."""
+        plant_entity = call.data.get("plant_entity")
+        tent_entity_id = call.data.get("tent_entity")
+
+        # Find the plant
+        plant = None
+        for entry_id in hass.data[DOMAIN]:
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                p = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if p.entity_id == plant_entity:
+                    plant = p
+                    break
+
+        if not plant:
+            _LOGGER.warning("Plant entity %s not found", plant_entity)
+            return False
+
+        # Find the tent
+        tent = None
+        if tent_entity_id:
+            for entry_id in hass.data[DOMAIN]:
+                if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                    t = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                    if t.entity_id == tent_entity_id and t.device_type == DEVICE_TYPE_TENT:
+                        tent = t
+                        break
+
+        if tent_entity_id and not tent:
+            _LOGGER.warning("Tent entity %s not found", tent_entity_id)
+            return False
+
+        # Change the tent assignment
+        plant.change_tent(tent)
+        
+        # Trigger a state update to ensure the frontend gets the new values
+        plant.async_schedule_update_ha_state(True)
+        
+        _LOGGER.info("Changed tent for plant %s to %s", plant_entity, tent_entity_id or "None")
+        return True
+
     async def remove_plant(call: ServiceCall) -> None:
         """Remove a plant entity and all its associated entities."""
         plant_entity = call.data.get("plant_entity")
