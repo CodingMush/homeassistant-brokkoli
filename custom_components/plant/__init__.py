@@ -1223,8 +1223,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_temperature.state if self.max_temperature else None,
                 ATTR_MIN: self.min_temperature.state if self.min_temperature else None,
                 ATTR_CURRENT: (
-                    self.sensor_temperature.native_value
+                    float(self.sensor_temperature.native_value)
                     if self.sensor_temperature and self.sensor_temperature.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.sensor_temperature.native_value)
                     else None
                 ),
                 ATTR_ICON: self.sensor_temperature.icon if self.sensor_temperature else None,
@@ -1235,8 +1236,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_illuminance.state if self.max_illuminance else None,
                 ATTR_MIN: self.min_illuminance.state if self.min_illuminance else None,
                 ATTR_CURRENT: (
-                    self.sensor_illuminance.native_value
+                    float(self.sensor_illuminance.native_value)
                     if self.sensor_illuminance and self.sensor_illuminance.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.sensor_illuminance.native_value)
                     else None
                 ),
                 ATTR_ICON: self.sensor_illuminance.icon if self.sensor_illuminance else None,
@@ -1247,8 +1249,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_moisture.state if self.max_moisture else None,
                 ATTR_MIN: self.min_moisture.state if self.min_moisture else None,
                 ATTR_CURRENT: (
-                    self.sensor_moisture.native_value
+                    float(self.sensor_moisture.native_value)
                     if self.sensor_moisture and self.sensor_moisture.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.sensor_moisture.native_value)
                     else None
                 ),
                 ATTR_ICON: self.sensor_moisture.icon if self.sensor_moisture else None,
@@ -1259,8 +1262,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_conductivity.state if self.max_conductivity else None,
                 ATTR_MIN: self.min_conductivity.state if self.min_conductivity else None,
                 ATTR_CURRENT: (
-                    self.sensor_conductivity.native_value
+                    float(self.sensor_conductivity.native_value)
                     if self.sensor_conductivity and self.sensor_conductivity.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.sensor_conductivity.native_value)
                     else None
                 ),
                 ATTR_ICON: self.sensor_conductivity.icon if self.sensor_conductivity else None,
@@ -1271,8 +1275,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_humidity.state if self.max_humidity else None,
                 ATTR_MIN: self.min_humidity.state if self.min_humidity else None,
                 ATTR_CURRENT: (
-                    self.sensor_humidity.native_value
+                    float(self.sensor_humidity.native_value)
                     if self.sensor_humidity and self.sensor_humidity.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.sensor_humidity.native_value)
                     else None
                 ),
                 ATTR_ICON: self.sensor_humidity.icon if self.sensor_humidity else None,
@@ -1283,8 +1288,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_CO2.state if self.max_CO2 else None,
                 ATTR_MIN: self.min_CO2.state if self.min_CO2 else None,
                 ATTR_CURRENT: (
-                    self.sensor_CO2.native_value
+                    float(self.sensor_CO2.native_value)
                     if self.sensor_CO2 and self.sensor_CO2.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.sensor_CO2.native_value)
                     else None
                 ),
                 ATTR_ICON: self.sensor_CO2.icon if self.sensor_CO2 else None,
@@ -1295,8 +1301,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_dli.state if self.max_dli else None,
                 ATTR_MIN: self.min_dli.state if self.min_dli else None,
                 ATTR_CURRENT: (
-                    self.dli.native_value
+                    float(self.dli.native_value)
                     if self.dli and self.dli.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.dli.native_value)
                     else None
                 ),
                 ATTR_ICON: self.dli.icon if self.dli else None,
@@ -1307,8 +1314,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_water_consumption.state if self.max_water_consumption else None,
                 ATTR_MIN: self.min_water_consumption.state if self.min_water_consumption else None,
                 ATTR_CURRENT: (
-                    self.moisture_consumption.native_value
+                    float(self.moisture_consumption.native_value)
                     if self.moisture_consumption and self.moisture_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.moisture_consumption.native_value)
                     else None
                 ),
                 ATTR_ICON: self.moisture_consumption.icon if self.moisture_consumption else None,
@@ -1319,8 +1327,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_fertilizer_consumption.state if self.max_fertilizer_consumption else None,
                 ATTR_MIN: self.min_fertilizer_consumption.state if self.min_fertilizer_consumption else None,
                 ATTR_CURRENT: (
-                    self.fertilizer_consumption.native_value
+                    float(self.fertilizer_consumption.native_value)
                     if self.fertilizer_consumption and self.fertilizer_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.fertilizer_consumption.native_value)
                     else None
                 ),
                 ATTR_ICON: self.fertilizer_consumption.icon if self.fertilizer_consumption else None,
@@ -1331,8 +1340,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_power_consumption.state if self.max_power_consumption else None,
                 ATTR_MIN: self.min_power_consumption.state if self.min_power_consumption else None,
                 ATTR_CURRENT: (
-                    self.sensor_power_consumption.native_value
+                    float(self.sensor_power_consumption.native_value)
                     if self.sensor_power_consumption and self.sensor_power_consumption.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.sensor_power_consumption.native_value)
                     else None
                 ),
                 ATTR_ICON: self.sensor_power_consumption.icon if self.sensor_power_consumption else None,
@@ -1343,8 +1353,9 @@ class PlantDevice(Entity):
                 ATTR_MAX: self.max_ph.state if self.max_ph else None,
                 ATTR_MIN: self.min_ph.state if self.min_ph else None,
                 ATTR_CURRENT: (
-                    self.sensor_ph.native_value
+                    float(self.sensor_ph.native_value)
                     if self.sensor_ph and self.sensor_ph.native_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE, None)
+                    and self._is_valid_number(self.sensor_ph.native_value)
                     else None
                 ),
                 ATTR_ICON: self.sensor_ph.icon if self.sensor_ph else None,
@@ -1364,7 +1375,7 @@ class PlantDevice(Entity):
         
         if hasattr(self, 'energy_cost') and self.energy_cost:
             current_value = self.energy_cost.native_value
-            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
+            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
                     current_value = float(current_value)
                 except (ValueError, TypeError):
@@ -1381,7 +1392,7 @@ class PlantDevice(Entity):
         
         if self.total_power_consumption:
             current_value = self.total_power_consumption.native_value
-            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
+            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
                     current_value = float(current_value)
                 except (ValueError, TypeError):
@@ -1401,7 +1412,7 @@ class PlantDevice(Entity):
             current_value = self.total_integral.native_value
             
             # Konvertiere zu float für JSON-Serialisierung
-            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
+            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
                     # Explizite Konvertierung zu float
                     current_value = float(current_value)
@@ -1420,7 +1431,7 @@ class PlantDevice(Entity):
         # Füge total_water_consumption hinzu
         if self.total_water_consumption:
             current_value = self.total_water_consumption.native_value
-            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
+            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
                     current_value = float(current_value)
                 except (ValueError, TypeError):
@@ -1438,7 +1449,7 @@ class PlantDevice(Entity):
         # Füge total_fertilizer_consumption hinzu
         if self.total_fertilizer_consumption:
             current_value = self.total_fertilizer_consumption.native_value
-            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
+            if current_value not in (STATE_UNAVAILABLE, STATE_UNKNOWN, None) and self._is_valid_number(current_value):
                 try:
                     current_value = float(current_value)
                 except (ValueError, TypeError):
@@ -1557,6 +1568,16 @@ class PlantDevice(Entity):
             }
 
         return response
+
+    def _is_valid_number(self, value) -> bool:
+        """Check if a value is a valid number."""
+        if value is None:
+            return False
+        try:
+            float(value)
+            return True
+        except (ValueError, TypeError):
+            return False
 
     @property
     def threshold_entities(self) -> list[Entity]:
@@ -1932,13 +1953,51 @@ class PlantDevice(Entity):
     def change_tent(self, tent_entity) -> None:
         """Change the tent assignment for this plant."""
         self._assigned_tent = tent_entity
-        self._tent_id = tent_entity.device_id if tent_entity else None
-        # Replace sensors with tent sensors if a tent is assigned
-        if tent_entity:
-            tent_sensors = tent_entity.get_sensors()
-            self.replace_sensors(tent_sensors)
-        # Update the device registry to reflect the new tent assignment
-        # This would typically involve updating the device's area or other metadata
+        self._tent_id = tent_entity.unique_id if tent_entity else None
+        
+        # If no tent is assigned, clear the sensor mappings
+        if not tent_entity:
+            _LOGGER.debug("Clearing tent assignment for plant %s", self.name)
+            # Clear sensor mappings in config
+            data = dict(self._config.data)
+            plant_info = dict(data.get(FLOW_PLANT_INFO, {}))
+            
+            # Clear all sensor mappings
+            for sensor_key in [FLOW_SENSOR_TEMPERATURE, FLOW_SENSOR_MOISTURE, FLOW_SENSOR_CONDUCTIVITY, 
+                              FLOW_SENSOR_ILLUMINANCE, FLOW_SENSOR_HUMIDITY, FLOW_SENSOR_CO2,
+                              FLOW_SENSOR_POWER_CONSUMPTION, FLOW_SENSOR_PH]:
+                if sensor_key in plant_info:
+                    del plant_info[sensor_key]
+            
+            data[FLOW_PLANT_INFO] = plant_info
+            self._hass.config_entries.async_update_entry(self._config, data=data)
+            
+            # Clear external sensors
+            if hasattr(self, 'sensor_temperature') and self.sensor_temperature:
+                self.sensor_temperature.replace_external_sensor(None)
+            if hasattr(self, 'sensor_moisture') and self.sensor_moisture:
+                self.sensor_moisture.replace_external_sensor(None)
+            if hasattr(self, 'sensor_conductivity') and self.sensor_conductivity:
+                self.sensor_conductivity.replace_external_sensor(None)
+            if hasattr(self, 'sensor_illuminance') and self.sensor_illuminance:
+                self.sensor_illuminance.replace_external_sensor(None)
+            if hasattr(self, 'sensor_humidity') and self.sensor_humidity:
+                self.sensor_humidity.replace_external_sensor(None)
+            if hasattr(self, 'sensor_CO2') and self.sensor_CO2:
+                self.sensor_CO2.replace_external_sensor(None)
+            if hasattr(self, 'sensor_power_consumption') and self.sensor_power_consumption:
+                self.sensor_power_consumption.replace_external_sensor(None)
+            if hasattr(self, 'sensor_ph') and self.sensor_ph:
+                self.sensor_ph.replace_external_sensor(None)
+            
+            self.async_write_ha_state()
+            return
+
+        # Get tent sensors
+        tent_sensors = tent_entity.get_sensors()
+        _LOGGER.debug("Tent %s has sensors: %s", tent_entity.name, tent_sensors)
+        
+        if not tent_sensors:
             _LOGGER.debug("No sensors to replace for plant %s", self.name)
             return
             
@@ -1956,8 +2015,10 @@ class PlantDevice(Entity):
                 continue
                 
             # Determine sensor type based on device class or unit of measurement
-            device_class = sensor_state.attributes.get("device_class")
+            device_class = sensor_state.attributes.get("device_class", "")
             unit_of_measurement = sensor_state.attributes.get("unit_of_measurement", "")
+            
+            _LOGGER.debug("Sensor %s: device_class=%s, unit=%s", sensor_entity_id, device_class, unit_of_measurement)
             
             # Map to plant sensor types
             if device_class == "temperature" or unit_of_measurement in ["°C", "°F", "K"]:
@@ -1979,10 +2040,20 @@ class PlantDevice(Entity):
             elif "ph" in sensor_entity_id.lower() or unit_of_measurement in ["pH", "ph"]:
                 sensor_mapping["ph"] = sensor_entity_id
         
+        _LOGGER.debug("Sensor mapping for plant %s: %s", self.name, sensor_mapping)
+        
         # Update the config entry with the new sensor assignments FIRST
         data = dict(self._config.data)
         plant_info = dict(data.get(FLOW_PLANT_INFO, {}))
         
+        # Clear existing sensor mappings
+        for sensor_key in [FLOW_SENSOR_TEMPERATURE, FLOW_SENSOR_MOISTURE, FLOW_SENSOR_CONDUCTIVITY, 
+                          FLOW_SENSOR_ILLUMINANCE, FLOW_SENSOR_HUMIDITY, FLOW_SENSOR_CO2,
+                          FLOW_SENSOR_POWER_CONSUMPTION, FLOW_SENSOR_PH]:
+            if sensor_key in plant_info:
+                del plant_info[sensor_key]
+        
+        # Set new sensor mappings
         if "temperature" in sensor_mapping:
             plant_info[FLOW_SENSOR_TEMPERATURE] = sensor_mapping["temperature"]
         if "moisture" in sensor_mapping:
