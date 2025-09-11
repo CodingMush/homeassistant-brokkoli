@@ -787,9 +787,8 @@ class PlantTotalLightIntegral(IntegrationSensor):
 
     async def async_update(self):
         """Update the DLI calculation."""
-        # Call the parent update method first to ensure we have the latest value
-        await super().async_update()
-        
+        # Instead of calling super().async_update(), we'll directly update the integration sensor
+        # This avoids the AttributeError since IntegrationSensor might not have async_update
         try:
             # Get current time
             current_time = datetime.now()
