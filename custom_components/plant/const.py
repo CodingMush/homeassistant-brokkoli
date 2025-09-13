@@ -147,6 +147,7 @@ FLOW_CONDUCTIVITY_TRIGGER = "conductivity_trigger"
 FLOW_WATER_CONSUMPTION_TRIGGER = "water_consumption_trigger"
 FLOW_FERTILIZER_CONSUMPTION_TRIGGER = "fertilizer_consumption_trigger"
 FLOW_POWER_CONSUMPTION_TRIGGER = "power_consumption_trigger"
+FLOW_PH_TRIGGER = "ph_trigger"  # Add pH trigger
 
 FLOW_FORCE_SPECIES_UPDATE = "force_update"
 

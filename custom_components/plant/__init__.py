@@ -843,6 +843,7 @@ class PlantDevice(Entity):
         self.water_consumption_status = None
         self.fertilizer_consumption_status = None
         self.power_consumption_status = None
+        self.ph_status = None  # Add pH status attribute
 
         # Tent assignment
         self._assigned_tent = None
@@ -963,6 +964,10 @@ class PlantDevice(Entity):
 
         # Initialize state
         self._attr_state = STATE_UNKNOWN
+        
+        # Initialize update scheduler
+        self._update_unsub = None
+        self._schedule_regular_updates()
 
     def decimals_for(self, sensor_type: str) -> int:
         """Return configured decimals for a sensor type."""
@@ -1082,6 +1087,11 @@ class PlantDevice(Entity):
     def power_consumption_trigger(self) -> bool:
         """Return if power consumption should trigger problems."""
         return self._config.data[FLOW_PLANT_INFO].get(FLOW_POWER_CONSUMPTION_TRIGGER, True)
+
+    @property
+    def ph_trigger(self) -> bool:
+        """Whether we will generate alarms based on pH."""
+        return self._config.options.get(FLOW_PH_TRIGGER, True)
 
     @property
     def breeder(self) -> str:
@@ -1741,6 +1751,7 @@ class PlantDevice(Entity):
 
     def update(self) -> None:
         """Run on every update to allow for changes from the GUI and service call."""
+        _LOGGER.debug("Updating plant status for %s", self.name)
         new_state = STATE_OK
         known_state = False
 
@@ -1749,108 +1760,150 @@ class PlantDevice(Entity):
             if temperature is not None and temperature != STATE_UNAVAILABLE and temperature != STATE_UNKNOWN and self.min_temperature is not None and self.max_temperature is not None:
                 try:
                     known_state = True
-                    if float(temperature) < float(self.min_temperature.state):
+                    temp_value = float(temperature)
+                    min_temp = float(self.min_temperature.native_value)
+                    max_temp = float(self.max_temperature.native_value)
+                    _LOGGER.debug("Evaluating temperature sensor: value=%s, min=%s, max=%s", temp_value, min_temp, max_temp)
+                    if temp_value < min_temp:
                         self.temperature_status = STATE_LOW
                         if self.temperature_trigger:
                             new_state = STATE_PROBLEM
-                    elif float(temperature) > float(self.max_temperature.state):
+                            _LOGGER.debug("Temperature is LOW, setting plant state to PROBLEM")
+                    elif temp_value > max_temp:
                         self.temperature_status = STATE_HIGH
                         if self.temperature_trigger:
                             new_state = STATE_PROBLEM
+                            _LOGGER.debug("Temperature is HIGH, setting plant state to PROBLEM")
                     else:
                         self.temperature_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
+                        _LOGGER.debug("Temperature is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for temperature sensor: %s", str(e))
 
         if self.sensor_conductivity is not None:
             conductivity = self.sensor_conductivity.state
             if conductivity is not None and conductivity != STATE_UNAVAILABLE and conductivity != STATE_UNKNOWN and self.min_conductivity is not None and self.max_conductivity is not None:
                 try:
                     known_state = True
-                    if float(conductivity) < float(self.min_conductivity.state):
+                    cond_value = float(conductivity)
+                    min_cond = float(self.min_conductivity.native_value)
+                    max_cond = float(self.max_conductivity.native_value)
+                    _LOGGER.debug("Evaluating conductivity sensor: value=%s, min=%s, max=%s", cond_value, min_cond, max_cond)
+                    if cond_value < min_cond:
                         self.conductivity_status = STATE_LOW
                         if self.conductivity_trigger:
                             new_state = STATE_PROBLEM
-                    elif float(conductivity) > float(self.max_conductivity.state):
+                            _LOGGER.debug("Conductivity is LOW, setting plant state to PROBLEM")
+                    elif cond_value > max_cond:
                         self.conductivity_status = STATE_HIGH
                         if self.conductivity_trigger:
                             new_state = STATE_PROBLEM
+                            _LOGGER.debug("Conductivity is HIGH, setting plant state to PROBLEM")
                     else:
                         self.conductivity_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
+                        _LOGGER.debug("Conductivity is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for conductivity sensor: %s", str(e))
 
         if self.sensor_illuminance is not None:
             illuminance = self.sensor_illuminance.state
             if illuminance is not None and illuminance != STATE_UNAVAILABLE and illuminance != STATE_UNKNOWN and self.min_illuminance is not None and self.max_illuminance is not None:
                 try:
                     known_state = True
-                    if float(illuminance) < float(self.min_illuminance.state):
+                    illum_value = float(illuminance)
+                    min_illum = float(self.min_illuminance.native_value)
+                    max_illum = float(self.max_illuminance.native_value)
+                    _LOGGER.debug("Evaluating illuminance sensor: value=%s, min=%s, max=%s", illum_value, min_illum, max_illum)
+                    if illum_value < min_illum:
                         self.illuminance_status = STATE_LOW
                         if self.illuminance_trigger:
                             new_state = STATE_PROBLEM
-                    elif float(illuminance) > float(self.max_illuminance.state):
+                            _LOGGER.debug("Illuminance is LOW, setting plant state to PROBLEM")
+                    elif illum_value > max_illum:
                         self.illuminance_status = STATE_HIGH
                         if self.illuminance_trigger:
                             new_state = STATE_PROBLEM
+                            _LOGGER.debug("Illuminance is HIGH, setting plant state to PROBLEM")
                     else:
                         self.illuminance_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
+                        _LOGGER.debug("Illuminance is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for illuminance sensor: %s", str(e))
 
         if self.sensor_humidity is not None:
             humidity = self.sensor_humidity.state
             if humidity is not None and humidity != STATE_UNAVAILABLE and humidity != STATE_UNKNOWN and self.min_humidity is not None and self.max_humidity is not None:
                 try:
                     known_state = True
-                    if float(humidity) < float(self.min_humidity.state):
+                    humid_value = float(humidity)
+                    min_humid = float(self.min_humidity.native_value)
+                    max_humid = float(self.max_humidity.native_value)
+                    _LOGGER.debug("Evaluating humidity sensor: value=%s, min=%s, max=%s", humid_value, min_humid, max_humid)
+                    if humid_value < min_humid:
                         self.humidity_status = STATE_LOW
                         if self.humidity_trigger:
                             new_state = STATE_PROBLEM
-                    elif float(humidity) > float(self.max_humidity.state):
+                            _LOGGER.debug("Humidity is LOW, setting plant state to PROBLEM")
+                    elif humid_value > max_humid:
                         self.humidity_status = STATE_HIGH
                         if self.humidity_trigger:
                             new_state = STATE_PROBLEM
+                            _LOGGER.debug("Humidity is HIGH, setting plant state to PROBLEM")
                     else:
                         self.humidity_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
+                        _LOGGER.debug("Humidity is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for humidity sensor: %s", str(e))
 
         if self.sensor_CO2 is not None:
             CO2 = self.sensor_CO2.state
             if CO2 is not None and CO2 != STATE_UNAVAILABLE and CO2 != STATE_UNKNOWN and self.min_CO2 is not None and self.max_CO2 is not None:
                 try:
                     known_state = True
-                    if float(CO2) < float(self.min_CO2.state):
+                    co2_value = float(CO2)
+                    min_co2 = float(self.min_CO2.native_value)
+                    max_co2 = float(self.max_CO2.native_value)
+                    _LOGGER.debug("Evaluating CO2 sensor: value=%s, min=%s, max=%s", co2_value, min_co2, max_co2)
+                    if co2_value < min_co2:
                         self.CO2_status = STATE_LOW
                         if self.CO2_trigger:
                             new_state = STATE_PROBLEM
-                    elif float(CO2) > float(self.max_CO2.state):
+                            _LOGGER.debug("CO2 is LOW, setting plant state to PROBLEM")
+                    elif co2_value > max_co2:
                         self.CO2_status = STATE_HIGH
                         if self.CO2_trigger:
                             new_state = STATE_PROBLEM
+                            _LOGGER.debug("CO2 is HIGH, setting plant state to PROBLEM")
                     else:
                         self.CO2_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
+                        _LOGGER.debug("CO2 is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for CO2 sensor: %s", str(e))
 
         if self.dli is not None:
             dli = self.dli.state
             if dli is not None and dli != STATE_UNAVAILABLE and dli != STATE_UNKNOWN and self.min_dli is not None and self.max_dli is not None:
                 try:
                     known_state = True
-                    if float(dli) < float(self.min_dli.state):
+                    dli_value = float(dli)
+                    min_dli_val = float(self.min_dli.native_value)
+                    max_dli_val = float(self.max_dli.native_value)
+                    _LOGGER.debug("Evaluating DLI sensor: value=%s, min=%s, max=%s", dli_value, min_dli_val, max_dli_val)
+                    if dli_value < min_dli_val:
                         self.dli_status = STATE_LOW
                         if self.dli_trigger:
                             new_state = STATE_PROBLEM
-                    elif float(dli) > float(self.max_dli.state):
+                            _LOGGER.debug("DLI is LOW, setting plant state to PROBLEM")
+                    elif dli_value > max_dli_val:
                         self.dli_status = STATE_HIGH
                         if self.dli_trigger:
                             new_state = STATE_PROBLEM
+                            _LOGGER.debug("DLI is HIGH, setting plant state to PROBLEM")
                     else:
                         self.dli_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
+                        _LOGGER.debug("DLI is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for DLI sensor: %s", str(e))
 
         # Überprüfe Wasser-Verbrauch
         if self.moisture_consumption is not None:
@@ -1858,18 +1911,25 @@ class PlantDevice(Entity):
             if water_consumption is not None and water_consumption != STATE_UNAVAILABLE and water_consumption != STATE_UNKNOWN and self.min_water_consumption is not None and self.max_water_consumption is not None:
                 try:
                     known_state = True
-                    if float(water_consumption) < float(self.min_water_consumption.state):
+                    water_value = float(water_consumption)
+                    min_water = float(self.min_water_consumption.native_value)
+                    max_water = float(self.max_water_consumption.native_value)
+                    _LOGGER.debug("Evaluating water consumption sensor: value=%s, min=%s, max=%s", water_value, min_water, max_water)
+                    if water_value < min_water:
                         self.water_consumption_status = STATE_LOW
                         if self.water_consumption_trigger:
                             new_state = STATE_PROBLEM
-                    elif float(water_consumption) > float(self.max_water_consumption.state):
+                            _LOGGER.debug("Water consumption is LOW, setting plant state to PROBLEM")
+                    elif water_value > max_water:
                         self.water_consumption_status = STATE_HIGH
                         if self.water_consumption_trigger:
                             new_state = STATE_PROBLEM
+                            _LOGGER.debug("Water consumption is HIGH, setting plant state to PROBLEM")
                     else:
                         self.water_consumption_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
+                        _LOGGER.debug("Water consumption is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for water consumption sensor: %s", str(e))
 
         # Überprüfe Dünger-Verbrauch
         if self.fertilizer_consumption is not None:
@@ -1877,18 +1937,25 @@ class PlantDevice(Entity):
             if fertilizer_consumption is not None and fertilizer_consumption != STATE_UNAVAILABLE and fertilizer_consumption != STATE_UNKNOWN and self.min_fertilizer_consumption is not None and self.max_fertilizer_consumption is not None:
                 try:
                     known_state = True
-                    if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
+                    fert_value = float(fertilizer_consumption)
+                    min_fert = float(self.min_fertilizer_consumption.native_value)
+                    max_fert = float(self.max_fertilizer_consumption.native_value)
+                    _LOGGER.debug("Evaluating fertilizer consumption sensor: value=%s, min=%s, max=%s", fert_value, min_fert, max_fert)
+                    if fert_value < min_fert:
                         self.fertilizer_consumption_status = STATE_LOW
                         if self.fertilizer_consumption_trigger:
                             new_state = STATE_PROBLEM
-                    elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
+                            _LOGGER.debug("Fertilizer consumption is LOW, setting plant state to PROBLEM")
+                    elif fert_value > max_fert:
                         self.fertilizer_consumption_status = STATE_HIGH
                         if self.fertilizer_consumption_trigger:
                             new_state = STATE_PROBLEM
+                            _LOGGER.debug("Fertilizer consumption is HIGH, setting plant state to PROBLEM")
                     else:
                         self.fertilizer_consumption_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
+                        _LOGGER.debug("Fertilizer consumption is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for fertilizer consumption sensor: %s", str(e))
 
         # Überprüfe Power Consumption
         if self.sensor_power_consumption is not None:
@@ -1896,193 +1963,61 @@ class PlantDevice(Entity):
             if power_consumption is not None and power_consumption != STATE_UNAVAILABLE and power_consumption != STATE_UNKNOWN and self.min_power_consumption is not None and self.max_power_consumption is not None:
                 try:
                     known_state = True
-                    if float(power_consumption) < float(self.min_power_consumption.state):
+                    power_value = float(power_consumption)
+                    min_power = float(self.min_power_consumption.native_value)
+                    max_power = float(self.max_power_consumption.native_value)
+                    _LOGGER.debug("Evaluating power consumption sensor: value=%s, min=%s, max=%s", power_value, min_power, max_power)
+                    if power_value < min_power:
                         self.power_consumption_status = STATE_LOW
                         if self.power_consumption_trigger:
                             new_state = STATE_PROBLEM
-                    elif float(power_consumption) > float(self.max_power_consumption.state):
+                            _LOGGER.debug("Power consumption is LOW, setting plant state to PROBLEM")
+                    elif power_value > max_power:
                         self.power_consumption_status = STATE_HIGH
                         if self.power_consumption_trigger:
                             new_state = STATE_PROBLEM
+                            _LOGGER.debug("Power consumption is HIGH, setting plant state to PROBLEM")
                     else:
                         self.power_consumption_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
+                        _LOGGER.debug("Power consumption is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for power consumption sensor: %s", str(e))
+
+        # Überprüfe pH Sensor
+        if self.sensor_ph is not None:
+            ph = self.sensor_ph.state
+            if ph is not None and ph != STATE_UNAVAILABLE and ph != STATE_UNKNOWN and self.min_ph is not None and self.max_ph is not None:
+                try:
+                    known_state = True
+                    ph_value = float(ph)
+                    min_ph_val = float(self.min_ph.native_value)
+                    max_ph_val = float(self.max_ph.native_value)
+                    _LOGGER.debug("Evaluating pH sensor: value=%s, min=%s, max=%s", ph_value, min_ph_val, max_ph_val)
+                    if ph_value < min_ph_val:
+                        self.ph_status = STATE_LOW
+                        if self.ph_trigger:
+                            new_state = STATE_PROBLEM
+                            _LOGGER.debug("pH is LOW, setting plant state to PROBLEM")
+                    elif ph_value > max_ph_val:
+                        self.ph_status = STATE_HIGH
+                        if self.ph_trigger:
+                            new_state = STATE_PROBLEM
+                            _LOGGER.debug("pH is HIGH, setting plant state to PROBLEM")
+                    else:
+                        self.ph_status = STATE_OK
+                        _LOGGER.debug("pH is OK")
+                except (ValueError, TypeError) as e:
+                    _LOGGER.warning("Invalid value for pH sensor: %s", str(e))
 
         # Set the state
         self._attr_state = new_state
         if not known_state:
             self._attr_state = STATE_UNKNOWN
+            _LOGGER.debug("Plant %s has no known sensor data, setting state to UNKNOWN", self.name)
+        else:
+            _LOGGER.debug("Plant %s state updated to %s", self.name, new_state)
 
-        if self.sensor_temperature is not None:
-            temperature = self.sensor_temperature.state
-            if temperature is not None and temperature != STATE_UNAVAILABLE and temperature != STATE_UNKNOWN and self.min_temperature is not None and self.max_temperature is not None:
-                try:
-                    known_state = True
-                    if float(temperature) < float(self.min_temperature.state):
-                        self.temperature_status = STATE_LOW
-                        if self.temperature_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(temperature) > float(self.max_temperature.state):
-                        self.temperature_status = STATE_HIGH
-                        if self.temperature_trigger:
-                            new_state = STATE_PROBLEM
-                    else:
-                        self.temperature_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
 
-        if self.sensor_conductivity is not None:
-            conductivity = self.sensor_conductivity.state
-            if conductivity is not None and conductivity != STATE_UNAVAILABLE and conductivity != STATE_UNKNOWN and self.min_conductivity is not None and self.max_conductivity is not None:
-                try:
-                    known_state = True
-                    if float(conductivity) < float(self.min_conductivity.state):
-                        self.conductivity_status = STATE_LOW
-                        if self.conductivity_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(conductivity) > float(self.max_conductivity.state):
-                        self.conductivity_status = STATE_HIGH
-                        if self.conductivity_trigger:
-                            new_state = STATE_PROBLEM
-                    else:
-                        self.conductivity_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
-
-        if self.sensor_illuminance is not None:
-            illuminance = self.sensor_illuminance.state
-            if illuminance is not None and illuminance != STATE_UNAVAILABLE and illuminance != STATE_UNKNOWN and self.min_illuminance is not None and self.max_illuminance is not None:
-                try:
-                    known_state = True
-                    if float(illuminance) < float(self.min_illuminance.state):
-                        self.illuminance_status = STATE_LOW
-                        if self.illuminance_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(illuminance) > float(self.max_illuminance.state):
-                        self.illuminance_status = STATE_HIGH
-                        if self.illuminance_trigger:
-                            new_state = STATE_PROBLEM
-                    else:
-                        self.illuminance_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
-
-        if self.sensor_humidity is not None:
-            humidity = self.sensor_humidity.state
-            if humidity is not None and humidity != STATE_UNAVAILABLE and humidity != STATE_UNKNOWN and self.min_humidity is not None and self.max_humidity is not None:
-                try:
-                    known_state = True
-                    if float(humidity) < float(self.min_humidity.state):
-                        self.humidity_status = STATE_LOW
-                        if self.humidity_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(humidity) > float(self.max_humidity.state):
-                        self.humidity_status = STATE_HIGH
-                        if self.humidity_trigger:
-                            new_state = STATE_PROBLEM
-                    else:
-                        self.humidity_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
-
-        if self.sensor_CO2 is not None:
-            CO2 = self.sensor_CO2.state
-            if CO2 is not None and CO2 != STATE_UNAVAILABLE and CO2 != STATE_UNKNOWN and self.min_CO2 is not None and self.max_CO2 is not None:
-                try:
-                    known_state = True
-                    if float(CO2) < float(self.min_CO2.state):
-                        self.CO2_status = STATE_LOW
-                        if self.CO2_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(CO2) > float(self.max_CO2.state):
-                        self.CO2_status = STATE_HIGH
-                        if self.CO2_trigger:
-                            new_state = STATE_PROBLEM
-                    else:
-                        self.CO2_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
-
-        if self.dli is not None:
-            dli = self.dli.state
-            if dli is not None and dli != STATE_UNAVAILABLE and dli != STATE_UNKNOWN and self.min_dli is not None and self.max_dli is not None:
-                try:
-                    known_state = True
-                    if float(dli) < float(self.min_dli.state):
-                        self.dli_status = STATE_LOW
-                        if self.dli_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(dli) > float(self.max_dli.state):
-                        self.dli_status = STATE_HIGH
-                        if self.dli_trigger:
-                            new_state = STATE_PROBLEM
-                    else:
-                        self.dli_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
-
-        # Überprüfe Wasser-Verbrauch
-        if self.moisture_consumption is not None:
-            water_consumption = self.moisture_consumption.state
-            if water_consumption is not None and water_consumption != STATE_UNAVAILABLE and water_consumption != STATE_UNKNOWN and self.min_water_consumption is not None and self.max_water_consumption is not None:
-                try:
-                    known_state = True
-                    if float(water_consumption) < float(self.min_water_consumption.state):
-                        self.water_consumption_status = STATE_LOW
-                        if self.water_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(water_consumption) > float(self.max_water_consumption.state):
-                        self.water_consumption_status = STATE_HIGH
-                        if self.water_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                    else:
-                        self.water_consumption_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
-
-        # Überprüfe Dünger-Verbrauch
-        if self.fertilizer_consumption is not None:
-            fertilizer_consumption = self.fertilizer_consumption.state
-            if fertilizer_consumption is not None and fertilizer_consumption != STATE_UNAVAILABLE and fertilizer_consumption != STATE_UNKNOWN and self.min_fertilizer_consumption is not None and self.max_fertilizer_consumption is not None:
-                try:
-                    known_state = True
-                    if float(fertilizer_consumption) < float(self.min_fertilizer_consumption.state):
-                        self.fertilizer_consumption_status = STATE_LOW
-                        if self.fertilizer_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(fertilizer_consumption) > float(self.max_fertilizer_consumption.state):
-                        self.fertilizer_consumption_status = STATE_HIGH
-                        if self.fertilizer_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                    else:
-                        self.fertilizer_consumption_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
-
-        # Überprüfe Power Consumption
-        if self.sensor_power_consumption is not None:
-            power_consumption = self.sensor_power_consumption.state
-            if power_consumption is not None and power_consumption != STATE_UNAVAILABLE and power_consumption != STATE_UNKNOWN and self.min_power_consumption is not None and self.max_power_consumption is not None:
-                try:
-                    known_state = True
-                    if float(power_consumption) < float(self.min_power_consumption.state):
-                        self.power_consumption_status = STATE_LOW
-                        if self.power_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                    elif float(power_consumption) > float(self.max_power_consumption.state):
-                        self.power_consumption_status = STATE_HIGH
-                        if self.power_consumption_trigger:
-                            new_state = STATE_PROBLEM
-                    else:
-                        self.power_consumption_status = STATE_OK
-                except (ValueError, TypeError):
-                    pass
-
-        # Set the state
-        self._attr_state = new_state
-        if not known_state:
-            self._attr_state = STATE_UNKNOWN
 
     def update_kwh_price(self, new_price) -> None:
         """Update the kWh price."""
@@ -2399,132 +2334,4 @@ class PlantDevice(Entity):
         self.async_write_ha_state()
         _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
 
-    def replace_sensors(self, tent_sensors: list) -> None:
-        """Replace sensors for this plant based on a list of sensor entity IDs.
-        
-        This method is called by the change_tent service to assign tent sensors to a plant.
-        """
-        if not tent_sensors:
-            _LOGGER.debug("No sensors to replace for plant %s", self.name)
-            return
-            
-        # Map tent sensors to plant sensor types
-        sensor_mapping = {}
-        for sensor_entity_id in tent_sensors:
-            # Get the sensor state to determine its type
-            try:
-                sensor_state = self._hass.states.get(sensor_entity_id)
-                if not sensor_state:
-                    _LOGGER.warning("Sensor %s not found in Home Assistant", sensor_entity_id)
-                    continue
-            except Exception as e:
-                _LOGGER.warning("Error getting sensor %s: %s", sensor_entity_id, e)
-                continue
-                
-            # Determine sensor type based on device class or unit of measurement
-            device_class = sensor_state.attributes.get("device_class", "")
-            unit_of_measurement = sensor_state.attributes.get("unit_of_measurement", "")
-            
-            _LOGGER.debug("Sensor %s: device_class=%s, unit=%s", sensor_entity_id, device_class, unit_of_measurement)
-            
-            # Map to plant sensor types
-            if device_class == "temperature" or unit_of_measurement in ["°C", "°F", "K"]:
-                sensor_mapping["temperature"] = sensor_entity_id
-            elif device_class == "humidity" or unit_of_measurement == "%":
-                # Check if it's air humidity or soil moisture based on entity name
-                if "soil" in sensor_entity_id.lower() or "moisture" in sensor_entity_id.lower():
-                    sensor_mapping["moisture"] = sensor_entity_id
-                else:
-                    sensor_mapping["humidity"] = sensor_entity_id
-            elif device_class == "illuminance" or unit_of_measurement in ["lx", "lux"]:
-                sensor_mapping["illuminance"] = sensor_entity_id
-            elif device_class == "conductivity" or unit_of_measurement == "µS/cm":
-                sensor_mapping["conductivity"] = sensor_entity_id
-            elif "co2" in sensor_entity_id.lower() or unit_of_measurement == "ppm":
-                sensor_mapping["co2"] = sensor_entity_id
-            elif "power" in sensor_entity_id.lower() or unit_of_measurement in ["W", "kW"]:
-                sensor_mapping["power_consumption"] = sensor_entity_id
-            elif "ph" in sensor_entity_id.lower() or unit_of_measurement in ["pH", "ph"]:
-                sensor_mapping["ph"] = sensor_entity_id
-        
-        _LOGGER.debug("Sensor mapping for plant %s: %s", self.name, sensor_mapping)
-        
-        # Update the config entry with the new sensor assignments FIRST
-        data = dict(self._config.data)
-        plant_info = dict(data.get(FLOW_PLANT_INFO, {}))
-        
-        # Clear existing sensor mappings
-        for sensor_key in [FLOW_SENSOR_TEMPERATURE, FLOW_SENSOR_MOISTURE, FLOW_SENSOR_CONDUCTIVITY, 
-                          FLOW_SENSOR_ILLUMINANCE, FLOW_SENSOR_HUMIDITY, FLOW_SENSOR_CO2,
-                          FLOW_SENSOR_POWER_CONSUMPTION, FLOW_SENSOR_PH]:
-            if sensor_key in plant_info:
-                del plant_info[sensor_key]
-        
-        # Set new sensor mappings
-        if "temperature" in sensor_mapping:
-            plant_info[FLOW_SENSOR_TEMPERATURE] = sensor_mapping["temperature"]
-        if "moisture" in sensor_mapping:
-            plant_info[FLOW_SENSOR_MOISTURE] = sensor_mapping["moisture"]
-        if "conductivity" in sensor_mapping:
-            plant_info[FLOW_SENSOR_CONDUCTIVITY] = sensor_mapping["conductivity"]
-        if "illuminance" in sensor_mapping:
-            plant_info[FLOW_SENSOR_ILLUMINANCE] = sensor_mapping["illuminance"]
-        if "humidity" in sensor_mapping:
-            plant_info[FLOW_SENSOR_HUMIDITY] = sensor_mapping["humidity"]
-        if "co2" in sensor_mapping:
-            plant_info[FLOW_SENSOR_CO2] = sensor_mapping["co2"]
-        if "power_consumption" in sensor_mapping:
-            plant_info[FLOW_SENSOR_POWER_CONSUMPTION] = sensor_mapping["power_consumption"]
-        if "ph" in sensor_mapping:
-            plant_info[FLOW_SENSOR_PH] = sensor_mapping["ph"]
-            
-        data[FLOW_PLANT_INFO] = plant_info
-        self._hass.config_entries.async_update_entry(self._config, data=data)
-        
-        # Replace sensors using the existing replace_external_sensor method
-        # Only replace sensors that actually exist
-        updated_sensors = []
-        
-        if hasattr(self, 'sensor_temperature') and self.sensor_temperature and "temperature" in sensor_mapping:
-            self.sensor_temperature.replace_external_sensor(sensor_mapping["temperature"])
-            updated_sensors.append(self.sensor_temperature)
-            _LOGGER.debug("Assigned temperature sensor %s to plant %s", sensor_mapping["temperature"], self.name)
-            
-        if hasattr(self, 'sensor_moisture') and self.sensor_moisture and "moisture" in sensor_mapping:
-            self.sensor_moisture.replace_external_sensor(sensor_mapping["moisture"])
-            updated_sensors.append(self.sensor_moisture)
-            _LOGGER.debug("Assigned moisture sensor %s to plant %s", sensor_mapping["moisture"], self.name)
-            
-        if hasattr(self, 'sensor_conductivity') and self.sensor_conductivity and "conductivity" in sensor_mapping:
-            self.sensor_conductivity.replace_external_sensor(sensor_mapping["conductivity"])
-            updated_sensors.append(self.sensor_conductivity)
-            _LOGGER.debug("Assigned conductivity sensor %s to plant %s", sensor_mapping["conductivity"], self.name)
-            
-        if hasattr(self, 'sensor_illuminance') and self.sensor_illuminance and "illuminance" in sensor_mapping:
-            self.sensor_illuminance.replace_external_sensor(sensor_mapping["illuminance"])
-            updated_sensors.append(self.sensor_illuminance)
-            _LOGGER.debug("Assigned illuminance sensor %s to plant %s", sensor_mapping["illuminance"], self.name)
-            
-        if hasattr(self, 'sensor_humidity') and self.sensor_humidity and "humidity" in sensor_mapping:
-            self.sensor_humidity.replace_external_sensor(sensor_mapping["humidity"])
-            updated_sensors.append(self.sensor_humidity)
-            _LOGGER.debug("Assigned humidity sensor %s to plant %s", sensor_mapping["humidity"], self.name)
-            
-        if hasattr(self, 'sensor_CO2') and self.sensor_CO2 and "co2" in sensor_mapping:
-            self.sensor_CO2.replace_external_sensor(sensor_mapping["co2"])
-            updated_sensors.append(self.sensor_CO2)
-            _LOGGER.debug("Assigned CO2 sensor %s to plant %s", sensor_mapping["co2"], self.name)
-            
-        if hasattr(self, 'sensor_power_consumption') and self.sensor_power_consumption and "power_consumption" in sensor_mapping:
-            self.sensor_power_consumption.replace_external_sensor(sensor_mapping["power_consumption"])
-            updated_sensors.append(self.sensor_power_consumption)
-            _LOGGER.debug("Assigned power consumption sensor %s to plant %s", sensor_mapping["power_consumption"], self.name)
-            
-        if hasattr(self, 'sensor_ph') and self.sensor_ph and "ph" in sensor_mapping:
-            self.sensor_ph.replace_external_sensor(sensor_mapping["ph"])
-            updated_sensors.append(self.sensor_ph)
-            _LOGGER.debug("Assigned pH sensor %s to plant %s", sensor_mapping["ph"], self.name)
-            
-        # Force an update of the plant state to reflect the new sensor assignments
-        self.async_write_ha_state()
-        _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
+
