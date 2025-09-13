@@ -2355,7 +2355,7 @@ class PlantDevice(Entity):
         )
         _LOGGER.debug("Scheduled regular updates for plant %s", self.name)
 
-    def replace_sensors(self, tent_sensors: dict) -> None:
+    def replace_sensors(self, tent_sensors: list) -> None:
         """Replace sensors based on tent sensor mapping."""
         _LOGGER.debug("Replacing sensors for plant %s with tent sensors: %s", self.name, tent_sensors)
         
@@ -2429,6 +2429,226 @@ class PlantDevice(Entity):
         if "co2" in sensor_mapping:
             plant_info[FLOW_SENSOR_CO2] = sensor_mapping["co2"]
         if "power_consumption" in sensor_mapping:
+            plant_info[FLOW_SENSOR_POWER_CONSUMPTION] = sensor_mapping["power_consumption"]
+        if "ph" in sensor_mapping:
+            plant_info[FLOW_SENSOR_PH] = sensor_mapping["ph"]
+            
+        data[FLOW_PLANT_INFO] = plant_info
+        self._hass.config_entries.async_update_entry(self._config, data=data)
+        
+        # Replace sensors using the existing replace_external_sensor method
+        # Only replace sensors that actually exist
+        updated_sensors = []
+        
+        if hasattr(self, 'sensor_temperature') and self.sensor_temperature and "temperature" in sensor_mapping:
+            self.sensor_temperature.replace_external_sensor(sensor_mapping["temperature"])
+            updated_sensors.append(self.sensor_temperature)
+            _LOGGER.debug("Assigned temperature sensor %s to plant %s", sensor_mapping["temperature"], self.name)
+            
+        if hasattr(self, 'sensor_moisture') and self.sensor_moisture and "moisture" in sensor_mapping:
+            self.sensor_moisture.replace_external_sensor(sensor_mapping["moisture"])
+            updated_sensors.append(self.sensor_moisture)
+            _LOGGER.debug("Assigned moisture sensor %s to plant %s", sensor_mapping["moisture"], self.name)
+            
+        if hasattr(self, 'sensor_conductivity') and self.sensor_conductivity and "conductivity" in sensor_mapping:
+            self.sensor_conductivity.replace_external_sensor(sensor_mapping["conductivity"])
+            updated_sensors.append(self.sensor_conductivity)
+            _LOGGER.debug("Assigned conductivity sensor %s to plant %s", sensor_mapping["conductivity"], self.name)
+            
+        if hasattr(self, 'sensor_illuminance') and self.sensor_illuminance and "illuminance" in sensor_mapping:
+            self.sensor_illuminance.replace_external_sensor(sensor_mapping["illuminance"])
+            updated_sensors.append(self.sensor_illuminance)
+            _LOGGER.debug("Assigned illuminance sensor %s to plant %s", sensor_mapping["illuminance"], self.name)
+            
+        if hasattr(self, 'sensor_humidity') and self.sensor_humidity and "humidity" in sensor_mapping:
+            self.sensor_humidity.replace_external_sensor(sensor_mapping["humidity"])
+            updated_sensors.append(self.sensor_humidity)
+            _LOGGER.debug("Assigned humidity sensor %s to plant %s", sensor_mapping["humidity"], self.name)
+            
+        if hasattr(self, 'sensor_CO2') and self.sensor_CO2 and "co2" in sensor_mapping:
+            self.sensor_CO2.replace_external_sensor(sensor_mapping["co2"])
+            updated_sensors.append(self.sensor_CO2)
+            _LOGGER.debug("Assigned CO2 sensor %s to plant %s", sensor_mapping["co2"], self.name)
+            
+        if hasattr(self, 'sensor_power_consumption') and self.sensor_power_consumption and "power_consumption" in sensor_mapping:
+            self.sensor_power_consumption.replace_external_sensor(sensor_mapping["power_consumption"])
+            updated_sensors.append(self.sensor_power_consumption)
+            _LOGGER.debug("Assigned power consumption sensor %s to plant %s", sensor_mapping["power_consumption"], self.name)
+            
+        if hasattr(self, 'sensor_ph') and self.sensor_ph and "ph" in sensor_mapping:
+            self.sensor_ph.replace_external_sensor(sensor_mapping["ph"])
+            updated_sensors.append(self.sensor_ph)
+            _LOGGER.debug("Assigned pH sensor %s to plant %s", sensor_mapping["ph"], self.name)
+            
+        # Force an update of the plant state to reflect the new sensor assignments
+        self.async_write_ha_state()
+        _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
+
+            plant_info[FLOW_SENSOR_POWER_CONSUMPTION] = sensor_mapping["power_consumption"]
+        if "ph" in sensor_mapping:
+            plant_info[FLOW_SENSOR_PH] = sensor_mapping["ph"]
+            
+        data[FLOW_PLANT_INFO] = plant_info
+        self._hass.config_entries.async_update_entry(self._config, data=data)
+        
+        # Replace sensors using the existing replace_external_sensor method
+        # Only replace sensors that actually exist
+        updated_sensors = []
+        
+        if hasattr(self, 'sensor_temperature') and self.sensor_temperature and "temperature" in sensor_mapping:
+            self.sensor_temperature.replace_external_sensor(sensor_mapping["temperature"])
+            updated_sensors.append(self.sensor_temperature)
+            _LOGGER.debug("Assigned temperature sensor %s to plant %s", sensor_mapping["temperature"], self.name)
+            
+        if hasattr(self, 'sensor_moisture') and self.sensor_moisture and "moisture" in sensor_mapping:
+            self.sensor_moisture.replace_external_sensor(sensor_mapping["moisture"])
+            updated_sensors.append(self.sensor_moisture)
+            _LOGGER.debug("Assigned moisture sensor %s to plant %s", sensor_mapping["moisture"], self.name)
+            
+        if hasattr(self, 'sensor_conductivity') and self.sensor_conductivity and "conductivity" in sensor_mapping:
+            self.sensor_conductivity.replace_external_sensor(sensor_mapping["conductivity"])
+            updated_sensors.append(self.sensor_conductivity)
+            _LOGGER.debug("Assigned conductivity sensor %s to plant %s", sensor_mapping["conductivity"], self.name)
+            
+        if hasattr(self, 'sensor_illuminance') and self.sensor_illuminance and "illuminance" in sensor_mapping:
+            self.sensor_illuminance.replace_external_sensor(sensor_mapping["illuminance"])
+            updated_sensors.append(self.sensor_illuminance)
+            _LOGGER.debug("Assigned illuminance sensor %s to plant %s", sensor_mapping["illuminance"], self.name)
+            
+        if hasattr(self, 'sensor_humidity') and self.sensor_humidity and "humidity" in sensor_mapping:
+            self.sensor_humidity.replace_external_sensor(sensor_mapping["humidity"])
+            updated_sensors.append(self.sensor_humidity)
+            _LOGGER.debug("Assigned humidity sensor %s to plant %s", sensor_mapping["humidity"], self.name)
+            
+        if hasattr(self, 'sensor_CO2') and self.sensor_CO2 and "co2" in sensor_mapping:
+            self.sensor_CO2.replace_external_sensor(sensor_mapping["co2"])
+            updated_sensors.append(self.sensor_CO2)
+            _LOGGER.debug("Assigned CO2 sensor %s to plant %s", sensor_mapping["co2"], self.name)
+            
+        if hasattr(self, 'sensor_power_consumption') and self.sensor_power_consumption and "power_consumption" in sensor_mapping:
+            self.sensor_power_consumption.replace_external_sensor(sensor_mapping["power_consumption"])
+            updated_sensors.append(self.sensor_power_consumption)
+            _LOGGER.debug("Assigned power consumption sensor %s to plant %s", sensor_mapping["power_consumption"], self.name)
+            
+        if hasattr(self, 'sensor_ph') and self.sensor_ph and "ph" in sensor_mapping:
+            self.sensor_ph.replace_external_sensor(sensor_mapping["ph"])
+            updated_sensors.append(self.sensor_ph)
+            _LOGGER.debug("Assigned pH sensor %s to plant %s", sensor_mapping["ph"], self.name)
+            
+        # Force an update of the plant state to reflect the new sensor assignments
+        self.async_write_ha_state()
+        _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
+
+            plant_info[FLOW_SENSOR_POWER_CONSUMPTION] = sensor_mapping["power_consumption"]
+        if "ph" in sensor_mapping:
+            plant_info[FLOW_SENSOR_PH] = sensor_mapping["ph"]
+            
+        data[FLOW_PLANT_INFO] = plant_info
+        self._hass.config_entries.async_update_entry(self._config, data=data)
+        
+        # Replace sensors using the existing replace_external_sensor method
+        # Only replace sensors that actually exist
+        updated_sensors = []
+        
+        if hasattr(self, 'sensor_temperature') and self.sensor_temperature and "temperature" in sensor_mapping:
+            self.sensor_temperature.replace_external_sensor(sensor_mapping["temperature"])
+            updated_sensors.append(self.sensor_temperature)
+            _LOGGER.debug("Assigned temperature sensor %s to plant %s", sensor_mapping["temperature"], self.name)
+            
+        if hasattr(self, 'sensor_moisture') and self.sensor_moisture and "moisture" in sensor_mapping:
+            self.sensor_moisture.replace_external_sensor(sensor_mapping["moisture"])
+            updated_sensors.append(self.sensor_moisture)
+            _LOGGER.debug("Assigned moisture sensor %s to plant %s", sensor_mapping["moisture"], self.name)
+            
+        if hasattr(self, 'sensor_conductivity') and self.sensor_conductivity and "conductivity" in sensor_mapping:
+            self.sensor_conductivity.replace_external_sensor(sensor_mapping["conductivity"])
+            updated_sensors.append(self.sensor_conductivity)
+            _LOGGER.debug("Assigned conductivity sensor %s to plant %s", sensor_mapping["conductivity"], self.name)
+            
+        if hasattr(self, 'sensor_illuminance') and self.sensor_illuminance and "illuminance" in sensor_mapping:
+            self.sensor_illuminance.replace_external_sensor(sensor_mapping["illuminance"])
+            updated_sensors.append(self.sensor_illuminance)
+            _LOGGER.debug("Assigned illuminance sensor %s to plant %s", sensor_mapping["illuminance"], self.name)
+            
+        if hasattr(self, 'sensor_humidity') and self.sensor_humidity and "humidity" in sensor_mapping:
+            self.sensor_humidity.replace_external_sensor(sensor_mapping["humidity"])
+            updated_sensors.append(self.sensor_humidity)
+            _LOGGER.debug("Assigned humidity sensor %s to plant %s", sensor_mapping["humidity"], self.name)
+            
+        if hasattr(self, 'sensor_CO2') and self.sensor_CO2 and "co2" in sensor_mapping:
+            self.sensor_CO2.replace_external_sensor(sensor_mapping["co2"])
+            updated_sensors.append(self.sensor_CO2)
+            _LOGGER.debug("Assigned CO2 sensor %s to plant %s", sensor_mapping["co2"], self.name)
+            
+        if hasattr(self, 'sensor_power_consumption') and self.sensor_power_consumption and "power_consumption" in sensor_mapping:
+            self.sensor_power_consumption.replace_external_sensor(sensor_mapping["power_consumption"])
+            updated_sensors.append(self.sensor_power_consumption)
+            _LOGGER.debug("Assigned power consumption sensor %s to plant %s", sensor_mapping["power_consumption"], self.name)
+            
+        if hasattr(self, 'sensor_ph') and self.sensor_ph and "ph" in sensor_mapping:
+            self.sensor_ph.replace_external_sensor(sensor_mapping["ph"])
+            updated_sensors.append(self.sensor_ph)
+            _LOGGER.debug("Assigned pH sensor %s to plant %s", sensor_mapping["ph"], self.name)
+            
+        # Force an update of the plant state to reflect the new sensor assignments
+        self.async_write_ha_state()
+        _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
+
+            plant_info[FLOW_SENSOR_POWER_CONSUMPTION] = sensor_mapping["power_consumption"]
+        if "ph" in sensor_mapping:
+            plant_info[FLOW_SENSOR_PH] = sensor_mapping["ph"]
+            
+        data[FLOW_PLANT_INFO] = plant_info
+        self._hass.config_entries.async_update_entry(self._config, data=data)
+        
+        # Replace sensors using the existing replace_external_sensor method
+        # Only replace sensors that actually exist
+        updated_sensors = []
+        
+        if hasattr(self, 'sensor_temperature') and self.sensor_temperature and "temperature" in sensor_mapping:
+            self.sensor_temperature.replace_external_sensor(sensor_mapping["temperature"])
+            updated_sensors.append(self.sensor_temperature)
+            _LOGGER.debug("Assigned temperature sensor %s to plant %s", sensor_mapping["temperature"], self.name)
+            
+        if hasattr(self, 'sensor_moisture') and self.sensor_moisture and "moisture" in sensor_mapping:
+            self.sensor_moisture.replace_external_sensor(sensor_mapping["moisture"])
+            updated_sensors.append(self.sensor_moisture)
+            _LOGGER.debug("Assigned moisture sensor %s to plant %s", sensor_mapping["moisture"], self.name)
+            
+        if hasattr(self, 'sensor_conductivity') and self.sensor_conductivity and "conductivity" in sensor_mapping:
+            self.sensor_conductivity.replace_external_sensor(sensor_mapping["conductivity"])
+            updated_sensors.append(self.sensor_conductivity)
+            _LOGGER.debug("Assigned conductivity sensor %s to plant %s", sensor_mapping["conductivity"], self.name)
+            
+        if hasattr(self, 'sensor_illuminance') and self.sensor_illuminance and "illuminance" in sensor_mapping:
+            self.sensor_illuminance.replace_external_sensor(sensor_mapping["illuminance"])
+            updated_sensors.append(self.sensor_illuminance)
+            _LOGGER.debug("Assigned illuminance sensor %s to plant %s", sensor_mapping["illuminance"], self.name)
+            
+        if hasattr(self, 'sensor_humidity') and self.sensor_humidity and "humidity" in sensor_mapping:
+            self.sensor_humidity.replace_external_sensor(sensor_mapping["humidity"])
+            updated_sensors.append(self.sensor_humidity)
+            _LOGGER.debug("Assigned humidity sensor %s to plant %s", sensor_mapping["humidity"], self.name)
+            
+        if hasattr(self, 'sensor_CO2') and self.sensor_CO2 and "co2" in sensor_mapping:
+            self.sensor_CO2.replace_external_sensor(sensor_mapping["co2"])
+            updated_sensors.append(self.sensor_CO2)
+            _LOGGER.debug("Assigned CO2 sensor %s to plant %s", sensor_mapping["co2"], self.name)
+            
+        if hasattr(self, 'sensor_power_consumption') and self.sensor_power_consumption and "power_consumption" in sensor_mapping:
+            self.sensor_power_consumption.replace_external_sensor(sensor_mapping["power_consumption"])
+            updated_sensors.append(self.sensor_power_consumption)
+            _LOGGER.debug("Assigned power consumption sensor %s to plant %s", sensor_mapping["power_consumption"], self.name)
+            
+        if hasattr(self, 'sensor_ph') and self.sensor_ph and "ph" in sensor_mapping:
+            self.sensor_ph.replace_external_sensor(sensor_mapping["ph"])
+            updated_sensors.append(self.sensor_ph)
+            _LOGGER.debug("Assigned pH sensor %s to plant %s", sensor_mapping["ph"], self.name)
+            
+        # Force an update of the plant state to reflect the new sensor assignments
+        self.async_write_ha_state()
+        _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
+
             plant_info[FLOW_SENSOR_POWER_CONSUMPTION] = sensor_mapping["power_consumption"]
         if "ph" in sensor_mapping:
             plant_info[FLOW_SENSOR_PH] = sensor_mapping["ph"]

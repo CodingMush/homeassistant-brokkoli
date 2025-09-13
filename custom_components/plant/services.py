@@ -2093,8 +2093,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             plant_info = entry.data.get(FLOW_PLANT_INFO, {})
             if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT and plant_info.get("tent_id") == tent_id:
                 # Use existing instantiated entity if available
-                if entry.entry_id in hass.data.get(DOMAIN, {}) and ATTR_PLANT in hass.data[DOMAIN][entry.entry_id]:
-                    tent_entity = hass.data[DOMAIN][entry.entry_id][ATTR_PLANT]
+                if entry.entry_id in hass.data.get(DOMAIN, {}) and ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                    tent_entity = hass.data[DOMAIN][entry_id][ATTR_PLANT]
                     _LOGGER.debug("Found existing tent entity: %s", tent_entity.name)
                 else:
                     # As a fallback, construct a Tent object bound to this entry
@@ -2116,43 +2116,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # Instead of isinstance check, we'll use the device_type attribute which we already verified
         # The plant_entity is already verified to be a PlantDevice with device_type == DEVICE_TYPE_PLANT
         plant_entity.change_tent(tent_entity)
-        # Get tent sensors and replace them in the plant
-        # tent_sensors = tent_entity.get_sensors()
-        # plant_entity.replace_sensors(tent_sensors)  # This is now handled by change_tent
         _LOGGER.info("Changed tent assignment for plant %s to tent %s (ID: %s)", entity_id, tent_entity.name, tent_id)
-    
-    # Register the change_tent service
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_CHANGE_TENT,
-        change_tent,
-        schema=CHANGE_TENT_SCHEMA
-    )
-
-    async def list_tents(call: ServiceCall) -> ServiceResponse:
-        """List all available tents."""
-        tents = []
-        
-        # Find all tent entries
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            plant_info = entry.data.get(FLOW_PLANT_INFO, {})
-            if plant_info.get(ATTR_DEVICE_TYPE) == DEVICE_TYPE_TENT:
-                tent_data = {
-                    "tent_id": plant_info.get("tent_id"),
-                    "name": plant_info.get(ATTR_NAME),
-                    "sensors": [],
-                }
-                
-                # Add sensor information
-                for key in [FLOW_SENSOR_ILLUMINANCE, FLOW_SENSOR_HUMIDITY, FLOW_SENSOR_CO2, 
-                           FLOW_SENSOR_POWER_CONSUMPTION, FLOW_SENSOR_PH]:
-                    if plant_info.get(key):
-                        tent_data["sensors"].append({
-                            "type": key,
-                            "entity_id": plant_info.get(key)
-                        })
-                
-                tents.append(tent_data)
         
         return {"tents": tents}
     
