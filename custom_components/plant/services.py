@@ -2117,8 +2117,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         # The plant_entity is already verified to be a PlantDevice with device_type == DEVICE_TYPE_PLANT
         plant_entity.change_tent(tent_entity)
         # Get tent sensors and replace them in the plant
-        tent_sensors = tent_entity.get_sensors()
-        plant_entity.replace_sensors(tent_sensors)
+        # tent_sensors = tent_entity.get_sensors()
+        # plant_entity.replace_sensors(tent_sensors)  # This is now handled by change_tent
         _LOGGER.info("Changed tent assignment for plant %s to tent %s (ID: %s)", entity_id, tent_entity.name, tent_id)
     
     # Register the change_tent service
