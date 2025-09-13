@@ -2334,4 +2334,23 @@ class PlantDevice(Entity):
         self.async_write_ha_state()
         _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
 
-
+    def _schedule_regular_updates(self) -> None:
+        """Schedule regular updates for the plant status."""
+        # Cancel any existing update schedule
+        if self._update_unsub:
+            self._update_unsub()
+            self._update_unsub = None
+        
+        # Schedule updates every 30 seconds
+        from homeassistant.helpers.event import async_track_time_interval
+        from datetime import timedelta
+        
+        async def _regular_update_callback(now):
+            """Callback for regular updates."""
+            self.update()
+            self.async_write_ha_state()
+        
+        self._update_unsub = async_track_time_interval(
+            self._hass, _regular_update_callback, timedelta(seconds=30)
+        )
+        _LOGGER.debug("Scheduled regular updates for plant %s", self.name)
