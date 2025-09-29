@@ -75,6 +75,8 @@ from .const import (
     SERVICE_CHANGE_TENT,
     ATTR_TENT_ID,
     SERVICE_CREATE_TENT,
+    SERVICE_TAKE_SNAPSHOT,
+    SERVICE_AUTO_SNAPSHOT,
 )
 from .plant_helpers import PlantHelper
 
