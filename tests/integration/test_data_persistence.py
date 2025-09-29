@@ -37,7 +37,7 @@ def test_export_functionality():
     assert const.SERVICE_EXPORT_PLANTS == "export_plants"
     
     # Test export related constants
-    assert const.DEFAULT_IMAGE_PATH == "/config/www/images/plants/"
+    assert const.DEFAULT_IMAGE_PATH == "www/images/plants/"
     assert const.DEFAULT_IMAGE_LOCAL_URL == "/local/images/plants/"
 
 

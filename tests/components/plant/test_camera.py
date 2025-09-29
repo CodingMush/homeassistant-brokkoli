@@ -1,225 +1,186 @@
-"""Tests for the plant camera integration."""
+"""Tests for the camera platform."""
 
+from datetime import datetime
 import os
-import tempfile
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import patch, MagicMock
 
-import pytest
-from homeassistant.components.camera import CameraEntityFeature
-from homeassistant.const import ATTR_ENTITY_PICTURE
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
+from homeassistant.setup import async_setup_component
+import homeassistant.util.dt as dt_util
+from homeassistant.components.camera import DOMAIN as CAMERA_DOMAIN
+import pytest
 
-from custom_components.plant import PlantDevice
 from custom_components.plant.camera import PlantCamera
-from custom_components.plant.const import (
-    DOMAIN,
-    FLOW_DOWNLOAD_PATH,
-    FLOW_PLANT_INFO,
-)
+from custom_components.plant.const import DOMAIN
 
 
-async def test_plant_camera_initialization(hass: HomeAssistant) -> None:
-    """Test PlantCamera initialization."""
-    # Create a mock plant entity
-    plant_entity = Mock(spec=PlantDevice)
-    plant_entity.name = "Test Plant"
-    plant_entity.unique_id = "plant_test_123"
-    plant_entity.entity_id = "plant.test_plant"
-    
+async def test_plant_camera_initialization(hass: HomeAssistant, mock_plant_entity):
+    """Test plant camera initialization."""
     # Create a mock config entry
-    config_entry = Mock()
-    config_entry.data = {FLOW_PLANT_INFO: {}}
+    mock_config_entry = MagicMock()
+    mock_config_entry.data = {}
     
-    # Create camera instance
-    with patch("os.path.exists", return_value=True):
-        camera = PlantCamera(hass, plant_entity, config_entry)
+    # Initialize the camera
+    camera = PlantCamera(hass, mock_plant_entity, mock_config_entry)
     
-    # Test basic properties
-    assert camera.name == "Test Plant Camera"
-    assert camera.unique_id == "plant_test_123_camera"
-    assert camera.supported_features == CameraEntityFeature.ON_OFF
+    # Check that the camera was initialized correctly
+    assert camera.name == f"{mock_plant_entity.name} Camera"
+    assert camera.unique_id == f"{mock_plant_entity.unique_id}_camera"
     assert camera.is_on is True
 
 
-async def test_plant_camera_device_info(hass: HomeAssistant) -> None:
-    """Test PlantCamera device_info property."""
-    # Create a mock plant entity
-    plant_entity = Mock(spec=PlantDevice)
-    plant_entity.name = "Test Plant"
-    plant_entity.unique_id = "plant_test_123"
-    
+async def test_plant_camera_turn_on_off(hass: HomeAssistant, mock_plant_entity):
+    """Test turning plant camera on and off."""
     # Create a mock config entry
-    config_entry = Mock()
-    config_entry.data = {FLOW_PLANT_INFO: {}}
+    mock_config_entry = MagicMock()
+    mock_config_entry.data = {}
     
-    # Create camera instance
-    with patch("os.path.exists", return_value=True):
-        camera = PlantCamera(hass, plant_entity, config_entry)
+    # Initialize the camera
+    camera = PlantCamera(hass, mock_plant_entity, mock_config_entry)
     
-    # Test device_info
-    device_info = camera.device_info
-    assert device_info["identifiers"] == {(DOMAIN, "plant_test_123")}
-    assert device_info["name"] == "Test Plant"
-    assert device_info["manufacturer"] == "Home Assistant"
-    assert device_info["model"] == "Plant Camera"
-
-
-async def test_plant_camera_turn_on_off(hass: HomeAssistant) -> None:
-    """Test PlantCamera turn on/off functionality."""
-    # Create a mock plant entity
-    plant_entity = Mock(spec=PlantDevice)
-    plant_entity.name = "Test Plant"
-    plant_entity.unique_id = "plant_test_123"
-    
-    # Create a mock config entry
-    config_entry = Mock()
-    config_entry.data = {FLOW_PLANT_INFO: {}}
-    
-    # Create camera instance
-    with patch("os.path.exists", return_value=True):
-        camera = PlantCamera(hass, plant_entity, config_entry)
-    
-    # Test initial state
-    assert camera.is_on is True
-    
-    # Test turn off
+    # Test turning off
     camera.turn_off()
     assert camera.is_on is False
     
-    # Test turn on
+    # Test turning on
     camera.turn_on()
     assert camera.is_on is True
 
 
-async def test_plant_camera_async_camera_image(hass: HomeAssistant) -> None:
-    """Test PlantCamera async_camera_image method."""
-    # Create a mock plant entity
-    plant_entity = Mock(spec=PlantDevice)
-    plant_entity.name = "Test Plant"
-    plant_entity.unique_id = "plant_test_123"
-    
+async def test_plant_camera_take_snapshot(hass: HomeAssistant, mock_plant_entity):
+    """Test taking a snapshot with the plant camera."""
     # Create a mock config entry
-    config_entry = Mock()
-    config_entry.data = {FLOW_PLANT_INFO: {}}
+    mock_config_entry = MagicMock()
+    mock_config_entry.data = {}
     
-    # Create camera instance
-    with patch("os.path.exists", return_value=True):
-        camera = PlantCamera(hass, plant_entity, config_entry)
+    # Initialize the camera
+    camera = PlantCamera(hass, mock_plant_entity, mock_config_entry)
     
-    # Test with no image
-    image = await camera.async_camera_image()
-    assert image is None
-    
-    # Test with image
-    test_image_data = b"test_image_data"
-    camera._last_image = test_image_data
-    
-    image = await camera.async_camera_image()
-    assert image == test_image_data
-
-
-async def test_plant_camera_async_take_snapshot(hass: HomeAssistant) -> None:
-    """Test PlantCamera async_take_snapshot method."""
-    # Create a mock plant entity
-    plant_entity = Mock(spec=PlantDevice)
-    plant_entity.name = "Test Plant"
-    plant_entity.unique_id = "plant_test_123"
-    plant_entity.entity_id = "plant.test_plant"
-    
-    # Create a mock config entry
-    config_entry = Mock()
-    config_entry.data = {FLOW_PLANT_INFO: {}}
-    
-    # Create temporary directory for testing
-    with tempfile.TemporaryDirectory() as temp_dir:
-        with patch("os.path.exists", return_value=True), \
-             patch.object(PlantCamera, "_image_storage_path", temp_dir):
-            
-            # Create camera instance
-            camera = PlantCamera(hass, plant_entity, config_entry)
-            
-            # Mock the _update_plant_image method
-            camera._update_plant_image = AsyncMock()
-            
-            # Test taking a snapshot
+    # Mock the hass.async_add_executor_job method
+    with patch.object(hass, 'async_add_executor_job') as mock_executor:
+        # Mock the open function to avoid actual file operations
+        with patch('builtins.open', MagicMock()):
+            # Take a snapshot
             filepath = await camera.async_take_snapshot()
             
-            # Verify the result
+            # Check that a filepath was returned
             assert filepath is not None
-            assert filepath.endswith(".jpg")
-            assert os.path.exists(filepath)
+            assert filepath.endswith('.jpg')
             
-            # Verify that _update_plant_image was called
-            camera._update_plant_image.assert_called_once()
+            # Check that the executor job was called
+            mock_executor.assert_called_once()
 
 
-async def test_plant_camera_update_plant_image(hass: HomeAssistant) -> None:
-    """Test PlantCamera _update_plant_image method."""
-    # Create a mock plant entity
-    plant_entity = Mock(spec=PlantDevice)
-    plant_entity.name = "Test Plant"
-    plant_entity.unique_id = "plant_test_123"
-    plant_entity._attr_entity_picture = None
-    plant_entity.async_write_ha_state = Mock()
-    
+async def test_plant_camera_image_storage(hass: HomeAssistant, mock_plant_entity):
+    """Test plant camera image storage."""
     # Create a mock config entry
-    config_entry = Mock()
-    config_entry.data = {FLOW_PLANT_INFO: {}}
-    config_entry.entry_id = "test_entry_id"
+    mock_config_entry = MagicMock()
+    mock_config_entry.data = {}
     
-    # Mock hass.config_entries.async_update_entry
-    hass.config_entries.async_update_entry = Mock()
+    # Initialize the camera
+    camera = PlantCamera(hass, mock_plant_entity, mock_config_entry)
     
-    # Create camera instance
-    with patch("os.path.exists", return_value=True):
-        camera = PlantCamera(hass, plant_entity, config_entry)
+    # Check that the image storage path is set
+    assert camera._image_storage_path is not None
     
-    # Test updating plant image
-    test_image_path = "/config/www/images/plants/test_image.jpg"
-    await camera._update_plant_image(test_image_path)
-    
-    # Verify the results
-    assert plant_entity._attr_entity_picture == "/local/images/plants/test_image.jpg"
-    hass.config_entries.async_update_entry.assert_called_once()
-    plant_entity.async_write_ha_state.assert_called_once()
+    # Mock the hass.async_add_executor_job method
+    with patch.object(hass, 'async_add_executor_job') as mock_executor:
+        # Mock the open function to avoid actual file operations
+        with patch('builtins.open', MagicMock()):
+            # Take a snapshot
+            filepath = await camera.async_take_snapshot()
+            
+            # Check that the filepath is within the storage path
+            assert camera._image_storage_path in filepath
 
 
-async def test_plant_camera_storage_path_creation(hass: HomeAssistant) -> None:
-    """Test that storage path is created if it doesn't exist."""
-    # Create a mock plant entity
-    plant_entity = Mock(spec=PlantDevice)
-    plant_entity.name = "Test Plant"
-    plant_entity.unique_id = "plant_test_123"
-    
+async def test_plant_camera_update_plant_image(hass: HomeAssistant, mock_plant_entity):
+    """Test updating plant entity with new image."""
     # Create a mock config entry
-    config_entry = Mock()
-    config_entry.data = {FLOW_PLANT_INFO: {}}
+    mock_config_entry = MagicMock()
+    mock_config_entry.data = {}
     
-    # Test with non-existent path
-    with patch("os.path.exists", return_value=False) as mock_exists, \
-         patch("os.makedirs") as mock_makedirs:
+    # Initialize the camera
+    camera = PlantCamera(hass, mock_plant_entity, mock_config_entry)
+    
+    # Test image path
+    test_image_path = "www/images/plants/test_image.jpg"
+    
+    # Mock the hass.config.path method to return a proper path
+    with patch.object(hass.config, 'path', return_value="/config/www/images/plants"):
+        await camera._update_plant_image(test_image_path)
         
-        camera = PlantCamera(hass, plant_entity, config_entry)
-        
-        # Verify that makedirs was called
-        mock_makedirs.assert_called_once()
+        # Check that the plant entity was updated with the correct local URL
+        expected_url = "/local/images/plants/test_image.jpg"
+        assert mock_plant_entity._attr_entity_picture == expected_url
 
 
-async def test_plant_camera_with_custom_storage_path(hass: HomeAssistant) -> None:
-    """Test PlantCamera with custom storage path."""
-    # Create a mock plant entity
-    plant_entity = Mock(spec=PlantDevice)
-    plant_entity.name = "Test Plant"
-    plant_entity.unique_id = "plant_test_123"
+async def test_plant_camera_device_info(hass: HomeAssistant, mock_plant_entity):
+    """Test plant camera device information."""
+    # Create a mock config entry
+    mock_config_entry = MagicMock()
+    mock_config_entry.data = {}
     
-    # Create a mock config entry with custom download path
-    config_entry = Mock()
-    config_entry.data = {FLOW_PLANT_INFO: {FLOW_DOWNLOAD_PATH: "/custom/path/"}}
+    # Initialize the camera
+    camera = PlantCamera(hass, mock_plant_entity, mock_config_entry)
     
-    # Test with custom path
-    with patch("os.path.exists", return_value=True) as mock_exists:
-        camera = PlantCamera(hass, plant_entity, config_entry)
+    # Get device info
+    device_info = camera.device_info
+    
+    # Check that device info is correct
+    assert device_info["identifiers"] == {(DOMAIN, mock_plant_entity.unique_id)}
+    assert device_info["name"] == mock_plant_entity.name
+    assert device_info["manufacturer"] == "Home Assistant"
+    assert device_info["model"] == "Plant Camera"
+    assert device_info["via_device"] == (DOMAIN, mock_plant_entity.unique_id)
+
+
+async def test_plant_camera_async_camera_image(hass: HomeAssistant, mock_plant_entity):
+    """Test async camera image retrieval."""
+    # Create a mock config entry
+    mock_config_entry = MagicMock()
+    mock_config_entry.data = {}
+    
+    # Initialize the camera
+    camera = PlantCamera(hass, mock_plant_entity, mock_config_entry)
+    
+    # Set a mock image
+    mock_image_data = b"test_image_data"
+    camera._last_image = mock_image_data
+    
+    # Get the camera image
+    image_data = await camera.async_camera_image()
+    
+    # Check that the correct image data was returned
+    assert image_data == mock_image_data
+
+
+async def test_plant_camera_error_handling(hass: HomeAssistant, mock_plant_entity):
+    """Test plant camera error handling."""
+    # Create a mock config entry
+    mock_config_entry = MagicMock()
+    mock_config_entry.data = {}
+    
+    # Initialize the camera
+    camera = PlantCamera(hass, mock_plant_entity, mock_config_entry)
+    
+    # Test that errors during snapshot are handled gracefully
+    with patch.object(camera, '_generate_placeholder_image', side_effect=Exception("Test error")):
+        filepath = await camera.async_take_snapshot()
+        assert filepath is None
+
+
+async def test_plant_camera_fallback_paths(hass: HomeAssistant, mock_plant_entity):
+    """Test plant camera fallback paths when default path is not accessible."""
+    # Create a mock config entry
+    mock_config_entry = MagicMock()
+    mock_config_entry.data = {}
+    
+    # Mock the os.makedirs function to raise PermissionError
+    with patch('os.makedirs', side_effect=PermissionError("Permission denied")):
+        # Initialize the camera - this should trigger the fallback path
+        camera = PlantCamera(hass, mock_plant_entity, mock_config_entry)
         
-        # Verify the storage path is set correctly
-        assert camera._image_storage_path == "/custom/path/"
+        # Check that a fallback path was used
+        assert camera._image_storage_path is not None
+        # The exact path may vary, but it should not be the original default

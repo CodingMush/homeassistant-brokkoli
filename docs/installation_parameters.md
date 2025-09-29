@@ -1,113 +1,87 @@
 # Installation Parameters
 
-This document describes all integration installation parameters for the Brokkoli Plant Manager.
+This document describes the various configuration parameters available for the Brokkoli Plant Manager integration.
 
-## Prerequisites
+## Configuration Options
 
-Before installing the Brokkoli Plant Manager, ensure you have the following:
+### General Settings
 
-1. **Home Assistant**: Version 2024.8 or later
-2. **HACS** (optional but recommended): For easy installation and updates
-3. **Supported Sensors**: Compatible sensors for monitoring your cannabis plants
+- **Temperature Unit**: Choose between Celsius (°C) and Fahrenheit (°F) for temperature readings
+- **Illuminance Unit**: Choose between Lux and PPFD (μmol/s⋅m²) for light measurements
+- **Aggregation Method**: Select how sensor data is aggregated (mean, median, min, max)
+- **Normalization Window**: Set the number of days for sensor data normalization (default: 7 days)
+- **Normalization Percentile**: Set the percentile for normalization calculations (default: 95)
 
-## Required Dependencies
+### Plant Limits
 
-The integration requires the following Home Assistant components to be installed and configured:
+Default limits for various plant parameters:
+- **Temperature**: 10-40°C (50-104°F)
+- **Soil Moisture**: 20-60%
+- **Soil Conductivity**: 500-3000 μS/cm
+- **Illuminance**: 0-100000 lux
+- **Air Humidity**: 20-60%
+- **Air CO2**: 60-60 ppm (Note: This appears to be a configuration error)
+- **DLI**: 2-30 mol/d⋅m²
 
-- **recorder**: For data persistence and history
-- **seedfinder**: For strain information and data (Brokkoli Seedfinder Integration)
-- **integration**: For sensor integration calculations
-- **utility_meter**: For consumption tracking
-- **diagnostics**: For diagnostic information
+### Consumption Settings
 
-These dependencies are automatically declared in the manifest.json file.
+- **Water Consumption**: 0.1-2.0 L per day
+- **Fertilizer Consumption**: 0.1-2.0 mL per day
+- **Power Consumption**: 0.1-5.0 kWh per day
+- **Default kWh Price**: 0.3684 € per kWh
 
-## Installation Methods
+### Image Storage
 
-### HACS Installation (Recommended)
+- **Image Storage**: Plant images are stored in the `www/images/plants/` directory by default
+- **Download Path**: Customizable path for image storage (relative to Home Assistant configuration directory)
 
-1. Add this repository as a [Custom Repository](https://hacs.xyz/docs/faq/custom_repositories/) in HACS
-2. Set the category to "Integration"
-3. Click "Install" on the "Brokkoli Cannabis Management" card
-4. Restart Home Assistant
+### Advanced Settings
 
-### Manual Installation
+- **Check Days**: Number of days to consider for problem detection (default: 3)
+- **pH Range**: 5.5-7.5 (adjustable)
+- **Default Pot Size**: 0.4 liters
+- **Default Water Capacity**: 50% (adjustable)
 
-1. Copy the `custom_components/plant/` directory to your `<config>/custom_components/` directory
-2. Restart Home Assistant
+## Service Configuration
 
-## Configuration Variables
+The integration provides several services for plant management:
+- `plant.create_plant`: Create a new plant entity
+- `plant.remove_plant`: Remove a plant entity
+- `plant.replace_sensor`: Replace a sensor associated with a plant
+- `plant.move_to_area`: Move a plant to a different area
+- `plant.export_plants`: Export plant data to a file
+- `plant.import_plants`: Import plant data from a file
+- `plant.clone_plant`: Create a clone of an existing plant
+- `plant.add_image`: Add an image to a plant's gallery
+- `plant.add_watering`: Add a manual watering entry
+- `plant.add_conductivity`: Add a manual conductivity reading
+- `plant.add_ph`: Add a manual pH reading
+- `plant.change_position`: Change a plant's position in a tent
+- `plant.take_snapshot`: Take a snapshot of a plant (camera integration)
+- `plant.auto_snapshot`: Configure automatic snapshots for a plant (camera integration)
 
-During installation, you may need to configure the following parameters:
+## Tent Configuration
 
-### Python Requirements
-- **async-timeout**: Version 4.0.2 or later
+- **Tent Creation**: Create and manage growing tents
+- **Camera Assignment**: Assign cameras to tents (inherited by plants)
+- **Plant Organization**: Group plants by tent for easier management
 
-This requirement is automatically installed by Home Assistant when the integration is loaded.
+## Cycle Management
 
-### Integration Manifest Parameters
+- **Cycle Creation**: Create growing cycles for tracking plant development
+- **Growth Phase Tracking**: Track plants through different growth phases
+- **Problem Detection**: Automatic detection of plant health issues
 
-The integration manifest defines the following parameters:
+## Data Sources
 
-- **domain**: "plant" - The Home Assistant domain for this integration
-- **name**: "Brokkoli Plant Manager" - The display name of the integration
-- **version**: Current version of the integration
-- **documentation**: URL to the documentation
-- **issue_tracker**: URL to the issue tracker
-- **iot_class**: "local_push" - Indicates the integration uses local push communication
-- **config_flow**: true - Indicates the integration uses config flow for setup
-- **after_dependencies**: List of required dependencies
-- **codeowners**: List of maintainers
-- **requirements**: List of Python package requirements
-- **translations**: Language translation configuration
-- **icon**: Path to the integration icon
+The integration supports multiple data sources:
+- **OpenPlantbook**: Fetch plant information from the OpenPlantbook database
+- **Manual Entry**: Manually configure plant parameters
+- **Default Values**: Use system defaults for common plants
 
-## Supported Architectures
+## Integration with Other Systems
 
-The integration supports the following architectures:
-
-- **amd64**: 64-bit x86 processors
-- **armv7**: ARM 32-bit processors
-- **aarch64**: ARM 64-bit processors
-- **i386**: 32-bit x86 processors
-
-## Language Support
-
-The integration currently supports the following languages:
-
-- **English** (en)
-- **German** (de)
-
-Translations are provided through the config_flow platform.
-
-## Minimum System Requirements
-
-- **RAM**: 512MB available memory
-- **Storage**: 100MB available disk space
-- **Network**: Local network access for sensor communication
-- **Processing Power**: 1GHz CPU or equivalent
-
-## Network Requirements
-
-- **Local Network Access**: The integration communicates with local sensors
-- **No Internet Required**: For basic functionality (though some features may require internet)
-- **Port Requirements**: No specific ports need to be opened
-
-## Storage Requirements
-
-- **Configuration Storage**: Configuration data is stored in Home Assistant's configuration storage
-- **History Storage**: Historical data is stored in the Home Assistant recorder database
-- **Image Storage**: Plant images are stored in the `/config/www/images/plants/` directory by default
-
-## Performance Considerations
-
-- **Update Frequency**: Sensors are updated based on their native update intervals
-- **Resource Usage**: Minimal CPU and memory usage during normal operation
-- **Database Impact**: Historical data is stored in the recorder database, which may impact database size over time
-
-## Security Considerations
-
-- **Local Processing**: All data processing occurs locally within Home Assistant
-- **No Cloud Communication**: The integration does not communicate with external cloud services
-- **Data Privacy**: All plant data remains local to your Home Assistant instance
-- **Access Control**: Integration follows Home Assistant's standard access control mechanisms
+- **Sensor Integration**: Works with various Home Assistant sensor platforms
+- **Notification System**: Can trigger notifications based on plant conditions
+- **Automation Support**: Fully compatible with Home Assistant automation system
+- **Camera Integration**: Supports camera entities for visual plant monitoring

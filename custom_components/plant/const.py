@@ -101,7 +101,8 @@ DEFAULT_MAX_POWER_CONSUMPTION = 5.0
 DEFAULT_MIN_PH = 5.5
 DEFAULT_MAX_PH = 7.5
 
-DEFAULT_IMAGE_PATH = "/config/www/images/plants/"
+# Use a more appropriate default path that works across platforms
+DEFAULT_IMAGE_PATH = "www/images/plants/"
 DEFAULT_IMAGE_LOCAL_URL = "/local/images/plants/"
 
 DATA_SOURCE = "data_source"

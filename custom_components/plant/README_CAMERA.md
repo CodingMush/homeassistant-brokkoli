@@ -1,99 +1,104 @@
 # Camera Integration for Brokkoli Plant Manager
 
-## Overview
-
-The Brokkoli Plant Manager now includes camera integration that allows you to take snapshots of your plants either on-demand or automatically. This feature also supports tent-based camera inheritance, where cameras assigned to tents are automatically inherited by plants in those tents.
+The camera integration allows you to take snapshots of your plants either on demand or automatically. These snapshots can be used to visually track the growth and health of your plants over time.
 
 ## Features
 
-1. **On-demand snapshots** - Take snapshots of your plants whenever you want
-2. **Automatic snapshots** - Configure plants to take snapshots at regular intervals
-3. **Tent camera inheritance** - Assign cameras to tents, which are then inherited by plants
-4. **Local storage** - Snapshots are stored locally on your Home Assistant instance
-5. **Plant image integration** - The latest snapshot becomes the plant's main image
+- Take snapshots of plants on demand via service calls
+- Automatic snapshots based on configurable schedules
+- Image storage with timestamped filenames
+- Integration with plant entities for visual tracking
+- Camera assignment inheritance from tents to plants
+
+## Configuration
+
+### Image Storage Path
+
+Images are stored in `www/images/plants/` by default. Each snapshot is saved with a timestamped filename.
+
+You can customize this path in the plant configuration:
+1. Go to Configuration → Devices & Services
+2. Find your plant configuration entry
+3. Click "Configure" 
+4. Modify the "Download Path" setting
+
+### Camera Assignment
+
+Cameras can be assigned to tents, which will then be inherited by all plants in that tent:
+1. Create or edit a tent
+2. Assign a camera entity to the tent
+3. All plants in the tent will automatically use that camera
 
 ## Services
 
-### Take Plant Snapshot
+### Take Snapshot
 
-Takes a snapshot of a plant using the configured camera.
+Takes an immediate snapshot of a plant.
 
-**Service:** `plant.take_snapshot`
+**Service**: `plant.take_snapshot`
 
-**Parameters:**
-- `entity_id` (Required): The plant entity to take a snapshot of
+**Parameters**:
+- `entity_id`: The plant entity to take a snapshot of
 
-### Configure Auto Snapshot
+### Auto Snapshot
 
-Configure automatic snapshots for a plant at regular intervals.
+Configures automatic snapshots for a plant.
 
-**Service:** `plant.auto_snapshot`
+**Service**: `plant.auto_snapshot`
 
-**Parameters:**
-- `entity_id` (Required): The plant entity to configure auto snapshots for
-- `interval_minutes` (Optional, default: 60): Interval between snapshots in minutes
-- `enabled` (Optional, default: true): Enable or disable auto snapshots
+**Parameters**:
+- `entity_id`: The plant entity to configure
+- `interval`: Snapshot interval in minutes (1-1440)
+- `enabled`: Whether auto snapshots are enabled (true/false)
 
-## Tent Camera Assignment
+## Usage
 
-To assign a camera to a tent, include the `camera_entity_id` parameter when creating or updating a tent:
+### Manual Snapshots
 
-```yaml
-service: plant.create_tent
-data:
-  name: "Grow Tent 1"
-  camera_entity_id: "camera.grow_tent_camera"
-```
+To take a manual snapshot:
+1. Go to Developer Tools → Services
+2. Select `plant.take_snapshot`
+3. Choose the plant entity
+4. Click "Call Service"
 
-Plants assigned to this tent will automatically inherit the camera.
+### Automatic Snapshots
 
-## Technical Details
+To configure automatic snapshots:
+1. Go to Developer Tools → Services
+2. Select `plant.auto_snapshot`
+3. Choose the plant entity
+4. Set the interval (e.g., 60 for hourly snapshots)
+5. Set enabled to `true`
+6. Click "Call Service"
 
-### Camera Entity
+### Viewing Snapshots
 
-When a plant is configured with a camera, a `PlantCamera` entity is created that extends Home Assistant's base `Camera` class. This entity handles:
+Snapshots can be viewed in several ways:
+1. Plant entity card - Shows the most recent snapshot
+2. Media browser - Browse all snapshots by plant
+3. Direct file access - Images are stored in your configured image directory
 
-1. Image capture and storage
-2. Integration with the plant entity
-3. Camera state management (on/off)
+## Troubleshooting
 
-### Image Storage
+### Permission Issues
 
-Images are stored in `/config/www/images/plants/` by default. Each snapshot is saved with a timestamped filename.
+If you encounter permission errors:
+1. Ensure the configured image storage path is writable
+2. Check that Home Assistant has the necessary permissions
+3. Consider using a path within the `www` directory
 
-### Implementation Files
+### No Camera Found
 
-- `camera.py` - Contains the `PlantCamera` class
-- `services.py` - Implements the camera services
-- `tent.py` - Handles tent camera assignment and inheritance
-- `__init__.py` - Includes the `assign_camera` method for plants
-- `services.yaml` - Defines the service interfaces
-- `const.py` - Contains camera-related constants
+If no camera is found:
+1. Verify that a camera entity is assigned to the tent or plant
+2. Check that the camera entity is available and functioning
+3. Restart Home Assistant if necessary
 
-## Example Automations
+### Image Not Updating
 
-### Daily Plant Snapshot
-
-```yaml
-alias: Daily Plant Snapshot
-trigger:
-  - platform: time
-    at: "09:00:00"
-action:
-  - service: plant.take_snapshot
-    data:
-      entity_id: plant.my_plant
-```
-
-### Growth Monitoring
-
-```yaml
-alias: Growth Monitoring
-trigger:
-  - platform: time_pattern
-    hours: "/6"  # Every 6 hours
-action:
-  - service: plant.take_snapshot
-    data:
-      entity_id: plant.my_plant
-```
+If plant images are not updating:
+1. Verify that snapshots are being taken successfully
+2. Check the Home Assistant logs for errors
+3. Ensure the image storage path is accessible1. Verify that snapshots are being taken successfully
+2. Check the Home Assistant logs for errors
+3. Ensure the image storage path is accessible
