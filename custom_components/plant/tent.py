@@ -162,6 +162,9 @@ class Tent(Entity):
         self._journal = Journal.from_dict(plant_info.get("journal", {}))
         self._maintenance_entries: List[MaintenanceEntry] = []
         
+        # Camera entity ID for the tent
+        self._camera_entity_id: Optional[str] = plant_info.get("camera_entity_id")
+        
         # Text entities for journal and maintenance
         self._journal_text_entity = None
         self._maintenance_text_entity = None
@@ -281,6 +284,7 @@ class Tent(Entity):
             "sensor_count": len(self._sensors),
             "maintenance_count": len(self._maintenance_entries),
             "journal_entry_count": len(self._journal.entries),
+            "camera_entity_id": self._camera_entity_id,
         }
 
     @property
@@ -332,8 +336,12 @@ class Tent(Entity):
         return self._maintenance_entries.copy()
 
     def assign_to_plant(self, plant) -> None:
-        """Assign this tent's sensors to a plant."""
+        """Assign this tent's sensors and camera to a plant."""
         plant.replace_sensors(self._sensors)
+        
+        # Assign camera if available
+        if self._camera_entity_id:
+            plant.assign_camera(self._camera_entity_id)
 
     def update_registry(self) -> None:
         """Update registry with correct data"""
@@ -362,6 +370,7 @@ class Tent(Entity):
         plant_info["maintenance_entries"] = [entry.to_dict() for entry in self._maintenance_entries]
         plant_info["updated_at"] = self._updated_at.isoformat()
         plant_info["device_id"] = self._device_id  # Persist device_id
+        plant_info["camera_entity_id"] = self._camera_entity_id  # Persist camera entity ID
         data[FLOW_PLANT_INFO] = plant_info
         
         # Update the config entry
@@ -377,6 +386,7 @@ class Tent(Entity):
             "maintenance_entries": [entry.to_dict() for entry in self._maintenance_entries],
             "created_at": self._created_at.isoformat(),
             "updated_at": self._updated_at.isoformat(),
+            "camera_entity_id": self._camera_entity_id,
         }
 
     def add_journal_text_entity(self, entity) -> None:
@@ -395,6 +405,16 @@ class Tent(Entity):
         """Add maintenance select entity."""
         # This method can be used to store a reference to the maintenance select entity if needed
         pass
+
+    def set_camera(self, camera_entity_id: Optional[str]) -> None:
+        """Set the camera entity ID for this tent."""
+        self._camera_entity_id = camera_entity_id
+        self._updated_at = datetime.now()
+        self._update_config()
+
+    def get_camera(self) -> Optional[str]:
+        """Get the camera entity ID for this tent."""
+        return self._camera_entity_id
 
 
     @classmethod

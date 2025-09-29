@@ -911,3 +911,51 @@ list_tents:
   name: List tents
   description: Lists all available tents and their sensor configurations.
   fields: { }
+
+take_snapshot:
+  name: Take Plant Snapshot
+  description: Takes a snapshot of a plant using the configured camera.
+  fields:
+    entity_id:
+      name: Plant Entity
+      description: The plant entity to take a snapshot of
+      required: true
+      selector:
+        entity:
+          domain: plant
+    auto_name:
+      name: Auto Name
+      description: Automatically name the snapshot file
+      required: false
+      default: true
+      selector:
+        boolean:
+
+auto_snapshot:
+  name: Configure Auto Snapshot
+  description: Configure automatic snapshots for a plant at regular intervals.
+  fields:
+    entity_id:
+      name: Plant Entity
+      description: The plant entity to configure auto snapshots for
+      required: true
+      selector:
+        entity:
+          domain: plant
+    interval_minutes:
+      name: Interval (minutes)
+      description: Interval between snapshots in minutes
+      required: false
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: minutes
+    enabled:
+      name: Enabled
+      description: Enable or disable auto snapshots
+      required: false
+      default: true
+      selector:
+        boolean:

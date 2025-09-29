@@ -9,6 +9,7 @@ from datetime import datetime
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
+from homeassistant.components import camera
 from homeassistant.components.utility_meter.const import (
     DATA_TARIFF_SENSORS,
     DATA_UTILITY,
@@ -134,7 +135,7 @@ from .repairs import async_create_sensor_unavailability_issue, async_create_inva
 from .device_removal import async_remove_stale_devices, async_check_and_remove_stale_device, async_cleanup_orphaned_entities
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SELECT, Platform.TEXT]
+PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SELECT, Platform.TEXT, Platform.CAMERA]
 
 # Use this during testing to generate some dummy-sensors
 # to provide random readings for temperature, moisture etc.
@@ -270,6 +271,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     websocket_api.async_register_command(hass, ws_upload_image)
     websocket_api.async_register_command(hass, ws_delete_image)
     websocket_api.async_register_command(hass, ws_set_main_image)
+    
+    # Initialize camera for plant entities (not for tents)
+    if device_type != DEVICE_TYPE_TENT:
+        try:
+            from .camera import PlantCamera
+            plant.camera = PlantCamera(hass, plant, entry)
+        except Exception as e:
+            _LOGGER.warning("Failed to initialize camera for plant %s: %s", plant.name, e)
     
     plant.async_schedule_update_ha_state(True)
 
@@ -982,6 +991,9 @@ class PlantDevice(Entity):
         # Initialize update scheduler
         self._update_unsub = None
         self._schedule_regular_updates()
+        
+        # Camera entity for plant snapshots
+        self.camera = None
 
     def decimals_for(self, sensor_type: str) -> int:
         """Return configured decimals for a sensor type."""
@@ -2577,4 +2589,23 @@ class PlantDevice(Entity):
         # Force an update of the plant state to reflect the new sensor assignments
         self.async_write_ha_state()
         _LOGGER.info("Replaced sensors for plant %s: %s", self.name, sensor_mapping)
+
+    def assign_camera(self, camera_entity_id: str) -> None:
+        """Assign a camera to this plant from a tent."""
+        try:
+            # Store camera entity ID in plant config
+            data = dict(self._config.data)
+            plant_info = dict(data.get(FLOW_PLANT_INFO, {}))
+            plant_info["camera_entity_id"] = camera_entity_id
+            data[FLOW_PLANT_INFO] = plant_info
+            self._hass.config_entries.async_update_entry(self._config, data=data)
+            
+            # Initialize camera if it doesn't exist
+            if self.camera is None:
+                from .camera import PlantCamera
+                self.camera = PlantCamera(self._hass, self, self._config)
+                
+            _LOGGER.info("Assigned camera %s to plant %s", camera_entity_id, self.name)
+        except Exception as e:
+            _LOGGER.error("Error assigning camera to plant %s: %s", self.name, e)
 

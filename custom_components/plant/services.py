@@ -179,6 +179,7 @@ CREATE_TENT_SCHEMA = vol.Schema({
     vol.Optional(FLOW_SENSOR_CO2): cv.entity_id,
     vol.Optional(FLOW_SENSOR_POWER_CONSUMPTION): cv.entity_id,
     vol.Optional(FLOW_SENSOR_PH): cv.entity_id,
+    vol.Optional("camera_entity_id"): cv.entity_id,
     vol.Optional("sensors", default=[]): vol.All(cv.ensure_list, [cv.string]),
 })
 
@@ -197,6 +198,19 @@ CHANGE_POSITION_SCHEMA = vol.Schema({
     vol.Required("entity_id"): cv.entity_id,
     vol.Optional(ATTR_POSITION_X): vol.Coerce(float),
     vol.Optional(ATTR_POSITION_Y): vol.Coerce(float),
+})
+
+# Schema for take_snapshot Service
+TAKE_SNAPSHOT_SCHEMA = vol.Schema({
+    vol.Required("entity_id"): cv.entity_id,
+    vol.Optional("auto_name"): cv.boolean,
+})
+
+# Schema for auto_snapshot Service
+AUTO_SNAPSHOT_SCHEMA = vol.Schema({
+    vol.Required("entity_id"): cv.entity_id,
+    vol.Optional("interval_minutes"): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
+    vol.Optional("enabled"): cv.boolean,
 })
 
 # Schema für update_plant_attributes
@@ -1318,6 +1332,82 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             except Exception:
                 pass
 
+    async def take_snapshot(call: ServiceCall) -> None:
+        """Take a snapshot of a plant."""
+        entity_id = call.data.get("entity_id")
+        auto_name = call.data.get("auto_name", True)
+
+        # Find target plant
+        target_plant = None
+        for entry_id in hass.data.get(DOMAIN, {}):
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if plant.entity_id == entity_id:
+                    target_plant = plant
+                    break
+
+        if not target_plant:
+            _LOGGER.warning("Plant entity %s not found for take_snapshot", entity_id)
+            return
+
+        try:
+            # Create camera entity if it doesn't exist
+            if not hasattr(target_plant, 'camera'):
+                from .camera import PlantCamera
+                camera = PlantCamera(hass, target_plant, target_plant._config)
+                target_plant.camera = camera
+            
+            # Take snapshot
+            filepath = await target_plant.camera.async_take_snapshot()
+            
+            if filepath:
+                _LOGGER.info("Snapshot taken for %s: %s", entity_id, filepath)
+            else:
+                _LOGGER.error("Failed to take snapshot for %s", entity_id)
+                
+        except Exception as e:
+            _LOGGER.error("Error taking snapshot for %s: %s", entity_id, e)
+
+    async def auto_snapshot(call: ServiceCall) -> None:
+        """Configure automatic snapshots for a plant."""
+        entity_id = call.data.get("entity_id")
+        interval_minutes = call.data.get("interval_minutes", 60)
+        enabled = call.data.get("enabled", True)
+
+        # Find target plant
+        target_plant = None
+        for entry_id in hass.data.get(DOMAIN, {}):
+            if ATTR_PLANT in hass.data[DOMAIN][entry_id]:
+                plant = hass.data[DOMAIN][entry_id][ATTR_PLANT]
+                if plant.entity_id == entity_id:
+                    target_plant = plant
+                    break
+
+        if not target_plant:
+            _LOGGER.warning("Plant entity %s not found for auto_snapshot", entity_id)
+            return
+
+        try:
+            # Store auto snapshot settings in plant config
+            data = dict(target_plant._config.data)
+            plant_info = dict(data.get(FLOW_PLANT_INFO, {}))
+            plant_info["auto_snapshot_enabled"] = enabled
+            plant_info["auto_snapshot_interval"] = interval_minutes
+            data[FLOW_PLANT_INFO] = plant_info
+            hass.config_entries.async_update_entry(target_plant._config, data=data)
+            
+            # Create camera entity if it doesn't exist
+            if not hasattr(target_plant, 'camera'):
+                from .camera import PlantCamera
+                camera = PlantCamera(hass, target_plant, target_plant._config)
+                target_plant.camera = camera
+            
+            _LOGGER.info("Auto snapshot %s for %s with interval %d minutes", 
+                        "enabled" if enabled else "disabled", entity_id, interval_minutes)
+                
+        except Exception as e:
+            _LOGGER.error("Error configuring auto snapshot for %s: %s", entity_id, e)
+
     async def export_plants(call: ServiceCall) -> ServiceResponse:
         """Export selected plant configurations to a ZIP archive."""
         plant_entities = call.data.get("plant_entities", [])
@@ -2100,6 +2190,20 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         change_position,
         schema=CHANGE_POSITION_SCHEMA
     )
+    
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_TAKE_SNAPSHOT,
+        take_snapshot,
+        schema=TAKE_SNAPSHOT_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_AUTO_SNAPSHOT,
+        auto_snapshot,
+        schema=AUTO_SNAPSHOT_SCHEMA
+    )
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
@@ -2125,6 +2229,8 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_CHANGE_TENT,
         "list_tents",
         SERVICE_CHANGE_POSITION,
+        SERVICE_TAKE_SNAPSHOT,
+        SERVICE_AUTO_SNAPSHOT,
     ]
     
     for service_name in service_names:

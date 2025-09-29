@@ -476,3 +476,7 @@ SERVICE_LIST_TENTS = "list_tents"
 ATTR_TENT_ID = "tent_id"
 ATTR_JOURNAL = "journal"
 ATTR_MAINTENANCE_ENTRIES = "maintenance_entries"
+
+# Camera constants
+SERVICE_TAKE_SNAPSHOT = "take_snapshot"
+SERVICE_AUTO_SNAPSHOT = "auto_snapshot"
