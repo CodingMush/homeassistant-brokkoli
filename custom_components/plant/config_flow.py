@@ -2560,78 +2560,79 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         }
                     )
 
-            # Gemeinsame Trigger-Optionen für Plants und Cycles
-            data_schema[
-                vol.Optional(
-                    FLOW_ILLUMINANCE_TRIGGER, default=self.plant.illuminance_trigger
-                )
-            ] = cv.boolean
-            data_schema[
-                vol.Optional(FLOW_DLI_TRIGGER, default=self.plant.dli_trigger)
-            ] = cv.boolean
-            data_schema[
-                vol.Optional(FLOW_HUMIDITY_TRIGGER, default=self.plant.humidity_trigger)
-            ] = cv.boolean
-            data_schema[
-                vol.Optional(FLOW_CO2_TRIGGER, default=self.plant.co2_trigger)
-            ] = cv.boolean
-            data_schema[
-                vol.Optional(
-                    FLOW_TEMPERATURE_TRIGGER, default=self.plant.temperature_trigger
-                )
-            ] = cv.boolean
-            data_schema[
-                vol.Optional(FLOW_MOISTURE_TRIGGER, default=self.plant.moisture_trigger)
-            ] = cv.boolean
-            data_schema[
-                vol.Optional(
-                    FLOW_CONDUCTIVITY_TRIGGER, default=self.plant.conductivity_trigger
-                )
-            ] = cv.boolean
-            data_schema[
-                vol.Optional(
-                    FLOW_WATER_CONSUMPTION_TRIGGER,
-                    default=self.plant.water_consumption_trigger,
-                )
-            ] = cv.boolean
-            data_schema[
-                vol.Optional(
-                    FLOW_FERTILIZER_CONSUMPTION_TRIGGER,
-                    default=self.plant.fertilizer_consumption_trigger,
-                )
-            ] = cv.boolean
-            data_schema[
-                vol.Optional(
-                    FLOW_POWER_CONSUMPTION_TRIGGER,
-                    default=self.plant.power_consumption_trigger,
-                )
-            ] = cv.boolean
+            # Gemeinsame Trigger-Optionen für Plants und Cycles (NICHT für Tents)
+            if self.plant.device_type != DEVICE_TYPE_TENT:
+                data_schema[
+                    vol.Optional(
+                        FLOW_ILLUMINANCE_TRIGGER, default=self.plant.illuminance_trigger
+                    )
+                ] = cv.boolean
+                data_schema[
+                    vol.Optional(FLOW_DLI_TRIGGER, default=self.plant.dli_trigger)
+                ] = cv.boolean
+                data_schema[
+                    vol.Optional(FLOW_HUMIDITY_TRIGGER, default=self.plant.humidity_trigger)
+                ] = cv.boolean
+                data_schema[
+                    vol.Optional(FLOW_CO2_TRIGGER, default=self.plant.co2_trigger)
+                ] = cv.boolean
+                data_schema[
+                    vol.Optional(
+                        FLOW_TEMPERATURE_TRIGGER, default=self.plant.temperature_trigger
+                    )
+                ] = cv.boolean
+                data_schema[
+                    vol.Optional(FLOW_MOISTURE_TRIGGER, default=self.plant.moisture_trigger)
+                ] = cv.boolean
+                data_schema[
+                    vol.Optional(
+                        FLOW_CONDUCTIVITY_TRIGGER, default=self.plant.conductivity_trigger
+                    )
+                ] = cv.boolean
+                data_schema[
+                    vol.Optional(
+                        FLOW_WATER_CONSUMPTION_TRIGGER,
+                        default=self.plant.water_consumption_trigger,
+                    )
+                ] = cv.boolean
+                data_schema[
+                    vol.Optional(
+                        FLOW_FERTILIZER_CONSUMPTION_TRIGGER,
+                        default=self.plant.fertilizer_consumption_trigger,
+                    )
+                ] = cv.boolean
+                data_schema[
+                    vol.Optional(
+                        FLOW_POWER_CONSUMPTION_TRIGGER,
+                        default=self.plant.power_consumption_trigger,
+                    )
+                ] = cv.boolean
 
-            # Add new status stabilization options
-            data_schema[
-                vol.Optional(
-                    "status_debounce_time",
-                    default=self.entry.options.get("status_debounce_time", 0),
-                )
-            ] = cv.positive_int
-            data_schema[
-                vol.Optional(
-                    "hysteresis_percentage",
-                    default=self.entry.options.get("hysteresis_percentage", 0.0),
-                )
-            ] = vol.Coerce(float)
-            data_schema[
-                vol.Optional(
-                    "stabilization_window",
-                    default=self.entry.options.get("stabilization_window", 0),
-                )
-            ] = cv.positive_int
-            data_schema[
-                vol.Optional(
-                    "verbose_logging",
-                    default=self.entry.options.get("verbose_logging", False),
-                )
-            ] = cv.boolean
+                # Add new status stabilization options
+                data_schema[
+                    vol.Optional(
+                        "status_debounce_time",
+                        default=self.entry.options.get("status_debounce_time", 0),
+                    )
+                ] = cv.positive_int
+                data_schema[
+                    vol.Optional(
+                        "hysteresis_percentage",
+                        default=self.entry.options.get("hysteresis_percentage", 0.0),
+                    )
+                ] = vol.Coerce(float)
+                data_schema[
+                    vol.Optional(
+                        "stabilization_window",
+                        default=self.entry.options.get("stabilization_window", 0),
+                    )
+                ] = cv.positive_int
+                data_schema[
+                    vol.Optional(
+                        "verbose_logging",
+                        default=self.entry.options.get("verbose_logging", False),
+                    )
+                ] = cv.boolean
 
         return self.async_show_form(step_id="init", data_schema=vol.Schema(data_schema))
 
