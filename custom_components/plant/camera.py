@@ -121,9 +121,55 @@ class PlantCamera(Camera):
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
         """Return bytes of camera image."""
-        # For now, we return the last captured image
-        # In a real implementation, this would capture a new image from a camera device
-        return self._last_image
+        # Check if we have an external camera entity configured
+        plant_config = self._config_entry.data.get(FLOW_PLANT_INFO, {})
+        external_camera_id = plant_config.get("camera_entity_id")
+        
+        if external_camera_id:
+            # Try to get image from external camera
+            try:
+                camera_entity = self._hass.states.get(external_camera_id)
+                if camera_entity and camera_entity.state != "unavailable":
+                    # Get the camera entity from Home Assistant
+                    camera_component = self._hass.data.get("camera")
+                    if camera_component:
+                        for camera in camera_component.entities:
+                            if camera.entity_id == external_camera_id:
+                                return await camera.async_camera_image(width, height)
+                                
+                    # Alternative: Use camera.snapshot service
+                    try:
+                        await self._hass.services.async_call(
+                            "camera",
+                            "snapshot",
+                            {
+                                "entity_id": external_camera_id,
+                                "filename": "/tmp/temp_snapshot.jpg"
+                            },
+                            blocking=True
+                        )
+                        
+                        # Read the temporary file
+                        def read_snapshot():
+                            try:
+                                with open("/tmp/temp_snapshot.jpg", "rb") as f:
+                                    return f.read()
+                            except FileNotFoundError:
+                                return None
+                                
+                        image_data = await self._hass.async_add_executor_job(read_snapshot)
+                        if image_data:
+                            return image_data
+                    except Exception as e:
+                        _LOGGER.debug("Could not get image from external camera %s: %s", 
+                                    external_camera_id, e)
+                        
+            except Exception as e:
+                _LOGGER.warning("Error accessing external camera %s: %s", 
+                              external_camera_id, e)
+        
+        # Fallback to last captured image or placeholder
+        return self._last_image or self._generate_placeholder_image()
 
     def turn_on(self) -> None:
         """Turn on camera."""
@@ -138,9 +184,58 @@ class PlantCamera(Camera):
     async def async_take_snapshot(self) -> str | None:
         """Take a snapshot and save it to storage."""
         try:
-            # In a real implementation, this would capture an image from a camera device
-            # For demonstration purposes, we'll create a placeholder image
-            image_data = self._generate_placeholder_image()
+            image_data = None
+            
+            # Check if we have an external camera entity configured
+            plant_config = self._config_entry.data.get(FLOW_PLANT_INFO, {})
+            external_camera_id = plant_config.get("camera_entity_id")
+            
+            if external_camera_id:
+                # Try to get image from external camera first
+                try:
+                    camera_entity = self._hass.states.get(external_camera_id)
+                    if camera_entity and camera_entity.state != "unavailable":
+                        # Use camera.snapshot service to capture image
+                        temp_filepath = f"/tmp/plant_snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                        
+                        await self._hass.services.async_call(
+                            "camera",
+                            "snapshot",
+                            {
+                                "entity_id": external_camera_id,
+                                "filename": temp_filepath
+                            },
+                            blocking=True
+                        )
+                        
+                        # Read the captured image
+                        def read_captured_image():
+                            try:
+                                with open(temp_filepath, "rb") as f:
+                                    data = f.read()
+                                # Clean up temp file
+                                try:
+                                    os.remove(temp_filepath)
+                                except Exception:
+                                    pass
+                                return data
+                            except FileNotFoundError:
+                                return None
+                                
+                        image_data = await self._hass.async_add_executor_job(read_captured_image)
+                        
+                        if image_data:
+                            _LOGGER.info("Successfully captured image from external camera %s", external_camera_id)
+                        else:
+                            _LOGGER.warning("Failed to capture image from external camera %s", external_camera_id)
+                            
+                except Exception as e:
+                    _LOGGER.warning("Error capturing from external camera %s: %s", external_camera_id, e)
+            
+            # Fallback to placeholder if external camera failed or not configured
+            if not image_data:
+                _LOGGER.debug("Using placeholder image for plant %s", self._plant_entity.name)
+                image_data = self._generate_placeholder_image()
             
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -163,10 +258,14 @@ class PlantCamera(Camera):
             await self._update_plant_image(filepath)
             
             self.schedule_update_ha_state()
+            
+            camera_type = "external camera" if external_camera_id else "placeholder"
+            _LOGGER.info("Snapshot taken for %s using %s: %s", 
+                        self._plant_entity.name, camera_type, filepath)
             return filepath
             
         except Exception as e:
-            _LOGGER.error("Error taking snapshot: %s", e)
+            _LOGGER.error("Error taking snapshot for %s: %s", self._plant_entity.name, e)
             return None
 
     def _generate_placeholder_image(self) -> bytes:

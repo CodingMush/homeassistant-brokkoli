@@ -2609,3 +2609,62 @@ class PlantDevice(Entity):
         except Exception as e:
             _LOGGER.error("Error assigning camera to plant %s: %s", self.name, e)
 
+    def inherit_tent_camera(self, tent) -> None:
+        """Inherit camera from assigned tent."""
+        if tent and hasattr(tent, 'get_camera'):
+            camera_entity_id = tent.get_camera()
+            if camera_entity_id:
+                self.assign_camera(camera_entity_id)
+                _LOGGER.info("Inherited camera %s from tent %s for plant %s", 
+                           camera_entity_id, tent.name, self.name)
+            else:
+                _LOGGER.debug("No camera configured in tent %s for plant %s", 
+                            tent.name, self.name)
+        else:
+            _LOGGER.debug("No tent provided for camera inheritance for plant %s", self.name)
+
+    def assign_tent(self, tent) -> None:
+        """Assign a tent to this plant and inherit its configuration."""
+        try:
+            self._assigned_tent = tent
+            self._tent_id = tent.tent_id if tent else None
+            
+            if tent:
+                # Inherit sensors from tent
+                tent_sensors = tent.get_sensors()
+                if tent_sensors:
+                    self.replace_sensors(tent_sensors)
+                    
+                # Inherit camera from tent
+                self.inherit_tent_camera(tent)
+                
+                _LOGGER.info("Assigned tent %s to plant %s with %d sensors and camera inheritance", 
+                           tent.name, self.name, len(tent_sensors))
+            else:
+                _LOGGER.info("Cleared tent assignment for plant %s", self.name)
+                
+        except Exception as e:
+            _LOGGER.error("Error assigning tent to plant %s: %s", self.name, e)
+
+    def change_tent(self, new_tent) -> None:
+        """Change the assigned tent and update inherited configuration."""
+        old_tent = self._assigned_tent
+        self.assign_tent(new_tent)
+        
+        if old_tent and new_tent:
+            _LOGGER.info("Changed tent assignment for plant %s from %s to %s", 
+                       self.name, old_tent.name, new_tent.name)
+        elif new_tent:
+            _LOGGER.info("Assigned new tent %s to plant %s", new_tent.name, self.name)
+        elif old_tent:
+            _LOGGER.info("Removed tent assignment from plant %s (was %s)", 
+                       self.name, old_tent.name)
+
+    def get_assigned_tent(self):
+        """Get the currently assigned tent."""
+        return getattr(self, '_assigned_tent', None)
+
+    def get_tent_id(self) -> str:
+        """Get the ID of the assigned tent."""
+        return getattr(self, '_tent_id', None)
+

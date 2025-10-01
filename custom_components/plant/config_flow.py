@@ -31,6 +31,8 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import selector
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.selector import selector
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import area_registry as ar
 
 # Local Imports
 from .const import (
@@ -1600,6 +1602,120 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     self.hass.config_entries.async_update_entry(self.entry, data=data)
 
                 return self.async_create_entry(title="", data=user_input)
+            elif self.plant and self.plant.device_type == DEVICE_TYPE_TENT:
+                # Tent-Updates verarbeiten
+                tent = self.plant
+                data = dict(self.entry.data)
+                plant_info = dict(data.get(FLOW_PLANT_INFO, {}))
+                tent_changed = False
+
+                # Name-Update
+                new_name = user_input.get(ATTR_NAME)
+                if new_name and new_name != tent.name:
+                    plant_info[ATTR_NAME] = new_name
+                    plant_info["name"] = new_name
+                    tent_changed = True
+
+                # Validierung der Entity-IDs
+                validation_errors = {}
+                
+                # Sensor-Mappings definieren
+                sensor_mappings = {
+                    FLOW_SENSOR_ILLUMINANCE: "illuminance_sensor",
+                    FLOW_SENSOR_HUMIDITY: "humidity_sensor", 
+                    FLOW_SENSOR_CO2: "CO2_sensor",
+                    FLOW_SENSOR_POWER_CONSUMPTION: "power_consumption_sensor",
+                    FLOW_SENSOR_PH: "ph_sensor",
+                }
+                
+                # Validiere Sensor-Entities
+                for sensor_key in sensor_mappings.keys():
+                    sensor_entity_id = user_input.get(sensor_key)
+                    if sensor_entity_id:
+                        sensor_state = self.hass.states.get(sensor_entity_id)
+                        if not sensor_state:
+                            validation_errors[sensor_key] = "Entity nicht gefunden"
+                        elif sensor_state.state == "unavailable":
+                            validation_errors[sensor_key] = "Entity nicht verfügbar"
+                            
+                # Validiere Kamera-Entity
+                camera_entity_id = user_input.get("camera_entity_id")
+                if camera_entity_id:
+                    camera_state = self.hass.states.get(camera_entity_id)
+                    if not camera_state:
+                        validation_errors["camera_entity_id"] = "Kamera-Entity nicht gefunden"
+                    elif camera_state.state == "unavailable":
+                        validation_errors["camera_entity_id"] = "Kamera-Entity nicht verfügbar"
+                    elif not camera_entity_id.startswith("camera."):
+                        validation_errors["camera_entity_id"] = "Entity muss eine Kamera sein"
+                        
+                # Validiere Bereich
+                area_id = user_input.get("area_id")
+                if area_id:
+                    area_registry = ar.async_get(self.hass)
+                    area = area_registry.async_get_area(area_id)
+                    if not area:
+                        validation_errors["area_id"] = "Bereich nicht gefunden"
+                        
+                if validation_errors:
+                    return self.async_show_form(
+                        step_id="init",
+                        data_schema=vol.Schema(data_schema),
+                        errors=validation_errors
+                    )
+
+                for sensor_key, _ in sensor_mappings.items():
+                    new_sensor = user_input.get(sensor_key)
+                    old_sensor = plant_info.get(sensor_key)
+                    
+                    if new_sensor != old_sensor:
+                        if new_sensor:
+                            plant_info[sensor_key] = new_sensor
+                        elif sensor_key in plant_info:
+                            del plant_info[sensor_key]
+                        tent_changed = True
+
+                # Kamera-Update
+                new_camera = user_input.get("camera_entity_id")
+                old_camera = plant_info.get("camera_entity_id")
+                if new_camera != old_camera:
+                    if new_camera:
+                        plant_info["camera_entity_id"] = new_camera
+                        tent.set_camera(new_camera)
+                    else:
+                        plant_info.pop("camera_entity_id", None)
+                        tent.set_camera(None)
+                    tent_changed = True
+
+                # Bereichs-Update
+                new_area = user_input.get("area_id")
+                old_area = plant_info.get("area_id")
+                if new_area != old_area:
+                    if new_area:
+                        plant_info["area_id"] = new_area
+                    else:
+                        plant_info.pop("area_id", None)
+                    tent_changed = True
+                    
+                    # Aktualisiere auch das Device im Device Registry
+                    if tent.device_id:
+                        device_registry = dr.async_get(self.hass)
+                        device_registry.async_update_device(
+                            tent.device_id,
+                            area_id=new_area
+                        )
+
+                if tent_changed:
+                    plant_info["updated_at"] = datetime.now().isoformat()
+                    data[FLOW_PLANT_INFO] = plant_info
+                    self.hass.config_entries.async_update_entry(self.entry, data=data)
+                    
+                    # Aktualisiere Tent-Entität
+                    tent.async_write_ha_state()
+                    
+                    _LOGGER.info("Tent configuration updated: %s", tent.name)
+
+                return self.async_create_entry(title="", data=user_input)
             else:
                 # Normale Plant/Cycle Optionen
                 self.plant = self.hass.data[DOMAIN][self.entry.entry_id]["plant"]
@@ -2136,6 +2252,89 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     ): str,
                 }
             )
+        elif self.plant and self.plant.device_type == DEVICE_TYPE_TENT:
+            # Tent-spezifische Optionen
+            tent = self.plant
+            
+            # Hole aktulle Konfiguration
+            current_config = self.entry.data.get(FLOW_PLANT_INFO, {})
+            
+            data_schema.update({
+                # Grundlegende Tent-Informationen
+                vol.Optional(
+                    ATTR_NAME, 
+                    description={"suggested_value": tent.name}
+                ): cv.string,
+                
+                # Sensor-Zuweisungen mit aktuellen Werten
+                vol.Optional(
+                    FLOW_SENSOR_ILLUMINANCE,
+                    default=current_config.get(FLOW_SENSOR_ILLUMINANCE)
+                ): selector({
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.ILLUMINANCE,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }),
+                
+                vol.Optional(
+                    FLOW_SENSOR_HUMIDITY,
+                    default=current_config.get(FLOW_SENSOR_HUMIDITY)
+                ): selector({
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }),
+                
+                vol.Optional(
+                    FLOW_SENSOR_CO2,
+                    default=current_config.get(FLOW_SENSOR_CO2)
+                ): selector({
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.CO2,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }),
+                
+                vol.Optional(
+                    FLOW_SENSOR_POWER_CONSUMPTION,
+                    default=current_config.get(FLOW_SENSOR_POWER_CONSUMPTION)
+                ): selector({
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.POWER,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }),
+                
+                vol.Optional(
+                    FLOW_SENSOR_PH,
+                    default=current_config.get(FLOW_SENSOR_PH)
+                ): selector({
+                    ATTR_ENTITY: {
+                        ATTR_DEVICE_CLASS: SensorDeviceClass.PH,
+                        ATTR_DOMAIN: DOMAIN_SENSOR,
+                    }
+                }),
+                
+                # Kamera-Zuweisung
+                vol.Optional(
+                    "camera_entity_id",
+                    default=current_config.get("camera_entity_id")
+                ): selector({
+                    ATTR_ENTITY: {
+                        ATTR_DOMAIN: "camera",
+                    }
+                }),
+                
+                # Bereichs-Zuweisung
+                vol.Optional(
+                    "area_id",
+                    default=current_config.get("area_id")
+                ): selector({
+                    "area": {}
+                }),
+            })
         else:
             # Normale Plant/Cycle Optionen
             self.plant = self.hass.data[DOMAIN][self.entry.entry_id]["plant"]
