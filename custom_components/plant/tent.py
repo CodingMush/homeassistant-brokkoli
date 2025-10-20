@@ -288,6 +288,57 @@ class Tent(Entity):
         }
 
     @property
+    def websocket_info(self) -> dict:
+        """Return websocket response for tent."""
+        # Get sensor current values
+        sensor_values = {}
+        for sensor_id in self._sensors:
+            try:
+                state = self._hass.states.get(sensor_id)
+                if state and state.state not in ("unknown", "unavailable"):
+                    sensor_values[sensor_id] = {
+                        "current": state.state,
+                        "unit": state.attributes.get("unit_of_measurement", ""),
+                        "icon": state.attributes.get("icon", ""),
+                        "device_class": state.attributes.get("device_class", ""),
+                    }
+            except Exception:
+                pass
+        
+        # Format maintenance entries
+        maintenance_list = []
+        for entry in self._maintenance_entries:
+            maintenance_list.append({
+                "timestamp": entry.timestamp.isoformat(),
+                "description": entry.description,
+                "performed_by": entry.performed_by,
+                "cost": entry.cost,
+            })
+        
+        # Format journal entries
+        journal_list = []
+        for entry in self._journal.entries:
+            journal_list.append({
+                "timestamp": entry.timestamp.isoformat(),
+                "content": entry.content,
+                "author": entry.author,
+            })
+        
+        return {
+            "device_type": "tent",
+            "entity_id": f"sensor.tent_{self._tent_id}",
+            "name": self._name,
+            "tent_id": self._tent_id,
+            "sensors": self._sensors,
+            "sensor_values": sensor_values,
+            "maintenance_entries": maintenance_list,
+            "journal_entries": journal_list,
+            "camera_entity_id": self._camera_entity_id,
+            "created_at": self._created_at.isoformat(),
+            "updated_at": self._updated_at.isoformat(),
+        }
+
+    @property
     def device_info(self) -> dict:
         """Return device information about the tent."""
         return {
